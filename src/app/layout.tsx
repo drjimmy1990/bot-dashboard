@@ -4,8 +4,10 @@ import { Inter } from 'next/font/google';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v13-appRouter';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import Box from '@mui/material/Box';
 import theme from '@/theme';
 import QueryProvider from '@/providers/QueryProvider';
+import AppSidebar from '@/components/layout/AppSidebar';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -27,7 +29,23 @@ export default function RootLayout({
           <ThemeProvider theme={theme}>
             <CssBaseline />
             <QueryProvider>
-              {children}
+              <Box sx={{ display: 'flex' }}>
+                <AppSidebar />
+                <Box
+                  component="main"
+                  sx={{
+                    flexGrow: 1,
+                    bgcolor: 'background.default',
+                    width: 'calc(100% - 240px)', // Ensure main content doesn't go under the sidebar
+                    height: '100vh',
+                    overflow: 'auto',
+                  }}
+                >
+                  {/* The children (our pages and their specific layouts) will render here. */}
+                  {/* The header will be rendered inside the children. */}
+                  {children}
+                </Box>
+              </Box>
             </QueryProvider>
           </ThemeProvider>
         </AppRouterCacheProvider>

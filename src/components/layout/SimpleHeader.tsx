@@ -1,11 +1,10 @@
-// src/components/layout/AppHeader.tsx
+// src/components/layout/SimpleHeader.tsx
 'use client';
 
 import React from 'react';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import { usePathname } from 'next/navigation';
 
 const DRAWER_WIDTH = 240;
@@ -17,13 +16,7 @@ const getPageTitle = (pathname: string): string => {
   return 'Home';
 };
 
-// Define the props the header will receive
-interface AppHeaderProps {
-  onToggleAdminPanel: () => void;
-  isAdminPanelOpen: boolean;
-}
-
-export default function AppHeader({ onToggleAdminPanel, isAdminPanelOpen }: AppHeaderProps) {
+export default function SimpleHeader() {
   const pathname = usePathname();
   const title = getPageTitle(pathname);
 
@@ -37,14 +30,9 @@ export default function AppHeader({ onToggleAdminPanel, isAdminPanelOpen }: AppH
       }}
     >
       <Toolbar>
-        <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+        <Typography variant="h6" noWrap component="div">
           {title}
         </Typography>
-        
-        {/* The button is now part of the header */}
-        <Button color="inherit" onClick={onToggleAdminPanel}>
-          {isAdminPanelOpen ? 'Hide Actions' : 'Show Actions'}
-        </Button>
       </Toolbar>
     </AppBar>
   );
