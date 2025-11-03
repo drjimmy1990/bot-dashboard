@@ -2,49 +2,61 @@
 'use client';
 
 import React from 'react';
-import AppBar from '@mui/material/AppBar';
+import { styled } from '@mui/material/styles';
+import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import { usePathname } from 'next/navigation';
+import IconButton from '@mui/material/IconButton';
+import MenuIcon from '@mui/icons-material/Menu';
+import { useUI } from '@/providers/UIProvider'; // Import the context hook
 
-const DRAWER_WIDTH = 240;
+const drawerWidth = 240;
 
-const getPageTitle = (pathname: string): string => {
-  if (pathname.startsWith('/chat')) return 'Chat Interface';
-  if (pathname.startsWith('/settings')) return 'Settings';
-  if (pathname.startsWith('/analytics')) return 'Analytics';
-  return 'Home';
-};
-
-// Define the props the header will receive
-interface AppHeaderProps {
-  onToggleAdminPanel: () => void;
-  isAdminPanelOpen: boolean;
+interface AppBarProps extends MuiAppBarProps {
+  open?: boolean;
 }
 
-export default function AppHeader({ onToggleAdminPanel, isAdminPanelOpen }: AppHeaderProps) {
-  const pathname = usePathname();
-  const title = getPageTitle(pathname);
+const AppBar = styled(MuiAppBar, {
+  shouldForwardProp: (prop) => prop !== 'open',
+})<AppBarProps>(({ theme, open }) => ({
+  zIndex: theme.zIndex.drawer + 1,
+  transition: theme.transitions.create(['width', 'margin'], {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  ...(open && {
+    marginLeft: drawerWidth,
+    width: `calc(100% - ${drawerWidth}px)`,
+    transition: theme.transitions.create(['width', 'margin'], {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+  }),
+}));
+
+// The component only needs a 'title' prop now.
+export default function AppHeader({ title }: { title: string }) {
+  // It gets its state and functions from the global context.
+  const { isSidebarOpen, toggleSidebar } = useUI();
 
   return (
-    <AppBar
-      position="fixed"
-      sx={{
-        width: `calc(100% - ${DRAWER_WIDTH}px)`,
-        ml: `${DRAWER_WIDTH}px`,
-        zIndex: (theme) => theme.zIndex.drawer + 1,
-      }}
-    >
+    <AppBar position="fixed" open={isSidebarOpen}>
       <Toolbar>
-        <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+        <IconButton
+          color="inherit"
+          aria-label="open drawer"
+          onClick={toggleSidebar}
+          edge="start"
+          sx={{
+            marginRight: 5,
+            ...(isSidebarOpen && { display: 'none' }),
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+        <Typography variant="h6" noWrap component="div">
           {title}
         </Typography>
-        
-        {/* The button is now part of the header */}
-        <Button color="inherit" onClick={onToggleAdminPanel}>
-          {isAdminPanelOpen ? 'Hide Actions' : 'Show Actions'}
-        </Button>
       </Toolbar>
     </AppBar>
   );
