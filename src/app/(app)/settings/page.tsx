@@ -10,16 +10,19 @@ import {
   Paper,
   Alert,
   CircularProgress,
+  Divider,
 } from '@mui/material';
 import Link from 'next/link';
 
+// Import all our components
 import { useChannelConfig } from '@/hooks/useChannelConfig';
 import AgentPromptsManager from '@/components/settings/AgentPromptsManager';
-import GeneralSettings from '@/components/settings/GeneralSettings'; // This import will now work correctly
+import GeneralSettings from '@/components/settings/GeneralSettings';
 import KeywordActionsManager from '@/components/settings/KeywordActionsManager';
 import ChannelDetails from '@/components/settings/ChannelDetails';
 import ContentCollectionsManager from '@/components/settings/ContentCollectionsManager';
 
+// This component now handles the polished single-column layout
 function ChannelSettingsDisplay({ channelId }: { channelId: string }) {
   const { data, isLoading, isError, error } = useChannelConfig(channelId);
 
@@ -33,30 +36,30 @@ function ChannelSettingsDisplay({ channelId }: { channelId: string }) {
   }
 
   if (isError) {
-    // --- FIX IS HERE: Changed error.message to error?.message ---
     return <Alert severity="error">Error loading configuration: {error?.message}</Alert>;
   }
 
   if (!data) return null;
 
   return (
-    <Box 
-      sx={{ 
-        display: 'flex', 
-        flexDirection: { xs: 'column', md: 'row' },
-        gap: 4 
-      }}
-    >
-      <Box sx={{ width: { xs: '100%', md: '40%' }, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <ChannelDetails channelId={channelId} />
-        <GeneralSettings config={data.config} />
-        <KeywordActionsManager keywords={data.keywords} />
-      </Box>
+    // We use a Box with flexbox to stack the cards vertically with a consistent gap
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, mt: 2 }}>
       
-      <Box sx={{ width: { xs: '100%', md: '60%' }, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <AgentPromptsManager prompts={data.prompts} />
-        <ContentCollectionsManager />
-      </Box>
+      {/* Card 1: Channel Details */}
+      <ChannelDetails channelId={channelId} />
+      
+      {/* Card 2: General Bot Settings */}
+      <GeneralSettings config={data.config} />
+      
+      {/* Card 3: Agent Personas Editor */}
+      <AgentPromptsManager prompts={data.prompts} />
+      
+      {/* Card 4: Keyword Actions */}
+      <KeywordActionsManager keywords={data.keywords} />
+
+      {/* Card 5: Content Collections */}
+      <ContentCollectionsManager />
+
     </Box>
   );
 }
@@ -66,10 +69,13 @@ export default function SettingsPage() {
   const channelId = searchParams.get('channelId');
 
   return (
-    <Container maxWidth="xl">
-      <Typography variant="h4" component="h1" gutterBottom>
+    // Use a smaller container for a more focused look
+    <Container maxWidth="lg">
+      <Typography variant="h4" component="h1">
         Channel Settings
       </Typography>
+      
+      <Divider sx={{ my: 2 }} />
       
       {!channelId ? (
         <Paper sx={{ p: 4, textAlign: 'center', mt: 4 }}>
