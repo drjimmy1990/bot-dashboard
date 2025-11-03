@@ -19,12 +19,15 @@ import HomeIcon from '@mui/icons-material/Home';
 import ChatIcon from '@mui/icons-material/Chat';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
+import DnsIcon from '@mui/icons-material/Dns'
 
 const drawerWidth = 240;
 
 const menuItems = [
   { text: 'Home', href: '/', icon: <HomeIcon /> },
   { text: 'Chat', href: '/chat', icon: <ChatIcon /> },
+  // Add the new line below
+  { text: 'Channels', href: '/channels', icon: <DnsIcon /> }, 
   { text: 'Settings', href: '/settings', icon: <SettingsIcon /> },
   { text: 'Analytics', href: '/analytics', icon: <AnalyticsIcon />, disabled: true },
 ];
