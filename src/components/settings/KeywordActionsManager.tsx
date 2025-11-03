@@ -17,7 +17,7 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Grid, // Import Grid
+  Grid,
   CircularProgress,
   Tooltip
 } from '@mui/material';
@@ -37,7 +37,7 @@ interface KeywordActionsManagerProps {
 type EditingState = {
   id: string;
   keyword: string;
-  action_type: 'DISABLE_AI' | 'ENABLE_AI';
+  action_type: string; // Make action_type a string to be more flexible
 };
 
 export default function KeywordActionsManager({ keywords }: KeywordActionsManagerProps) {
@@ -47,7 +47,7 @@ export default function KeywordActionsManager({ keywords }: KeywordActionsManage
   const { addKeyword, isAddingKeyword, deleteKeyword, isDeletingKeyword, updateKeyword, isUpdatingKeyword } = useChannelConfig(channelId);
 
   const [newKeyword, setNewKeyword] = useState('');
-  const [newActionType, setNewActionType] = useState<'DISABLE_AI' | 'ENABLE_AI'>('DISABLE_AI');
+  const [newActionType, setNewActionType] = useState('DISABLE_AI'); // Default value
   const [editingState, setEditingState] = useState<EditingState | null>(null);
 
   const handleAddAction = () => {
@@ -76,16 +76,16 @@ export default function KeywordActionsManager({ keywords }: KeywordActionsManage
 
   return (
     <Paper sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>Keyword Actions</Typography>
+      <Typography variant="h6" gutterBottom>Keyword Actions & Variables</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Define automated actions when a user's message exactly matches a keyword.
+        Define automated actions or store variables for your workflows.
       </Typography>
       
-      {/* --- GRID FIX IS HERE --- */}
+      {/* --- ADD FORM IS BACK --- */}
       <Grid container spacing={2} sx={{ mb: 2 }} alignItems="center">
         <Grid size={{ xs: 12, sm: 4 }}>
           <TextField
-            label="New Keyword"
+            label="New Keyword / Variable Name"
             value={newKeyword}
             onChange={(e) => setNewKeyword(e.target.value)}
             variant="outlined"
@@ -94,17 +94,16 @@ export default function KeywordActionsManager({ keywords }: KeywordActionsManage
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 5 }}>
-          <FormControl fullWidth size="small">
-            <InputLabel>Action</InputLabel>
-            <Select
-              value={newActionType}
-              label="Action"
-              onChange={(e) => setNewActionType(e.target.value as 'DISABLE_AI' | 'ENABLE_AI')}
-            >
-              <MenuItem value="DISABLE_AI">Disable AI for user</MenuItem>
-              <MenuItem value="ENABLE_AI">Enable AI for user</MenuItem>
-            </Select>
-          </FormControl>
+          {/* We can make this a TextField to allow any action type */}
+          <TextField
+            label="Action / Value"
+            value={newActionType}
+            onChange={(e) => setNewActionType(e.target.value)}
+            variant="outlined"
+            size="small"
+            fullWidth
+            helperText="e.g., DISABLE_AI or a Telegram Group ID"
+          />
         </Grid>
         <Grid size={{ xs: 12, sm: 3 }}>
           <Button
@@ -118,7 +117,7 @@ export default function KeywordActionsManager({ keywords }: KeywordActionsManage
           </Button>
         </Grid>
       </Grid>
-      {/* --- END OF GRID FIX --- */}
+      {/* --- END OF ADD FORM --- */}
 
       <Divider sx={{ my: 2 }} />
       
@@ -128,16 +127,12 @@ export default function KeywordActionsManager({ keywords }: KeywordActionsManage
             
             return isCurrentlyEditing ? (
                 <ListItem key={action.id} sx={{ bgcolor: 'action.focus', borderRadius: 1, mb: 1, p: 2 }}>
-                    {/* --- GRID FIX FOR EDITING VIEW --- */}
                     <Grid container spacing={2} alignItems="center">
                         <Grid size={4}>
                             <TextField autoFocus value={editingState.keyword} onChange={(e) => setEditingState(s => s ? {...s, keyword: e.target.value} : null)} size="small" />
                         </Grid>
                         <Grid size={5}>
-                            <Select value={editingState.action_type} onChange={(e) => setEditingState(s => s ? {...s, action_type: e.target.value as any} : null)} size="small" fullWidth>
-                                <MenuItem value="DISABLE_AI">Disable AI for user</MenuItem>
-                                <MenuItem value="ENABLE_AI">Enable AI for user</MenuItem>
-                            </Select>
+                            <TextField value={editingState.action_type} onChange={(e) => setEditingState(s => s ? {...s, action_type: e.target.value} : null)} size="small" fullWidth/>
                         </Grid>
                         <Grid size={3} textAlign="right">
                            <Tooltip title="Save">
@@ -165,14 +160,14 @@ export default function KeywordActionsManager({ keywords }: KeywordActionsManage
                     sx={{ bgcolor: 'action.hover', borderRadius: 1, mb: 1 }}
                 >
                     <ListItemText
-                    primary={<Typography variant="body2" component="span" sx={{ fontWeight: 'bold' }}>{action.keyword}</Typography>}
-                    secondary={action.action_type === 'DISABLE_AI' ? 'Disables AI for user' : 'Enables AI for user'}
+                        primary={<Typography variant="body2" component="span" sx={{ fontWeight: 'bold' }}>{action.keyword}</Typography>}
+                        secondary={action.action_type}
                     />
                 </ListItem>
             )
         })}
         {keywords.length === 0 && (
-          <Typography color="text.secondary" textAlign="center" sx={{py: 2}}>No keyword actions defined.</Typography>
+          <Typography color="text.secondary" textAlign="center" sx={{py: 2}}>No keywords or variables defined.</Typography>
         )}
       </List>
     </Paper>

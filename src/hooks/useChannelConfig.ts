@@ -24,7 +24,7 @@ export interface AgentPrompt {
 export interface KeywordAction {
   id: string;
   keyword: string;
-  action_type: 'DISABLE_AI' | 'ENABLE_AI';
+  action_type: string; // Changed to string for flexibility
 }
 
 export interface FullChannelConfig {
@@ -39,7 +39,6 @@ export type UpdateConfigPayload = Partial<ChannelConfig>;
 export type UpdatePromptPayload = { promptId: string; system_prompt: string };
 export type AddKeywordPayload = Omit<KeywordAction, 'id'>;
 export type UpdateKeywordPayload = KeywordAction;
-// New payload type for adding a prompt
 export type AddPromptPayload = Omit<AgentPrompt, 'id'>;
 
 
@@ -93,7 +92,6 @@ export const useChannelConfig = (channelId: string | null) => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
-  // New mutation for adding a prompt
   const { mutate: addPrompt, isPending: isAddingPrompt } = useMutation({
     mutationFn: async (payload: Omit<AddPromptPayload, 'channel_id'>) => {
         const { error } = await supabase.from('agent_prompts').insert({ ...payload, channel_id: channelId! });
@@ -102,6 +100,7 @@ export const useChannelConfig = (channelId: string | null) => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
+  // --- ADD KEYWORD MUTATION IS BACK ---
   const { mutate: addKeyword, isPending: isAddingKeyword } = useMutation({
     mutationFn: async (payload: Omit<AddKeywordPayload, 'channel_id'>) => {
       const { error } = await supabase.from('keyword_actions').insert({ ...payload, channel_id: channelId! });
@@ -138,10 +137,10 @@ export const useChannelConfig = (channelId: string | null) => {
     isUpdatingConfig,
     updatePrompt,
     isUpdatingPrompt,
-    addPrompt, // Export the new function
-    isAddingPrompt, // Export the new loading state
-    addKeyword,
-    isAddingKeyword,
+    addPrompt,
+    isAddingPrompt,
+    addKeyword, // Re-export the function
+    isAddingKeyword, // Re-export the loading state
     deleteKeyword,
     isDeletingKeyword,
     updateKeyword,

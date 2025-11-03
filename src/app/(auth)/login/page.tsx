@@ -1,10 +1,12 @@
-// src/app/login/page.tsx
+// src/app/(auth)/login/page.tsx
 'use client';
 import React, { useState } from 'react';
 import { Box, Paper, Typography, TextField, Button, CircularProgress, Alert } from '@mui/material';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient'; // Import our new Supabase client
 
 export default function LoginPage() {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -15,26 +17,17 @@ export default function LoginPage() {
     setIsLoading(true);
     setError('');
 
-    try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        // Successful login, redirect to the dashboard
-        router.push('/');
-      } else {
-        setError(data.message || 'Invalid credentials.');
-        setPassword('');
-      }
-    } catch (_err) { // eslint-disable-line @typescript-eslint/no-unused-vars
-      setError('An error occurred. Please try again.');
-    } finally {
+    if (signInError) {
+      setError(signInError.message);
       setIsLoading(false);
+    } else {
+      router.push('/');
+      router.refresh(); 
     }
   };
 
@@ -64,12 +57,19 @@ export default function LoginPage() {
           Admin Login
         </Typography>
         <TextField
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoFocus
+        />
+        <TextField
           label="Password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          autoFocus
         />
         <Button
           type="submit"

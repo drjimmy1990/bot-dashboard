@@ -1,40 +1,76 @@
 // src/middleware.ts
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose'; // A more secure, modern JWT library
-
-// This is your secret key for verifying the JWT.
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'default-fallback-secret-for-jwt');
+import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 
 export async function middleware(request: NextRequest) {
-  const token = request.cookies.get('auth_token')?.value;
+  // Create a Supabase client that can be used in the middleware
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options) {
+          // This space is intentionally left blank for the middleware.
+          // The actual cookie setting is handled by the response object below.
+        },
+        remove(name: string, options) {
+          // Same as above.
+        },
+      },
+    }
+  );
+
+  // This line is crucial. It refreshes the user's session if it's about to expire.
+  const { data: { session } } = await supabase.auth.getSession();
+
   const { pathname } = request.nextUrl;
 
-  // If trying to access login page, let them through
-  if (pathname.startsWith('/login')) {
-    return NextResponse.next();
+  // If the user is trying to access the login page and they are already logged in,
+  // redirect them to the home page.
+  if (session && pathname.startsWith('/login')) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  // If the user is trying to access any protected page and they are NOT logged in,
+  // redirect them to the login page.
+  if (!session && !pathname.startsWith('/login')) {
+    return NextResponse.redirect(new URL('/login', request.url));
   }
   
-  // If trying to access any other page, check for token
-  if (!token) {
-    // No token, redirect to login
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
+  // If the user is logged in or is accessing the login page, allow the request to proceed.
+  // We create a new response object to ensure the session cookie is correctly refreshed and passed on.
+  const response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
 
-  // Verify the token
-  try {
-    await jwtVerify(token, JWT_SECRET);
-    // Token is valid, allow the request to proceed
-    return NextResponse.next();
-  } catch (err) {
-    // Token is invalid (expired, tampered, etc.), redirect to login
-    console.error('JWT Verification Error:', err);
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
+  // Re-create the server client with the new response object to handle cookie setting.
+  createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options) {
+          response.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options) {
+          response.cookies.set({ name, value: '', ...options });
+        },
+      },
+    }
+  );
+
+  return response;
 }
 
-// See "Matching Paths" below to learn more
+// Ensure the middleware runs on all paths except for static assets.
 export const config = {
-  // Match all paths except for static files and API routes
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
