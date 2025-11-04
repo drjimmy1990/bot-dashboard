@@ -8,6 +8,7 @@ import theme from '@/theme';
 import QueryProvider from '@/providers/QueryProvider';
 import './globals.css';
 import { UIProvider } from '@/providers/UIProvider';
+import { ChannelProvider } from '@/providers/ChannelProvider'; // <-- 1. IMPORT THE NEW PROVIDER
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -28,9 +29,11 @@ export default function RootLayout({
           <ThemeProvider theme={theme}>
             <CssBaseline />
             <QueryProvider>
-              {/* Wrap the entire app in the UIProvider */}
               <UIProvider>
-                {children}
+                {/* 2. WRAP THE CHILDREN WITH THE CHANNEL PROVIDER */}
+                <ChannelProvider>
+                  {children}
+                </ChannelProvider>
               </UIProvider>
             </QueryProvider>
           </ThemeProvider>

@@ -8,6 +8,7 @@ import ToggleOffIcon from '@mui/icons-material/ToggleOff';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import SearchIcon from '@mui/icons-material/Search';
+import { useChannel } from '@/providers/ChannelProvider'; // <-- 1. IMPORT THE CHANNEL HOOK
 
 interface ContactListProps {
   contacts: Contact[];
@@ -26,10 +27,12 @@ const ContactList: React.FC<ContactListProps> = ({
   onUpdateName,
   onToggleAi,
 }) => {
+  // 2. GET CHANNEL STATE AND CONTROLS
+  const { channels, activeChannel, setActiveChannelId, isLoadingChannels } = useChannel();
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [platformFilter, setPlatformFilter] = useState<'all' | 'whatsapp' | 'facebook' | 'instagram'>('all');
 
   const handleEditClick = (e: React.MouseEvent, contact: Contact) => {
     e.stopPropagation();
@@ -42,26 +45,20 @@ const ContactList: React.FC<ContactListProps> = ({
     setEditingId(null);
   };
   
-  const handlePlatformChange = (event: SelectChangeEvent<'all' | 'whatsapp' | 'facebook' | 'instagram'>) => {
-    setPlatformFilter(event.target.value as 'all' | 'whatsapp' | 'facebook' | 'instagram');
+  // 3. This handler now updates the GLOBAL active channel ID
+  const handleChannelChange = (event: SelectChangeEvent<string>) => {
+    setActiveChannelId(event.target.value);
   };
 
-  // This memoized value will now re-calculate if contacts, searchTerm, or platformFilter change
   const displayedContacts = useMemo(() => {
-    const searched = contacts.filter(contact => 
-      (!searchTerm) || // Return all if no search term
+    return contacts.filter(contact => 
+      (!searchTerm) ||
       (contact.name && contact.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       contact.platform_user_id.includes(searchTerm)
     );
-    
-    if (platformFilter === 'all') {
-      return searched;
-    }
+  }, [contacts, searchTerm]);
 
-    return searched.filter(contact => contact.platform === platformFilter);
-
-  }, [contacts, searchTerm, platformFilter]);
-
+  // Use the isLoading from props (for contacts), not the one from the context (for channels)
   if (isLoading) {
     return (
       <Box sx={{ width: 320, p: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
@@ -78,12 +75,40 @@ const ContactList: React.FC<ContactListProps> = ({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        transition: 'width 0.3s ease-in-out',
+        borderRight: '1px solid', // Add border to separate from chat area
+        borderColor: 'divider',
         bgcolor: 'background.paper',
       }}
     >
       <Box sx={{ p: 2, pb: 1, flexShrink: 0 }}>
-        <Typography variant="h6" sx={{ mb: 2, whiteSpace: 'nowrap' }}>Contacts</Typography>
+        <Typography variant="h6" sx={{ mb: 2 }}>Contacts</Typography>
+        
+        {/* 4. THE NEW CHANNEL SELECTOR */}
+        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+          <InputLabel id="channel-selector-label">Channel</InputLabel>
+          <Select
+            labelId="channel-selector-label"
+            label="Channel"
+            value={activeChannel?.id || ''}
+            onChange={handleChannelChange}
+            disabled={isLoadingChannels}
+          >
+            {channels.length === 0 ? (
+                <MenuItem disabled value="">No channels found</MenuItem>
+            ) : (
+              channels.map((channel) => (
+                <MenuItem key={channel.id} value={channel.id}>
+                  {/* 5. ADDING THE LOGO AND NAME */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <PlatformAvatar platform={channel.platform} sx={{ width: 24, height: 24 }} />
+                    <Typography variant="body2">{channel.name}</Typography>
+                  </Box>
+                </MenuItem>
+              ))
+            )}
+          </Select>
+        </FormControl>
+
         <TextField
           fullWidth
           variant="outlined"
@@ -91,7 +116,6 @@ const ContactList: React.FC<ContactListProps> = ({
           placeholder="Search contacts..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{ mb: 2 }} // Add margin bottom
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -100,22 +124,6 @@ const ContactList: React.FC<ContactListProps> = ({
             ),
           }}
         />
-        {/* --- MODIFICATION IS HERE: Platform Filter Dropdown --- */}
-        <FormControl fullWidth size="small">
-          <InputLabel id="platform-filter-label">Platform</InputLabel>
-          <Select
-            labelId="platform-filter-label"
-            value={platformFilter}
-            label="Platform"
-            onChange={handlePlatformChange}
-          >
-            <MenuItem value="all">All Platforms</MenuItem>
-            <MenuItem value="whatsapp">WhatsApp</MenuItem>
-            <MenuItem value="facebook">Facebook</MenuItem>
-            <MenuItem value="instagram">Instagram</MenuItem>
-          </Select>
-        </FormControl>
-        {/* --- END MODIFICATION --- */}
       </Box>
       <List sx={{ overflowY: 'auto', flexGrow: 1, overflowX: 'hidden' }}>
         {displayedContacts.length > 0 ? (
@@ -131,6 +139,7 @@ const ContactList: React.FC<ContactListProps> = ({
               >
                 <ListItemAvatar>
                   <Badge badgeContent={contact.unread_count} color="error">
+                    {/* The PlatformAvatar here is correct as it's for the specific contact */}
                     <PlatformAvatar platform={contact.platform} />
                   </Badge>
                 </ListItemAvatar>
@@ -141,19 +150,9 @@ const ContactList: React.FC<ContactListProps> = ({
                       value={editingName}
                       onChange={(e) => setEditingName(e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleSaveName(contact.id)
-                        } else if (e.key === 'Escape') {
-                          setEditingId(null);
-                        }
-                      }}
+                      onKeyDown={(e) => e.key === 'Enter' ? handleSaveName(contact.id) : e.key === 'Escape' && setEditingId(null)}
                       InputProps={{
-                          endAdornment: (
-                              <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleSaveName(contact.id); }}>
-                                  <CheckIcon fontSize="small" />
-                              </IconButton>
-                          )
+                          endAdornment: (<IconButton size="small" onClick={(e) => { e.stopPropagation(); handleSaveName(contact.id); }}><CheckIcon fontSize="small" /></IconButton>)
                       }}
                       autoFocus
                     />
@@ -162,16 +161,10 @@ const ContactList: React.FC<ContactListProps> = ({
                     primary={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Typography noWrap>{contact.name || contact.platform_user_id}</Typography>
-                          <IconButton size="small" sx={{ opacity: 0.5, '&:hover': { opacity: 1 } }} onClick={(e) => handleEditClick(e, contact)}>
-                              <EditIcon fontSize="small" />
-                          </IconButton>
+                          <IconButton size="small" sx={{ opacity: 0.5, '&:hover': { opacity: 1 } }} onClick={(e) => handleEditClick(e, contact)}><EditIcon fontSize="small" /></IconButton>
                       </Box>
                     }
-                    secondary={
-                      <Typography noWrap variant="body2" color="text.secondary">
-                        {contact.last_message_preview}
-                      </Typography>
-                    }
+                    secondary={<Typography noWrap variant="body2" color="text.secondary">{contact.last_message_preview}</Typography>}
                   />
                 )}
               </ListItemButton>
@@ -179,7 +172,7 @@ const ContactList: React.FC<ContactListProps> = ({
           ))
         ) : (
           <Typography sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
-            No contacts match filters.
+            No contacts found in this channel.
           </Typography>
         )}
       </List>

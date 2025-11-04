@@ -8,7 +8,8 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import MenuIcon from '@mui/icons-material/Menu';
-import { useUI } from '@/providers/UIProvider'; // Import the context hook
+import { useUI } from '@/providers/UIProvider';
+import { useChannel } from '@/providers/ChannelProvider'; // Still needed to display the name
 
 const drawerWidth = 240;
 
@@ -34,10 +35,9 @@ const AppBar = styled(MuiAppBar, {
   }),
 }));
 
-// The component only needs a 'title' prop now.
-export default function AppHeader({ title }: { title: string }) {
-  // It gets its state and functions from the global context.
+export default function AppHeader() {
   const { isSidebarOpen, toggleSidebar } = useUI();
+  const { activeChannel } = useChannel(); // Get the active channel to display its name
 
   return (
     <AppBar position="fixed" open={isSidebarOpen}>
@@ -55,7 +55,7 @@ export default function AppHeader({ title }: { title: string }) {
           <MenuIcon />
         </IconButton>
         <Typography variant="h6" noWrap component="div">
-          {title}
+          {activeChannel ? activeChannel.name : 'Dashboard'}
         </Typography>
       </Toolbar>
     </AppBar>

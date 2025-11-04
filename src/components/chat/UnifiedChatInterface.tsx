@@ -1,16 +1,20 @@
 // src/components/chat/UnifiedChatInterface.tsx
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Box, IconButton, Tooltip } from '@mui/material';
+import React, { useState, useEffect, useMemo } from 'react';
+// 1. Import IconButton, Tooltip, MenuIcon, and MenuOpenIcon
+import { Box, Paper, Typography, IconButton, Tooltip } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
+import Link from 'next/link';
 import ContactList from './ContactList';
 import ChatArea from './ChatArea';
 import AdminPanel from './AdminPanel';
+import { useChannel } from '@/providers/ChannelProvider';
 import { useChatContacts } from '@/hooks/useChatContacts';
 import { useChatMessages } from '@/hooks/useChatMessages';
-import { supabase } from '@/lib/supabaseClient'; // --- FIX IS HERE: Import supabase directly
+import { supabase } from '@/lib/supabaseClient';
+import { useUI } from '@/providers/UIProvider'; // <-- 2. Import the UI hook
 
 interface UnifiedChatInterfaceProps {
   isAdminPanelOpen: boolean;
@@ -18,15 +22,33 @@ interface UnifiedChatInterfaceProps {
 
 export default function UnifiedChatInterface({ isAdminPanelOpen }: UnifiedChatInterfaceProps) {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  const { contacts, isLoadingContacts, updateName, toggleAi, deleteContact } = useChatContacts();
-  const { messages, isLoadingMessages, sendMessage, isSendingMessage } = useChatMessages(selectedContactId);
+  
+  const { activeChannel } = useChannel();
+  const { isSidebarOpen, toggleSidebar } = useUI(); // <-- 3. Get sidebar state and toggle function
+  
+  const { contacts, isLoadingContacts, updateName, toggleAi, deleteContact } = useChatContacts(activeChannel?.id || null);
+  
+  const { messages, isLoadingMessages, sendMessage, isSendingMessage } = useChatMessages(
+    selectedContactId,
+    activeChannel?.id || null,
+    activeChannel?.organization_id || null
+  );
   
   const selectedContact = useMemo(() => {
     return contacts.find((c) => c.id === selectedContactId);
   }, [contacts, selectedContactId]);
 
+  useEffect(() => {
+    if (selectedContactId && !contacts.find(c => c.id === selectedContactId)) {
+        setSelectedContactId(null);
+    }
+  }, [contacts, selectedContactId]);
+
+  useEffect(() => {
+    setSelectedContactId(null);
+  }, [activeChannel?.id]);
+
+  // ... (handleSendMessage, handleSendImageByUrl, handleBackup functions remain unchanged) ...
   const handleSendMessage = (text: string) => {
     if (!selectedContact) return;
     sendMessage({
@@ -42,8 +64,6 @@ export default function UnifiedChatInterface({ isAdminPanelOpen }: UnifiedChatIn
     sendMessage({
         contact_id: selectedContact.id,
         content_type: 'image',
-        // Use attachment_url for images, not text_content.
-        // The text_content can be used for a caption if needed.
         attachment_url: url, 
         platform: selectedContact.platform,
     });
@@ -51,7 +71,6 @@ export default function UnifiedChatInterface({ isAdminPanelOpen }: UnifiedChatIn
 
   const handleBackup = async (format: 'csv' | 'txt_detailed' | 'txt_numbers_only' | 'txt_number_name' | 'json') => {
     try {
-        // --- FIX IS HERE: Use the directly imported 'supabase' client ---
         const { data: whatsappContacts, error } = await supabase.functions.invoke<{ name?: string; platform_user_id?: string; [key: string]: unknown; }[]>('get-whatsapp-contacts-for-backup');
         if (error) throw error;
         if (!whatsappContacts || whatsappContacts.length === 0) {
@@ -63,9 +82,7 @@ export default function UnifiedChatInterface({ isAdminPanelOpen }: UnifiedChatIn
         let mimeType = "text/plain";
         let fileExtension = "txt";
 
-        // Define a more specific type for contacts if known, otherwise use a general object type
         type BackupContact = { name?: string; platform_user_id?: string; [key: string]: unknown };
-
         const typedWhatsappContacts = whatsappContacts as BackupContact[];
 
         if (format === 'csv') {
@@ -121,14 +138,23 @@ export default function UnifiedChatInterface({ isAdminPanelOpen }: UnifiedChatIn
     }
   };
 
-  React.useEffect(() => {
-    if (selectedContactId && !contacts.find(c => c.id === selectedContactId)) {
-        setSelectedContactId(null);
-    }
-  }, [contacts, selectedContactId]);
+  if (!activeChannel) {
+    return (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - 64px)' }}>
+            <Paper sx={{ p: 4, textAlign: 'center' }}>
+                <Typography variant="h5">No Channel Selected</Typography>
+                <Typography color="text.secondary" sx={{mt: 1}}>
+                    Please <Link href="/channels" style={{ textDecoration: 'underline' }}>create or select a channel</Link> to view contacts.
+                </Typography>
+            </Paper>
+        </Box>
+    );
+  }
   
   return (
-    <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)' }}>
+    // 4. This main container needs to be a flex row
+    <Box sx={{ display: 'flex', height: '100%' }}>
+      {/* 5. This Box will control the collapsing of the ContactList */}
       <Box
         sx={{
           width: isSidebarOpen ? 320 : 0,
@@ -147,21 +173,19 @@ export default function UnifiedChatInterface({ isAdminPanelOpen }: UnifiedChatIn
           onToggleAi={toggleAi}
         />
       </Box>
-      <Box sx={{
-        flexGrow: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        overflow: 'hidden'
-      }}>
-         <Box sx={{ p: 0.5, backgroundColor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
+
+      {/* 6. This is the main content area that will grow */}
+      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {/* 7. Add a small header bar for the toggle button */}
+        <Box sx={{ p: 0.5, backgroundColor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
             <Tooltip title={isSidebarOpen ? "Hide Contacts" : "Show Contacts"}>
-                <IconButton onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                <IconButton onClick={toggleSidebar}>
                     {isSidebarOpen ? <MenuOpenIcon /> : <MenuIcon />}
                 </IconButton>
             </Tooltip>
         </Box>
-        <Box sx={{ flexGrow: 1, display: 'flex', position: 'relative', overflow: 'hidden' }}>
+        {/* 8. This Box ensures the ChatArea below it fills the remaining vertical space */}
+        <Box sx={{ flexGrow: 1, position: 'relative' }}>
           <ChatArea
             contact={selectedContact}
             messages={messages}
@@ -173,6 +197,8 @@ export default function UnifiedChatInterface({ isAdminPanelOpen }: UnifiedChatIn
           />
         </Box>
       </Box>
+
+      {/* Admin Panel (no changes needed here) */}
       <Box
         sx={{
           width: isAdminPanelOpen ? 320 : 0,

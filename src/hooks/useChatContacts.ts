@@ -6,62 +6,67 @@ import * as api from '@/lib/api';
 import { supabase } from '@/lib/supabaseClient';
 import { useEffect } from 'react';
 
-// Get the default channel ID from environment variables.
-// This is how we tell the hook which channel to operate on.
-const CHANNEL_ID = process.env.NEXT_PUBLIC_DEFAULT_CHANNEL_ID;
+// REMOVED: const CHANNEL_ID = process.env.NEXT_PUBLIC_DEFAULT_CHANNEL_ID;
 
-export const useChatContacts = () => {
+// 1. Hook now accepts a channelId argument
+export const useChatContacts = (channelId: string | null) => {
   const queryClient = useQueryClient();
 
-  // --- VALIDATION ---
-  if (!CHANNEL_ID) {
-    throw new Error("NEXT_PUBLIC_DEFAULT_CHANNEL_ID is not set in .env.local");
-  }
+  // REMOVED: Validation for the old hardcoded CHANNEL_ID
 
   // --- QUERIES ---
   const { data: contacts = [], isLoading: isLoadingContacts } = useQuery<api.Contact[]>({
-    // The query key now includes the channelId to ensure data is cached per-channel.
-    queryKey: ['contacts', CHANNEL_ID],
-    queryFn: () => api.getContacts(CHANNEL_ID), // Pass the channelId to the API function.
+    // 2. Query key is now dynamic, including the channelId
+    queryKey: ['contacts', channelId],
+    // 3. The API call now passes the dynamic channelId
+    queryFn: () => api.getContacts(channelId!),
+    // 4. The query is only enabled when a channelId is provided
+    enabled: !!channelId,
   });
 
   // --- MUTATIONS ---
-  // These mutations don't need changes because they operate on a contactId,
-  // which is already unique and implicitly tied to a channel.
+  // Mutations operate on a unique contactId, so they don't need the channelId directly.
+  // However, their onSuccess invalidation logic MUST be updated to use the dynamic channelId.
   const updateNameMutation = useMutation({
     mutationFn: api.updateContactName,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contacts', CHANNEL_ID] });
+      // 5. Invalidate the DYNAMIC query key
+      queryClient.invalidateQueries({ queryKey: ['contacts', channelId] });
     },
   });
 
   const toggleAiMutation = useMutation({
     mutationFn: api.toggleAiStatus,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contacts', CHANNEL_ID] });
+      queryClient.invalidateQueries({ queryKey: ['contacts', channelId] });
     },
   });
   
   const deleteContactMutation = useMutation({
     mutationFn: api.deleteContact,
     onSuccess: (data, contactId) => {
-        queryClient.invalidateQueries({ queryKey: ['contacts', CHANNEL_ID] });
+        queryClient.invalidateQueries({ queryKey: ['contacts', channelId] });
+        // Removing the messages query for the deleted contact is still correct.
         queryClient.removeQueries({ queryKey: ['messages', contactId] });
     }
   });
 
   // --- REALTIME ---
   useEffect(() => {
+    // 6. Do nothing if no channel is selected
+    if (!channelId) return;
+
     const channel = supabase
-      // Subscribe to changes on the 'contacts' table specifically for our channel.
-      .channel(`public-contacts-channel-${CHANNEL_ID}`)
+      // 7. Subscription channel name is now dynamic
+      .channel(`public-contacts-channel-${channelId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'contacts', filter: `channel_id=eq.${CHANNEL_ID}` },
+        // 8. The filter for the subscription is also dynamic
+        { event: '*', schema: 'public', table: 'contacts', filter: `channel_id=eq.${channelId}` },
         (payload) => {
           console.log('Realtime contact change received:', payload);
-          // Invalidate the query for our specific channel.
-          queryClient.invalidateQueries({ queryKey: ['contacts', CHANNEL_ID] });
+          // 9. Invalidate the correct dynamic query
+          queryClient.invalidateQueries({ queryKey: ['contacts', channelId] });
         }
       )
       .subscribe();
@@ -69,7 +74,8 @@ export const useChatContacts = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  // 10. Add channelId to the dependency array
+  }, [queryClient, channelId]);
   
 
   return {

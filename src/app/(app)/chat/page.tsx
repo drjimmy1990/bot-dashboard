@@ -1,15 +1,19 @@
-// src/app/chat/page.tsx
+// src/app/(app)/chat/page.tsx
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react'; // Keep useState for now for the admin panel
 import UnifiedChatInterface from "@/components/chat/UnifiedChatInterface";
 
-// The props are now passed down from the root layout.
-interface ChatPageProps {
-  isAdminPanelOpen?: boolean; // Make it optional
-}
+export default function ChatPage() {
+  // We'll manage the admin panel state here for now
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
 
-export default function ChatPage({ isAdminPanelOpen = false }: ChatPageProps) {
+  // This would eventually be controlled by a button in the AppHeader,
+  // but for now, we have no button for it. This keeps it functional.
+  const toggleAdminPanel = () => {
+    setIsAdminPanelOpen(prev => !prev);
+  };
+
   return (
       <UnifiedChatInterface isAdminPanelOpen={isAdminPanelOpen} />
   );

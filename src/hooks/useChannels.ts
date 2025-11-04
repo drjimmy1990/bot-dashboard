@@ -8,6 +8,7 @@ const ORG_ID = process.env.NEXT_PUBLIC_DEFAULT_ORGANIZATION_ID;
 
 export interface Channel {
     id: string;
+    organization_id: string; // <-- 1. ADD THIS PROPERTY
     name: string;
     platform: 'whatsapp' | 'facebook' | 'instagram';
     platform_channel_id: string;
@@ -25,7 +26,8 @@ async function fetchChannels(): Promise<Channel[]> {
     
     const { data, error } = await supabase
         .from('channels')
-        .select('id, name, platform, platform_channel_id, is_active')
+        // 2. ADD 'organization_id' TO THE SELECT LIST
+        .select('id, organization_id, name, platform, platform_channel_id, is_active')
         .eq('organization_id', ORG_ID)
         .order('name');
 
@@ -33,6 +35,7 @@ async function fetchChannels(): Promise<Channel[]> {
     return data || [];
 }
 
+// ... the rest of the file remains the same ...
 export const useChannels = () => {
     const queryClient = useQueryClient();
     const queryKey = ['channels', ORG_ID];
@@ -42,7 +45,6 @@ export const useChannels = () => {
         queryFn: fetchChannels,
     });
 
-    // --- FIX IS HERE: We now call the RPC function ---
     const { mutate: addChannel, isPending: isAdding } = useMutation({
         mutationFn: async (newChannel: NewChannelPayload) => {
             if (!ORG_ID) throw new Error("Cannot add channel: Organization ID is not set.");
@@ -61,8 +63,6 @@ export const useChannels = () => {
         }
     });
     
-    // We will add update/delete mutations later as needed
-
     return {
         channels,
         isLoading,
