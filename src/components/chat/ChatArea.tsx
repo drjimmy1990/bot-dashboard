@@ -57,7 +57,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   if (!contact) {
     return (
-      <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
+      <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
         <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h5">Welcome to the Dashboard</Typography>
           <Typography color="text.secondary">Select a contact to start chatting.</Typography>
@@ -69,12 +69,17 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   return (
     <Box
       sx={{
+        // THIS IS THE KEY CHANGE
+        position: 'absolute',
+        top: 0,
+        left: 0,
         width: '100%',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
+      {/* Header of the chat area */}
       <Box sx={{ 
           p: 1, pl: 2, 
           backgroundColor: 'background.paper', 
@@ -83,9 +88,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'space-between',
-          flexShrink: 0
+          flexShrink: 0 // Prevent header from shrinking
       }}>
-        {/* --- MODIFICATION IS HERE --- */}
         <Box>
             <Typography variant="h6" component="div">
                 {contact.name || 'Unknown Contact'}
@@ -94,17 +98,17 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 {contact.platform_user_id}
             </Typography>
         </Box>
-        {/* --- END MODIFICATION --- */}
         <IconButton onClick={handleDelete} color="error" aria-label="delete contact">
           <DeleteIcon />
         </IconButton>
       </Box>
 
+      {/* This is the scrollable message container */}
       <Box
         ref={scrollableContainerRef}
         sx={{
-          flexGrow: 1,
-          overflowY: 'auto',
+          flexGrow: 1, // Make it take up all available vertical space
+          overflowY: 'auto', // ONLY this box will scroll vertically if content overflows
           p: 3,
         }}
         className="chat-background"
@@ -120,7 +124,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         )}
       </Box>
       
-      <Box sx={{ flexShrink: 0 }}>
+      {/* The message input area */}
+      <Box sx={{ flexShrink: 0 }}> {/* Prevent input from shrinking */}
         <MessageInput
           value={messageText}
           onChange={(e) => setMessageText(e.target.value)}
