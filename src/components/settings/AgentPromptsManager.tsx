@@ -28,7 +28,7 @@ interface AgentPromptsManagerProps {
   prompts: AgentPrompt[];
 }
 
-// Component for the "Add New" dialog
+// THIS IS THE FUNCTION WITH THE FIX
 function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean, onClose: () => void, onSubmit: (data: Omit<AddPromptPayload, 'channel_id'>) => void, isAdding: boolean }) {
     const [formData, setFormData] = useState({ name: '', agent_id: '', description: '', system_prompt: 'You are a helpful assistant.' });
 
@@ -47,6 +47,7 @@ function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean,
             <DialogTitle>Add New Agent Persona</DialogTitle>
             <DialogContent>
                 <Grid container spacing={2} sx={{ pt: 1 }}>
+                    {/* The 'item' prop is removed, and 'xs'/'sm' are combined into the 'size' prop */}
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField name="name" label="Persona Name" value={formData.name} onChange={handleChange} fullWidth required autoFocus helperText="e.g., Support Agent" />
                     </Grid>
@@ -70,6 +71,7 @@ function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean,
 }
 
 
+// The rest of the file remains the same
 export default function AgentPromptsManager({ prompts }: AgentPromptsManagerProps) {
   const searchParams = useSearchParams();
   const channelId = searchParams.get('channelId');
@@ -115,13 +117,26 @@ export default function AgentPromptsManager({ prompts }: AgentPromptsManagerProp
 
   return (
     <>
-      <Paper sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, height: { xs: 'auto', md: 'calc(80vh - 64px)' }, minHeight: '500px' }}>
-        <Box sx={{ width: { xs: '100%', sm: '35%', md: '30%' }, borderRight: { sm: '1px solid' }, borderColor: 'divider', overflowY: 'auto' }}>
-          <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Paper sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' }, 
+        height: '70vh', 
+        minHeight: '500px',
+        maxHeight: '800px',
+      }}>
+
+        <Box sx={{ 
+            width: { xs: '100%', sm: '35%', md: '30%' }, 
+            borderRight: { sm: '1px solid' }, 
+            borderColor: 'divider',
+            display: 'flex',
+            flexDirection: 'column',
+        }}>
+          <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <Typography variant="h6">Agent Personas</Typography>
             <Button size="small" startIcon={<AddCircleOutlineIcon />} onClick={() => setIsAddDialogOpen(true)}>Add</Button>
           </Box>
-          <List component="nav">
+          <List component="nav" sx={{ overflowY: 'auto', flexGrow: 1 }}>
             {prompts.map(prompt => (
               <ListItemButton key={prompt.id} selected={selectedPrompt?.id === prompt.id} onClick={() => handleSelectPrompt(prompt)}>
                 <ListItemText primary={prompt.name} secondary={prompt.description} secondaryTypographyProps={{ noWrap: true, fontSize: '0.8rem' }}/>
@@ -129,15 +144,37 @@ export default function AgentPromptsManager({ prompts }: AgentPromptsManagerProp
             ))}
           </List>
         </Box>
-        <Box sx={{ flex: 1, p: 2, display: 'flex', flexDirection: 'column' }}>
+
+        <Box sx={{ 
+            flex: 1, 
+            p: 2, 
+            display: 'flex', 
+            flexDirection: 'column',
+            overflow: 'hidden', 
+        }}>
           {selectedPrompt ? (
             <>
-              <Typography variant="h5">{selectedPrompt.name}</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                ID: <code>{selectedPrompt.agent_id}</code>
-              </Typography>
-              <TextField label="System Prompt" value={promptText} onChange={(e) => setPromptText(e.target.value)} multiline fullWidth sx={{ flexGrow: 1, '& .MuiInputBase-root': { height: '100%' } }}/>
-              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+              <Box sx={{ flexShrink: 0 }}>
+                <Typography variant="h5">{selectedPrompt.name}</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  ID: <code>{selectedPrompt.agent_id}</code>
+                </Typography>
+              </Box>
+
+              <TextField 
+                label="System Prompt" 
+                value={promptText} 
+                onChange={(e) => setPromptText(e.target.value)} 
+                multiline 
+                fullWidth 
+                sx={{ 
+                    flexGrow: 1, 
+                    '& .MuiInputBase-root': { height: '100%', alignItems: 'flex-start' },
+                    '& .MuiInputBase-input': { height: '100% !important', overflowY: 'auto !important' }
+                }}
+               />
+
+              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
                 <Button variant="contained" onClick={handleSaveChanges} disabled={isUpdatingPrompt}>
                   {isUpdatingPrompt ? <CircularProgress size={24} /> : `Save Persona`}
                 </Button>
