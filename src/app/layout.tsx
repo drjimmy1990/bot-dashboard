@@ -8,7 +8,7 @@ import theme from '@/theme';
 import QueryProvider from '@/providers/QueryProvider';
 import './globals.css';
 import { UIProvider } from '@/providers/UIProvider';
-import { ChannelProvider } from '@/providers/ChannelProvider'; // <-- 1. IMPORT THE NEW PROVIDER
+import { ChannelProvider } from '@/providers/ChannelProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: 'Manage your AI-powered conversations.',
 };
 
+// This is the RootLayout. It sets up providers.
+// It does NOT render AppHeader or AppSidebar directly.
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,9 +31,10 @@ export default function RootLayout({
           <ThemeProvider theme={theme}>
             <CssBaseline />
             <QueryProvider>
+              {/* UIProvider must be here, wrapping the children */}
               <UIProvider>
-                {/* 2. WRAP THE CHILDREN WITH THE CHANNEL PROVIDER */}
                 <ChannelProvider>
+                  {/* All other layouts, like (app)/layout.tsx, will be rendered here as 'children' */}
                   {children}
                 </ChannelProvider>
               </UIProvider>

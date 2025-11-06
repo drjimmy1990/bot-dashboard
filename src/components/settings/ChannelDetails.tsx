@@ -6,7 +6,7 @@ import {
   Box,
   Typography,
   Paper,
-  Grid, // Keep import
+  Grid,
   TextField,
   Button,
   CircularProgress,
@@ -70,7 +70,8 @@ export default function ChannelDetails({ channelId }: ChannelDetailsProps) {
     } else {
       setSnackbar({ open: true, message: 'Channel details saved!', severity: 'success' });
       setIsEditing(false);
-      queryClient.invalidateQueries({ queryKey: ['channels', process.env.NEXT_PUBLIC_DEFAULT_ORGANIZATION_ID] });
+      // Invalidate queries to refresh data across the app (e.g., in the sidebar)
+      queryClient.invalidateQueries({ queryKey: ['channels'] });
     }
     setIsSaving(false);
   };
@@ -81,7 +82,11 @@ export default function ChannelDetails({ channelId }: ChannelDetailsProps) {
   };
 
   if (isLoading) {
-    return <CircularProgress />;
+    return (
+      <Paper sx={{ p: 3, textAlign: 'center' }}>
+        <CircularProgress />
+      </Paper>
+    );
   }
   if (error) {
     return <Alert severity="error">{error}</Alert>;
@@ -101,7 +106,7 @@ export default function ChannelDetails({ channelId }: ChannelDetailsProps) {
         )}
       </Box>
       
-      {/* --- GRID FIX IS HERE --- */}
+      {/* --- THIS IS THE FIX --- */}
       <Grid container spacing={2}>
         <Grid size={12}>
           <TextField
@@ -137,8 +142,7 @@ export default function ChannelDetails({ channelId }: ChannelDetailsProps) {
           </Grid>
         )}
       </Grid>
-      {/* --- END OF GRID FIX --- */}
-
+      
       {snackbar && (
         <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar(null)}>
           <Alert onClose={() => setSnackbar(null)} severity={snackbar.severity} sx={{ width: '100%' }}>

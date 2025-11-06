@@ -13,9 +13,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Grid, // Grid import is correct
+  Grid,
   CircularProgress,
-  SelectChangeEvent, // Import the correct event type for Select
+  SelectChangeEvent,
 } from '@mui/material';
 import { NewChannelPayload } from '@/hooks/useChannels';
 
@@ -35,13 +35,11 @@ const initialState: NewChannelPayload = {
 export default function ChannelForm({ open, onClose, onSubmit, isSubmitting }: ChannelFormProps) {
   const [formData, setFormData] = useState<NewChannelPayload>(initialState);
 
-  // Correctly typed handler for TextField
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name as string]: value }));
   };
   
-  // Correctly typed handler for Select
   const handleSelectChange = (e: SelectChangeEvent) => {
       const { name, value } = e.target;
       setFormData(prev => ({...prev, [name]: value as 'whatsapp' | 'facebook' | 'instagram' }));
@@ -52,6 +50,7 @@ export default function ChannelForm({ open, onClose, onSubmit, isSubmitting }: C
     onSubmit(formData);
   };
   
+  // Clear form state after the closing animation finishes
   const handleClose = () => {
       onClose();
       setTimeout(() => setFormData(initialState), 300);
@@ -61,14 +60,14 @@ export default function ChannelForm({ open, onClose, onSubmit, isSubmitting }: C
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm" PaperProps={{ component: 'form', onSubmit: handleSubmit }}>
       <DialogTitle>Add New Channel</DialogTitle>
       <DialogContent>
-        {/* --- GRID FIX IS HERE --- */}
+        {/* --- THIS IS THE FIX --- */}
         <Grid container spacing={2} sx={{ pt: 1 }}>
           <Grid size={12}>
             <TextField
               name="name"
               label="Channel Name"
               value={formData.name}
-              onChange={handleTextChange} // Use correct handler
+              onChange={handleTextChange}
               fullWidth
               required
               autoFocus
@@ -82,7 +81,7 @@ export default function ChannelForm({ open, onClose, onSubmit, isSubmitting }: C
                 name="platform"
                 value={formData.platform}
                 label="Platform"
-                onChange={handleSelectChange} // Use correct handler
+                onChange={handleSelectChange}
               >
                 <MenuItem value="whatsapp">WhatsApp</MenuItem>
                 <MenuItem value="facebook">Facebook</MenuItem>
@@ -95,14 +94,14 @@ export default function ChannelForm({ open, onClose, onSubmit, isSubmitting }: C
               name="platform_channel_id"
               label="Platform Channel ID"
               value={formData.platform_channel_id}
-              onChange={handleTextChange} // Use correct handler
+              onChange={handleTextChange}
               fullWidth
               required
               helperText="e.g., WhatsApp Phone Number ID."
             />
           </Grid>
         </Grid>
-        {/* --- END OF GRID FIX --- */}
+        
       </DialogContent>
       <DialogActions sx={{ p: '0 24px 16px' }}>
         <Button onClick={handleClose} disabled={isSubmitting}>Cancel</Button>

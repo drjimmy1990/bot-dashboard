@@ -28,7 +28,7 @@ interface AgentPromptsManagerProps {
   prompts: AgentPrompt[];
 }
 
-// THIS IS THE FUNCTION WITH THE FIX
+// Dialog component for adding a new agent persona
 function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean, onClose: () => void, onSubmit: (data: Omit<AddPromptPayload, 'channel_id'>) => void, isAdding: boolean }) {
     const [formData, setFormData] = useState({ name: '', agent_id: '', description: '', system_prompt: 'You are a helpful assistant.' });
 
@@ -47,7 +47,8 @@ function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean,
             <DialogTitle>Add New Agent Persona</DialogTitle>
             <DialogContent>
                 <Grid container spacing={2} sx={{ pt: 1 }}>
-                    {/* The 'item' prop is removed, and 'xs'/'sm' are combined into the 'size' prop */}
+                    {/* --- THIS IS THE FIX --- */}
+                    {/* The old 'item' prop is removed, and responsive sizes are passed to the 'size' prop. */}
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField name="name" label="Persona Name" value={formData.name} onChange={handleChange} fullWidth required autoFocus helperText="e.g., Support Agent" />
                     </Grid>
@@ -71,7 +72,7 @@ function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean,
 }
 
 
-// The rest of the file remains the same
+// Main component
 export default function AgentPromptsManager({ prompts }: AgentPromptsManagerProps) {
   const searchParams = useSearchParams();
   const channelId = searchParams.get('channelId');

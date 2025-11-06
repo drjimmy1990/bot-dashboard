@@ -88,9 +88,11 @@ export default function ChannelsPage() {
             <ListItem
               key={channel.id}
               secondaryAction={
+                // --- THIS IS THE FIX ---
+                // The href now points to the new dynamic route for channel settings.
                 <Button
                   component={Link}
-                  href={`/settings?channelId=${channel.id}`} // Link to the settings page for this channel
+                  href={`/channels/${channel.id}/settings`}
                   startIcon={<SettingsIcon />}
                   aria-label="settings"
                   size="small"

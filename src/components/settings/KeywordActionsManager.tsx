@@ -13,10 +13,6 @@ import {
   Button,
   Paper,
   Divider,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
   Grid,
   CircularProgress,
   Tooltip
@@ -37,7 +33,7 @@ interface KeywordActionsManagerProps {
 type EditingState = {
   id: string;
   keyword: string;
-  action_type: string; // Make action_type a string to be more flexible
+  action_type: string;
 };
 
 export default function KeywordActionsManager({ keywords }: KeywordActionsManagerProps) {
@@ -47,13 +43,16 @@ export default function KeywordActionsManager({ keywords }: KeywordActionsManage
   const { addKeyword, isAddingKeyword, deleteKeyword, isDeletingKeyword, updateKeyword, isUpdatingKeyword } = useChannelConfig(channelId);
 
   const [newKeyword, setNewKeyword] = useState('');
-  const [newActionType, setNewActionType] = useState('DISABLE_AI'); // Default value
+  const [newActionType, setNewActionType] = useState('DISABLE_AI');
   const [editingState, setEditingState] = useState<EditingState | null>(null);
 
   const handleAddAction = () => {
-    if (newKeyword.trim() && !keywords.find(a => a.keyword === newKeyword.trim())) {
+    if (newKeyword.trim()) {
       addKeyword({ keyword: newKeyword.trim(), action_type: newActionType }, {
-        onSuccess: () => setNewKeyword('')
+        onSuccess: () => {
+            setNewKeyword('');
+            setNewActionType('DISABLE_AI'); // Reset form
+        }
       });
     }
   };
@@ -78,10 +77,10 @@ export default function KeywordActionsManager({ keywords }: KeywordActionsManage
     <Paper sx={{ p: 2 }}>
       <Typography variant="h6" gutterBottom>Keyword Actions & Variables</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Define automated actions or store variables for your workflows.
+        Define automated actions or store variables for your n8n workflows.
       </Typography>
       
-      {/* --- ADD FORM IS BACK --- */}
+      {/* --- THIS IS THE FIX --- */}
       <Grid container spacing={2} sx={{ mb: 2 }} alignItems="center">
         <Grid size={{ xs: 12, sm: 4 }}>
           <TextField
@@ -94,7 +93,6 @@ export default function KeywordActionsManager({ keywords }: KeywordActionsManage
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 5 }}>
-          {/* We can make this a TextField to allow any action type */}
           <TextField
             label="Action / Value"
             value={newActionType}
@@ -117,8 +115,7 @@ export default function KeywordActionsManager({ keywords }: KeywordActionsManage
           </Button>
         </Grid>
       </Grid>
-      {/* --- END OF ADD FORM --- */}
-
+      
       <Divider sx={{ my: 2 }} />
       
       <List dense>
@@ -157,7 +154,7 @@ export default function KeywordActionsManager({ keywords }: KeywordActionsManage
                         </Tooltip>
                     </Box>
                     }
-                    sx={{ bgcolor: 'action.hover', borderRadius: 1, mb: 1 }}
+                    sx={{ bgcolor: 'background.default', borderRadius: 1, mb: 1 }}
                 >
                     <ListItemText
                         primary={<Typography variant="body2" component="span" sx={{ fontWeight: 'bold' }}>{action.keyword}</Typography>}

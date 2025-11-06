@@ -1,10 +1,12 @@
 // src/lib/api.ts
 import { supabase } from './supabaseClient';
 
-// Types remain the same
+// --- Type Definitions ---
+// These interfaces define the shape of our data.
+
 export interface Contact {
   id: string;
-  channel_id: string; // Add channel_id for context
+  channel_id: string;
   platform: 'whatsapp' | 'facebook' | 'instagram';
   platform_user_id: string;
   name: string;
@@ -25,24 +27,31 @@ export interface Message {
   sent_at: string;
 }
 
-// --- API Functions (Updated for Multi-Channel) ---
+// --- API Functions ---
+// All functions now use direct Supabase SDK calls, relying on RLS for security.
 
-// Get contacts FOR A SPECIFIC CHANNEL
+/**
+ * Fetches all contacts for a specific channel.
+ * @param channelId - The UUID of the channel.
+ */
 export const getContacts = async (channelId: string): Promise<Contact[]> => {
-  // NOTE: We are now querying the TABLE directly for simplicity and performance.
-  // The Edge Function can be removed or kept for other purposes.
-  // RLS will protect this data.
   const { data, error } = await supabase
     .from('contacts')
     .select('*')
     .eq('channel_id', channelId)
     .order('last_interaction_at', { ascending: false });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("Error fetching contacts:", error);
+    throw new Error(error.message);
+  }
   return data || [];
 };
 
-// This is already scoped by contactId, which is unique to a channel. No change needed.
+/**
+ * Fetches all messages for a specific contact.
+ * @param contactId - The UUID of the contact.
+ */
 export const getMessagesForContact = async (contactId: string): Promise<Message[]> => {
   const { data, error } = await supabase
     .from('messages')
@@ -50,23 +59,35 @@ export const getMessagesForContact = async (contactId: string): Promise<Message[
     .eq('contact_id', contactId)
     .order('sent_at', { ascending: true });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("Error fetching messages:", error);
+    throw new Error(error.message);
+  }
   return data || [];
 };
 
-// This is also scoped by contactId.
+/**
+ * Marks all unread user messages in a chat as read.
+ * @param contactId - The UUID of the contact.
+ */
 export const markChatAsRead = async (contactId: string) => {
     const { error } = await supabase
       .from('messages')
       .update({ is_read_by_agent: true })
       .eq('contact_id', contactId)
-      .eq('sender_type', 'user');
+      .eq('sender_type', 'user'); // Only mark user messages as read
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("Error marking chat as read:", error);
+      throw new Error(error.message);
+    }
     return { success: true };
 }
 
-// Scoped by contactId.
+/**
+ * Updates the name of a contact.
+ * @param params - Object containing contactId and the newName.
+ */
 export const updateContactName = async ({ contactId, newName }: { contactId: string, newName: string }) => {
     const { data, error } = await supabase
       .from('contacts')
@@ -75,57 +96,86 @@ export const updateContactName = async ({ contactId, newName }: { contactId: str
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("Error updating contact name:", error);
+      throw new Error(error.message);
+    }
     return data;
 }
 
-// Scoped by contactId.
+/**
+ * Toggles the AI-enabled status for a contact.
+ * @param params - Object containing contactId and the newStatus.
+ */
 export const toggleAiStatus = async ({ contactId, newStatus }: { contactId: string, newStatus: boolean }) => {
     const { error } = await supabase
       .from('contacts')
       .update({ ai_enabled: newStatus })
       .eq('id', contactId);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("Error toggling AI status:", error);
+      throw new Error(error.message);
+    }
     return { success: true };
 }
 
-// Scoped by contactId. ON DELETE CASCADE will handle messages.
+/**
+ * Deletes a contact and their associated messages (via DB cascade).
+ * @param contactId - The UUID of the contact to delete.
+ */
 export const deleteContact = async (contactId: string) => {
     const { error } = await supabase
       .from('contacts')
       .delete()
       .eq('id', contactId);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("Error deleting contact:", error);
+      throw new Error(error.message);
+    }
     return { success: true };
 }
 
-// This needs to know which channel/org the message belongs to.
+/**
+ * Sends a message from an agent by invoking a Supabase Edge Function.
+ * This function determines which n8n workflow to trigger based on the platform.
+ * @param payload - The message payload.
+ */
 export const sendMessage = async (payload: {
     contact_id: string;
     channel_id: string;
     organization_id: string;
-    content_type: string;
+    content_type: 'text' | 'image';
     text_content?: string;
     attachment_url?: string;
     platform: string;
 }) => {
-    // We will send the full payload to the Edge Function, which will then
-    // extract what it needs for the n8n webhook.
-    const { platform, ...messagePayload } = payload;
+    // Determine the correct Edge Function to call based on the contact's platform.
     let edgeFunctionName = '';
-
-    if (platform === 'facebook') edgeFunctionName = 'send-facebook-agent-message';
-    else if (platform === 'whatsapp') edgeFunctionName = 'send-agent-whatsapp-message';
-    else throw new Error(`Unsupported platform for sending agent message: ${platform}`);
+    switch (payload.platform) {
+        case 'whatsapp':
+            edgeFunctionName = 'send-agent-whatsapp-message';
+            break;
+        case 'facebook':
+            edgeFunctionName = 'send-facebook-agent-message';
+            break;
+        // Add other platforms like 'instagram' here in the future
+        default:
+            throw new Error(`Unsupported platform for sending agent message: ${payload.platform}`);
+    }
     
-    // The Edge Function will be responsible for inserting the message into the DB
-    // with the correct org_id and channel_id.
+    // The Edge Function is responsible for inserting the message into the DB
+    // and triggering the corresponding n8n webhook.
     const { data, error } = await supabase.functions.invoke(edgeFunctionName, {
-        body: messagePayload
+        body: payload // Send the entire payload to the function
     });
 
-    if (error) throw new Error(error.message);
-    return data.message; // Assuming the edge function returns the newly created message
+    if (error) {
+      console.error(`Error invoking ${edgeFunctionName}:`, error);
+      throw new Error(error.message);
+    }
+
+    // The edge function should return the newly created message record.
+    return data.message;
 }

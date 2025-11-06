@@ -31,6 +31,7 @@ export default function GeneralSettings({ config }: GeneralSettingsProps) {
   const [formData, setFormData] = useState(config);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
 
+  // Re-sync form state if the config prop changes from a parent re-render
   useEffect(() => {
     setFormData(config);
   }, [config]);
@@ -45,6 +46,7 @@ export default function GeneralSettings({ config }: GeneralSettingsProps) {
   };
   
   const handleSaveChanges = () => {
+    // We only send the fields that can be changed on this form
     const payload: Partial<ChannelConfig> = {
         is_bot_active: formData.is_bot_active,
         ai_model: formData.ai_model,
@@ -61,7 +63,7 @@ export default function GeneralSettings({ config }: GeneralSettingsProps) {
     <Paper sx={{ p: 3 }}>
       <Typography variant="h6" gutterBottom>General Settings</Typography>
       
-      {/* CORRECTED Grid v2 Syntax */}
+      {/* --- THIS IS THE FIX --- */}
       <Grid container spacing={3} alignItems="center">
         <Grid size={12}>
            <FormControlLabel

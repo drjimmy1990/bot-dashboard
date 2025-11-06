@@ -2,6 +2,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Box, Typography, Paper, CircularProgress, IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ChatIcon from '@mui/icons-material/Chat'; // Import the new icon
 import { Contact, Message } from '@/lib/api';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
@@ -38,6 +39,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     scrollToBottom();
   }, [messages]);
   
+  // Clear the input field when the contact changes
   useEffect(() => {
     setMessageText('');
   }, [contact?.id]);
@@ -50,17 +52,20 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   };
 
   const handleDelete = () => {
-    if (contact && window.confirm("Are you sure you want to delete this contact and all their messages?")) {
+    if (contact && window.confirm("Are you sure you want to delete this contact and all their messages? This action cannot be undone.")) {
         onDeleteContact(contact.id);
     }
   };
 
+  // --- THIS IS THE FIX ---
+  // The "no contact selected" view is now enhanced.
   if (!contact) {
     return (
-      <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
-        <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h5">Welcome to the Dashboard</Typography>
-          <Typography color="text.secondary">Select a contact to start chatting.</Typography>
+      <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, bgcolor: 'background.default' }}>
+        <Paper elevation={0} sx={{ p: 4, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'transparent' }}>
+            <ChatIcon sx={{ fontSize: 60, color: 'text.secondary' }} />
+            <Typography variant="h5">Select a Conversation</Typography>
+            <Typography color="text.secondary">Choose a contact from the list on the left to view their messages.</Typography>
         </Paper>
       </Box>
     );
@@ -69,7 +74,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   return (
     <Box
       sx={{
-        // THIS IS THE KEY CHANGE
         position: 'absolute',
         top: 0,
         left: 0,
@@ -77,18 +81,18 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
+        bgcolor: 'background.paper',
       }}
     >
       {/* Header of the chat area */}
       <Box sx={{ 
           p: 1, pl: 2, 
-          backgroundColor: 'background.paper', 
           borderBottom: '1px solid', 
           borderColor: 'divider', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'space-between',
-          flexShrink: 0 // Prevent header from shrinking
+          flexShrink: 0
       }}>
         <Box>
             <Typography variant="h6" component="div">
@@ -103,12 +107,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         </IconButton>
       </Box>
 
-      {/* This is the scrollable message container */}
+      {/* Scrollable message container */}
       <Box
         ref={scrollableContainerRef}
         sx={{
-          flexGrow: 1, // Make it take up all available vertical space
-          overflowY: 'auto', // ONLY this box will scroll vertically if content overflows
+          flexGrow: 1,
+          overflowY: 'auto',
           p: 3,
         }}
         className="chat-background"
@@ -124,8 +128,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         )}
       </Box>
       
-      {/* The message input area */}
-      <Box sx={{ flexShrink: 0 }}> {/* Prevent input from shrinking */}
+      {/* Message input area */}
+      <Box sx={{ flexShrink: 0 }}>
         <MessageInput
           value={messageText}
           onChange={(e) => setMessageText(e.target.value)}

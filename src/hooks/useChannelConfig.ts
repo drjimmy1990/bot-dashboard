@@ -24,7 +24,7 @@ export interface AgentPrompt {
 export interface KeywordAction {
   id: string;
   keyword: string;
-  action_type: string; // Changed to string for flexibility
+  action_type: string;
 }
 
 export interface FullChannelConfig {
@@ -37,9 +37,9 @@ export interface FullChannelConfig {
 
 export type UpdateConfigPayload = Partial<ChannelConfig>;
 export type UpdatePromptPayload = { promptId: string; system_prompt: string };
-export type AddKeywordPayload = Omit<KeywordAction, 'id'>;
-export type UpdateKeywordPayload = KeywordAction;
-export type AddPromptPayload = Omit<AgentPrompt, 'id'>;
+export type AddKeywordPayload = Omit<KeywordAction, 'id' | 'channel_id'>; // channel_id is added by the hook
+export type UpdateKeywordPayload = Omit<KeywordAction, 'channel_id'>;
+export type AddPromptPayload = Omit<AgentPrompt, 'id' | 'channel_id'>;
 
 
 // --- API HELPER FUNCTIONS ---
@@ -77,6 +77,7 @@ export const useChannelConfig = (channelId: string | null) => {
   // --- MUTATIONS ---
 
   const { mutate: updateConfig, isPending: isUpdatingConfig } = useMutation({
+    // THIS IS THE FIX: Changed UpdateConfigPyload to UpdateConfigPayload
     mutationFn: async (payload: UpdateConfigPayload) => {
       const { error } = await supabase.from('channel_configurations').update(payload).eq('channel_id', channelId!);
       if (error) throw error;
@@ -93,16 +94,15 @@ export const useChannelConfig = (channelId: string | null) => {
   });
 
   const { mutate: addPrompt, isPending: isAddingPrompt } = useMutation({
-    mutationFn: async (payload: Omit<AddPromptPayload, 'channel_id'>) => {
+    mutationFn: async (payload: AddPromptPayload) => {
         const { error } = await supabase.from('agent_prompts').insert({ ...payload, channel_id: channelId! });
         if(error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
-  // --- ADD KEYWORD MUTATION IS BACK ---
   const { mutate: addKeyword, isPending: isAddingKeyword } = useMutation({
-    mutationFn: async (payload: Omit<AddKeywordPayload, 'channel_id'>) => {
+    mutationFn: async (payload: AddKeywordPayload) => {
       const { error } = await supabase.from('keyword_actions').insert({ ...payload, channel_id: channelId! });
       if (error) throw error;
     },
@@ -139,8 +139,8 @@ export const useChannelConfig = (channelId: string | null) => {
     isUpdatingPrompt,
     addPrompt,
     isAddingPrompt,
-    addKeyword, // Re-export the function
-    isAddingKeyword, // Re-export the loading state
+    addKeyword,
+    isAddingKeyword,
     deleteKeyword,
     isDeletingKeyword,
     updateKeyword,

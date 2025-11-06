@@ -8,7 +8,7 @@ import ToggleOffIcon from '@mui/icons-material/ToggleOff';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import SearchIcon from '@mui/icons-material/Search';
-import { useChannel } from '@/providers/ChannelProvider'; // <-- 1. IMPORT THE CHANNEL HOOK
+import { useChannel } from '@/providers/ChannelProvider';
 
 interface ContactListProps {
   contacts: Contact[];
@@ -27,7 +27,6 @@ const ContactList: React.FC<ContactListProps> = ({
   onUpdateName,
   onToggleAi,
 }) => {
-  // 2. GET CHANNEL STATE AND CONTROLS
   const { channels, activeChannel, setActiveChannelId, isLoadingChannels } = useChannel();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -45,7 +44,6 @@ const ContactList: React.FC<ContactListProps> = ({
     setEditingId(null);
   };
   
-  // 3. This handler now updates the GLOBAL active channel ID
   const handleChannelChange = (event: SelectChangeEvent<string>) => {
     setActiveChannelId(event.target.value);
   };
@@ -58,15 +56,6 @@ const ContactList: React.FC<ContactListProps> = ({
     );
   }, [contacts, searchTerm]);
 
-  // Use the isLoading from props (for contacts), not the one from the context (for channels)
-  if (isLoading) {
-    return (
-      <Box sx={{ width: 320, p: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box
       sx={{
@@ -75,15 +64,14 @@ const ContactList: React.FC<ContactListProps> = ({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        borderRight: '1px solid', // Add border to separate from chat area
+        borderRight: '1px solid',
         borderColor: 'divider',
         bgcolor: 'background.paper',
       }}
     >
       <Box sx={{ p: 2, pb: 1, flexShrink: 0 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>Contacts</Typography>
+        <Typography variant="h6" sx={{ mb: 2 }}>Conversations</Typography>
         
-        {/* 4. THE NEW CHANNEL SELECTOR */}
         <FormControl fullWidth size="small" sx={{ mb: 2 }}>
           <InputLabel id="channel-selector-label">Channel</InputLabel>
           <Select
@@ -98,7 +86,6 @@ const ContactList: React.FC<ContactListProps> = ({
             ) : (
               channels.map((channel) => (
                 <MenuItem key={channel.id} value={channel.id}>
-                  {/* 5. ADDING THE LOGO AND NAME */}
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <PlatformAvatar platform={channel.platform} sx={{ width: 24, height: 24 }} />
                     <Typography variant="body2">{channel.name}</Typography>
@@ -126,7 +113,13 @@ const ContactList: React.FC<ContactListProps> = ({
         />
       </Box>
       <List sx={{ overflowY: 'auto', flexGrow: 1, overflowX: 'hidden' }}>
-        {displayedContacts.length > 0 ? (
+        {/* --- THIS IS THE FIX --- */}
+        {/* We now check for the loading and empty states HERE. */}
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : displayedContacts.length > 0 ? (
           displayedContacts.map((contact) => (
             <ListItem key={contact.id} disablePadding secondaryAction={
               <IconButton edge="end" onClick={() => onToggleAi({ contactId: contact.id, newStatus: !contact.ai_enabled })}>
@@ -139,7 +132,6 @@ const ContactList: React.FC<ContactListProps> = ({
               >
                 <ListItemAvatar>
                   <Badge badgeContent={contact.unread_count} color="error">
-                    {/* The PlatformAvatar here is correct as it's for the specific contact */}
                     <PlatformAvatar platform={contact.platform} />
                   </Badge>
                 </ListItemAvatar>
@@ -171,8 +163,9 @@ const ContactList: React.FC<ContactListProps> = ({
             </ListItem>
           ))
         ) : (
+          // This is the "No Contacts" message, now in the correct location.
           <Typography sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
-            No contacts found in this channel.
+            {searchTerm ? 'No contacts match your search.' : 'No contacts found in this channel.'}
           </Typography>
         )}
       </List>
