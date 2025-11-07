@@ -1,7 +1,7 @@
 // src/components/settings/ContentCollectionsManager.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -24,12 +24,12 @@ import {
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import { supabase } from '@/lib/supabaseClient';
 import { useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query'; // Import useQueryClient
+import { ContentCollection } from '@/hooks/useChannelConfig'; // Import the type
 
-interface ContentCollection {
-  id: string;
-  name: string;
-  collection_id: string;
-  items: string[];
+// Props interface for the component
+interface ContentCollectionsManagerProps {
+  collections: ContentCollection[];
 }
 
 // Dialog for adding a new collection
@@ -68,12 +68,12 @@ function AddCollectionDialog({ open, onClose, onSubmit, isAdding }: { open: bool
 }
 
 
-export default function ContentCollectionsManager() {
+// Main component now receives collections as a prop
+export default function ContentCollectionsManager({ collections }: ContentCollectionsManagerProps) {
   const searchParams = useSearchParams();
   const channelId = searchParams.get('channelId');
+  const queryClient = useQueryClient(); // Get query client instance
 
-  const [collections, setCollections] = useState<ContentCollection[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   
@@ -84,22 +84,8 @@ export default function ContentCollectionsManager() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
-
-  async function fetchCollections() {
-    if (!channelId) return;
-    setIsLoading(true);
-    const { data, error } = await supabase
-      .from('content_collections')
-      .select('id, name, collection_id, items')
-      .eq('channel_id', channelId);
-    
-    if (data) setCollections(data as ContentCollection[]);
-    setIsLoading(false);
-  }
-
-  useEffect(() => {
-    fetchCollections();
-  }, [channelId]);
+  
+  // All internal data fetching logic (useEffect, fetchCollections) has been removed.
 
   const handleOpenEditDialog = (collection: ContentCollection) => {
     setSelectedCollection(collection);
@@ -128,7 +114,8 @@ export default function ContentCollectionsManager() {
     } else {
       setSnackbar({ open: true, message: 'Collection saved!', severity: 'success' });
       handleCloseEditDialog();
-      fetchCollections(); // Refetch data
+      // Invalidate the main config query to refetch all data for the page
+      queryClient.invalidateQueries({ queryKey: ['channelConfig', channelId] });
     }
     setIsSaving(false);
   };
@@ -146,18 +133,11 @@ export default function ContentCollectionsManager() {
     } else {
         setSnackbar({ open: true, message: 'Collection created!', severity: 'success' });
         setIsAddDialogOpen(false);
-        fetchCollections(); // Refetch data
+        // Invalidate the main config query to refetch all data
+        queryClient.invalidateQueries({ queryKey: ['channelConfig', channelId] });
     }
     setIsAdding(false);
   };
-
-  if (isLoading) {
-    return (
-      <Paper sx={{ p: 2, textAlign: 'center' }}>
-        <CircularProgress size={20} />
-      </Paper>
-    );
-  }
 
   return (
     <>

@@ -27,17 +27,27 @@ export interface KeywordAction {
   action_type: string;
 }
 
+// 1. ADD NEW INTERFACE FOR CONTENT COLLECTION
+export interface ContentCollection {
+  id: string;
+  name: string;
+  collection_id: string;
+  items: string[];
+}
+
+
 export interface FullChannelConfig {
   config: ChannelConfig;
   prompts: AgentPrompt[];
   keywords: KeywordAction[];
+  collections: ContentCollection[]; // 2. ADD COLLECTIONS TO THE FULL CONFIG TYPE
 }
 
 // --- PAYLOAD TYPES FOR MUTATIONS ---
 
 export type UpdateConfigPayload = Partial<ChannelConfig>;
 export type UpdatePromptPayload = { promptId: string; system_prompt: string };
-export type AddKeywordPayload = Omit<KeywordAction, 'id' | 'channel_id'>; // channel_id is added by the hook
+export type AddKeywordPayload = Omit<KeywordAction, 'id' | 'channel_id'>;
 export type UpdateKeywordPayload = Omit<KeywordAction, 'channel_id'>;
 export type AddPromptPayload = Omit<AgentPrompt, 'id' | 'channel_id'>;
 
@@ -45,25 +55,29 @@ export type AddPromptPayload = Omit<AgentPrompt, 'id' | 'channel_id'>;
 // --- API HELPER FUNCTIONS ---
 
 async function fetchAllConfig(channelId: string): Promise<FullChannelConfig> {
-  const [configResult, promptsResult, keywordsResult] = await Promise.all([
+  // 3. ADD 'content_collections' TO THE PROMISE.ALL FETCH
+  const [configResult, promptsResult, keywordsResult, collectionsResult] = await Promise.all([
     supabase.from('channel_configurations').select('*').eq('channel_id', channelId).single(),
     supabase.from('agent_prompts').select('*').eq('channel_id', channelId).order('name'),
     supabase.from('keyword_actions').select('*').eq('channel_id', channelId).order('keyword'),
+    supabase.from('content_collections').select('id, name, collection_id, items').eq('channel_id', channelId).order('name'),
   ]);
 
   if (configResult.error) throw new Error(`Channel Config: ${configResult.error.message}`);
   if (promptsResult.error) throw new Error(`Agent Prompts: ${promptsResult.error.message}`);
   if (keywordsResult.error) throw new Error(`Keyword Actions: ${keywordsResult.error.message}`);
+  if (collectionsResult.error) throw new Error(`Content Collections: ${collectionsResult.error.message}`); // 4. ADD ERROR HANDLING
   if (!configResult.data) throw new Error('Main configuration not found. Please ensure data is seeded.');
 
   return {
     config: configResult.data as ChannelConfig,
     prompts: promptsResult.data as AgentPrompt[],
     keywords: keywordsResult.data as KeywordAction[],
+    collections: collectionsResult.data as ContentCollection[], // 5. ADD COLLECTIONS TO THE RETURNED OBJECT
   };
 }
 
-// --- THE MAIN HOOK ---
+// --- THE MAIN HOOK (No changes needed here, just in the functions above) ---
 export const useChannelConfig = (channelId: string | null) => {
   const queryClient = useQueryClient();
   const queryKey = ['channelConfig', channelId];
@@ -75,9 +89,8 @@ export const useChannelConfig = (channelId: string | null) => {
   });
 
   // --- MUTATIONS ---
-
+  // (The rest of the mutations remain the same)
   const { mutate: updateConfig, isPending: isUpdatingConfig } = useMutation({
-    // THIS IS THE FIX: Changed UpdateConfigPyload to UpdateConfigPayload
     mutationFn: async (payload: UpdateConfigPayload) => {
       const { error } = await supabase.from('channel_configurations').update(payload).eq('channel_id', channelId!);
       if (error) throw error;
