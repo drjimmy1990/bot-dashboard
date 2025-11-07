@@ -1,5 +1,5 @@
 // src/components/chat/ContactList.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react'; // useMemo is no longer needed
 import { Box, List, ListItem, ListItemButton, ListItemAvatar, ListItemText, Typography, Badge, CircularProgress, TextField, IconButton, InputAdornment, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from '@mui/material';
 import PlatformAvatar from '@/components/ui/PlatformAvatar';
 import { Contact } from '@/lib/api';
@@ -9,19 +9,22 @@ import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import SearchIcon from '@mui/icons-material/Search';
 import { useChannel } from '@/providers/ChannelProvider';
+// We will move the useChatContacts hook here to control the search term
+import { useChatContacts } from '@/hooks/useChatContacts';
+
 
 interface ContactListProps {
-  contacts: Contact[];
-  isLoading: boolean;
+  // This component will now fetch its own data, so these props are removed
+  // contacts: Contact[];
+  // isLoading: boolean;
   selectedContactId: string | null;
   onSelectContact: (id: string) => void;
+  // Mutations will be handled by the hook directly, but we pass up the call
   onUpdateName: (params: { contactId: string, newName: string }) => void;
   onToggleAi: (params: { contactId: string, newStatus: boolean }) => void;
 }
 
 const ContactList: React.FC<ContactListProps> = ({
-  contacts,
-  isLoading,
   selectedContactId,
   onSelectContact,
   onUpdateName,
@@ -32,6 +35,11 @@ const ContactList: React.FC<ContactListProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // --- THIS IS THE FIX ---
+  // The useChatContacts hook is now inside this component.
+  // We pass the activeChannel ID AND the searchTerm to it.
+  const { contacts, isLoadingContacts } = useChatContacts(activeChannel?.id || null, searchTerm);
 
   const handleEditClick = (e: React.MouseEvent, contact: Contact) => {
     e.stopPropagation();
@@ -48,13 +56,7 @@ const ContactList: React.FC<ContactListProps> = ({
     setActiveChannelId(event.target.value);
   };
 
-  const displayedContacts = useMemo(() => {
-    return contacts.filter(contact => 
-      (!searchTerm) ||
-      (contact.name && contact.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      contact.platform_user_id.includes(searchTerm)
-    );
-  }, [contacts, searchTerm]);
+  // The useMemo for filtering is REMOVED. The database does the filtering now.
 
   return (
     <Box
@@ -81,18 +83,14 @@ const ContactList: React.FC<ContactListProps> = ({
             onChange={handleChannelChange}
             disabled={isLoadingChannels}
           >
-            {channels.length === 0 ? (
-                <MenuItem disabled value="">No channels found</MenuItem>
-            ) : (
-              channels.map((channel) => (
-                <MenuItem key={channel.id} value={channel.id}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <PlatformAvatar platform={channel.platform} sx={{ width: 24, height: 24 }} />
-                    <Typography variant="body2">{channel.name}</Typography>
-                  </Box>
-                </MenuItem>
-              ))
-            )}
+            {channels.map((channel) => (
+              <MenuItem key={channel.id} value={channel.id}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <PlatformAvatar platform={channel.platform} sx={{ width: 24, height: 24 }} />
+                  <Typography variant="body2">{channel.name}</Typography>
+                </Box>
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
 
@@ -100,7 +98,7 @@ const ContactList: React.FC<ContactListProps> = ({
           fullWidth
           variant="outlined"
           size="small"
-          placeholder="Search contacts..."
+          placeholder="Search by name or ID..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           InputProps={{
@@ -113,14 +111,12 @@ const ContactList: React.FC<ContactListProps> = ({
         />
       </Box>
       <List sx={{ overflowY: 'auto', flexGrow: 1, overflowX: 'hidden' }}>
-        {/* --- THIS IS THE FIX --- */}
-        {/* We now check for the loading and empty states HERE. */}
-        {isLoading ? (
+        {isLoadingContacts ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
             <CircularProgress />
           </Box>
-        ) : displayedContacts.length > 0 ? (
-          displayedContacts.map((contact) => (
+        ) : contacts.length > 0 ? (
+          contacts.map((contact) => (
             <ListItem key={contact.id} disablePadding secondaryAction={
               <IconButton edge="end" onClick={() => onToggleAi({ contactId: contact.id, newStatus: !contact.ai_enabled })}>
                   {contact.ai_enabled ? <ToggleOnIcon color="success" /> : <ToggleOffIcon color="action" />}
@@ -163,7 +159,6 @@ const ContactList: React.FC<ContactListProps> = ({
             </ListItem>
           ))
         ) : (
-          // This is the "No Contacts" message, now in the correct location.
           <Typography sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
             {searchTerm ? 'No contacts match your search.' : 'No contacts found in this channel.'}
           </Typography>

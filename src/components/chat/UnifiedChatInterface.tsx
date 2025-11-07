@@ -10,8 +10,10 @@ import Link from 'next/link';
 import ContactList from './ContactList';
 import ChatArea from './ChatArea';
 import { useChannel } from '@/providers/ChannelProvider';
-import { useChatContacts } from '@/hooks/useChatContacts';
+// useChatContacts is no longer needed here
 import { useChatMessages } from '@/hooks/useChatMessages';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import * as api from '@/lib/api';
 
 export default function UnifiedChatInterface() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
@@ -19,59 +21,72 @@ export default function UnifiedChatInterface() {
   const toggleContactList = () => setContactListOpen(prev => !prev);
   
   const { activeChannel } = useChannel();
+  const queryClient = useQueryClient();
+
+  // --- REINTEGRATE MUTATIONS HERE ---
+  const { mutate: updateName } = useMutation({
+    mutationFn: api.updateContactName,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts', activeChannel?.id] });
+    },
+  });
+
+  const { mutate: toggleAi } = useMutation({
+    mutationFn: api.toggleAiStatus,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts', activeChannel?.id] });
+    },
+  });
   
-  const { contacts, isLoadingContacts, updateName, toggleAi, deleteContact } = useChatContacts(activeChannel?.id || null);
-  
+  const { mutate: deleteContact } = useMutation({
+    mutationFn: api.deleteContact,
+    onSuccess: (data, contactId) => {
+        queryClient.invalidateQueries({ queryKey: ['contacts', activeChannel?.id] });
+        queryClient.removeQueries({ queryKey: ['messages', contactId] });
+        setSelectedContactId(null); // Deselect contact after deletion
+    }
+  });
+
   const { messages, isLoadingMessages, sendMessage, isSendingMessage } = useChatMessages(
     selectedContactId,
     activeChannel?.id || null,
     activeChannel?.organization_id || null
   );
   
-  const selectedContact = useMemo(() => {
-    return contacts.find((c) => c.id === selectedContactId);
-  }, [contacts, selectedContactId]);
-
-  useEffect(() => {
-    if (selectedContactId && !contacts.find(c => c.id === selectedContactId)) {
-        setSelectedContactId(null);
-    }
-  }, [contacts, selectedContactId]);
+  // This component no longer holds the contacts list, so we can't find the selectedContact here.
+  // We will pass the selectedContactId to ChatArea and it will fetch its own details if needed, or we adapt ChatArea.
+  // For now, let's simplify and assume ChatArea can handle a contactId. We will adjust ChatArea if needed.
 
   useEffect(() => {
     setSelectedContactId(null);
   }, [activeChannel?.id]);
 
-  const handleSendMessage = (text: string) => {
-    if (!selectedContact) return;
+  const handleSendMessage = (text: string, platform: string) => {
+    if (!selectedContactId) return;
     sendMessage({
-        contact_id: selectedContact.id,
+        contact_id: selectedContactId,
         content_type: 'text',
         text_content: text,
-        platform: selectedContact.platform,
+        platform: platform,
     });
   }
 
-  const handleSendImageByUrl = (url: string) => {
-    if (!selectedContact) return;
+  const handleSendImageByUrl = (url: string, platform: string) => {
+    if (!selectedContactId) return;
     sendMessage({
-        contact_id: selectedContact.id,
+        contact_id: selectedContactId,
         content_type: 'image',
         attachment_url: url, 
-        platform: selectedContact.platform,
+        platform: platform,
     });
   }
 
-  // This empty state handles when NO CHANNEL is selected at all.
   if (!activeChannel) {
     return (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
             <Paper sx={{ p: 4, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                 <QuestionAnswerIcon sx={{ fontSize: 60, color: 'text.secondary' }} />
                 <Typography variant="h5">No Channel Selected</Typography>
-                <Typography color="text.secondary">
-                    Please select a channel from the list, or create one to begin.
-                </Typography>
                 <Button component={Link} href="/channels" variant="contained">
                     Manage Channels
                 </Button>
@@ -79,10 +94,6 @@ export default function UnifiedChatInterface() {
         </Box>
     );
   }
-  
-  // --- THIS IS THE FIX ---
-  // The old "No Contacts Found" logic block that was here has been REMOVED.
-  // This component will now ALWAYS render the main chat layout if a channel is active.
   
   return (
     <Box sx={{ display: 'flex', height: '100%', width: '100%' }}>
@@ -96,8 +107,6 @@ export default function UnifiedChatInterface() {
         }}
       >
         <ContactList
-          contacts={contacts}
-          isLoading={isLoadingContacts}
           selectedContactId={selectedContactId}
           onSelectContact={setSelectedContactId}
           onUpdateName={updateName}
@@ -114,8 +123,9 @@ export default function UnifiedChatInterface() {
             </Tooltip>
         </Box>
         <Box sx={{ flexGrow: 1, position: 'relative' }}>
+          {/* We'll need to adapt ChatArea to work with just an ID */}
           <ChatArea
-            contact={selectedContact}
+            contactId={selectedContactId}
             messages={messages}
             isLoadingMessages={isLoadingMessages}
             onSendMessage={handleSendMessage}

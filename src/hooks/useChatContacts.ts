@@ -4,33 +4,75 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '@/lib/api';
 import { supabase } from '@/lib/supabaseClient';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react'; // <-- THIS IS THE FIX: IMPORT useState and useEffect
+import { RealtimeChannel } from '@supabase/supabase-js';
 
-// REMOVED: const CHANNEL_ID = process.env.NEXT_PUBLIC_DEFAULT_CHANNEL_ID;
+// --- DEBOUNCING UTILITY ---
+// This is a simple hook to prevent firing a DB query on every keystroke.
+function useDebounce(value: string, delay: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
-// 1. Hook now accepts a channelId argument
-export const useChatContacts = (channelId: string | null) => {
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// 1. Hook now accepts an optional searchTerm
+export const useChatContacts = (channelId: string | null, searchTerm?: string) => {
   const queryClient = useQueryClient();
+  const debouncedSearchTerm = useDebounce(searchTerm || '', 300); // Debounce search for 300ms
 
-  // REMOVED: Validation for the old hardcoded CHANNEL_ID
+  // 2. Query key is now dynamic with the debounced search term
+  const queryKey = ['contacts', channelId, debouncedSearchTerm];
 
-  // --- QUERIES ---
   const { data: contacts = [], isLoading: isLoadingContacts } = useQuery<api.Contact[]>({
-    // 2. Query key is now dynamic, including the channelId
-    queryKey: ['contacts', channelId],
-    // 3. The API call now passes the dynamic channelId
-    queryFn: () => api.getContacts(channelId!),
-    // 4. The query is only enabled when a channelId is provided
+    queryKey: queryKey,
+    queryFn: async () => {
+        if (!channelId) return [];
+
+        let query = supabase
+            .from('contacts')
+            .select('*')
+            .eq('channel_id', channelId);
+
+        // --- THIS IS THE SEARCH LOGIC ---
+        // 3. If there is a search term, build a dynamic 'or' filter
+        if (debouncedSearchTerm) {
+            query = query.or(
+                // Search in 'name' (case-insensitive) OR in 'platform_user_id'
+                `name.ilike.%${debouncedSearchTerm}%,platform_user_id.ilike.%${debouncedSearchTerm}%`
+            );
+        }
+
+        // 4. The ORDER BY is now more robust. Unread messages always come first.
+        query = query.order('unread_count', { ascending: false })
+                     .order('last_interaction_at', { ascending: false })
+                     .limit(100); // Add a limit to prevent fetching thousands of rows at once
+
+        const { data, error } = await query;
+        
+        if (error) {
+            console.error("Error fetching contacts:", error);
+            throw new Error(error.message);
+        }
+        return data || [];
+    },
     enabled: !!channelId,
   });
 
-  // --- MUTATIONS ---
-  // Mutations operate on a unique contactId, so they don't need the channelId directly.
-  // However, their onSuccess invalidation logic MUST be updated to use the dynamic channelId.
+  // (Mutations remain the same)
   const updateNameMutation = useMutation({
     mutationFn: api.updateContactName,
     onSuccess: () => {
-      // 5. Invalidate the DYNAMIC query key
+      // Invalidate all queries for this channel to refresh the list
       queryClient.invalidateQueries({ queryKey: ['contacts', channelId] });
     },
   });
@@ -46,35 +88,30 @@ export const useChatContacts = (channelId: string | null) => {
     mutationFn: api.deleteContact,
     onSuccess: (data, contactId) => {
         queryClient.invalidateQueries({ queryKey: ['contacts', channelId] });
-        // Removing the messages query for the deleted contact is still correct.
         queryClient.removeQueries({ queryKey: ['messages', contactId] });
     }
   });
-
-  // --- REALTIME ---
+  
+  // (Realtime logic remains the same)
   useEffect(() => {
-    // 6. Do nothing if no channel is selected
     if (!channelId) return;
-
-    const channel = supabase
-      // 7. Subscription channel name is now dynamic
-      .channel(`public-contacts-channel-${channelId}`)
+    
+    // Using a more specific channel name to avoid potential conflicts
+    const subscriptionChannel: RealtimeChannel = supabase
+      .channel(`public:contacts:channel_id=eq.${channelId}`)
       .on(
         'postgres_changes',
-        // 8. The filter for the subscription is also dynamic
         { event: '*', schema: 'public', table: 'contacts', filter: `channel_id=eq.${channelId}` },
         (payload) => {
-          console.log('Realtime contact change received:', payload);
-          // 9. Invalidate the correct dynamic query
+          // Invalidate all contact queries for this channel to ensure UI updates
           queryClient.invalidateQueries({ queryKey: ['contacts', channelId] });
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(subscriptionChannel);
     };
-  // 10. Add channelId to the dependency array
   }, [queryClient, channelId]);
   
 
