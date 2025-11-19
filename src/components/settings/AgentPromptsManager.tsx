@@ -21,16 +21,13 @@ import {
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import { useChannelConfig, AgentPrompt, AddPromptPayload } from '@/hooks/useChannelConfig';
-// REMOVED: No longer need useSearchParams
 
-// --- THIS IS A FIX ---
-// The component now expects a channelId to be passed in as a prop.
 interface AgentPromptsManagerProps {
   prompts: AgentPrompt[];
   channelId: string;
 }
 
-// Dialog component for adding a new agent persona (Using your Grid syntax)
+// Dialog component for adding a new agent persona (No changes needed here)
 function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean, onClose: () => void, onSubmit: (data: Omit<AddPromptPayload, 'channel_id' | 'organization_id'>) => void, isAdding: boolean }) {
     const [formData, setFormData] = useState({ name: '', agent_id: '', description: '', system_prompt: 'You are a helpful assistant.' });
 
@@ -42,7 +39,6 @@ function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean,
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSubmit(formData);
-        // Reset form for next time
         setFormData({ name: '', agent_id: '', description: '', system_prompt: 'You are a helpful assistant.' });
     };
 
@@ -50,7 +46,6 @@ function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean,
         <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" PaperProps={{ component: 'form', onSubmit: handleSubmit }}>
             <DialogTitle>Add New Agent Persona</DialogTitle>
             <DialogContent>
-                {/* --- GRID SYNTAX REVERTED TO YOUR ORIGINAL STYLE --- */}
                 <Grid container spacing={2} sx={{ pt: 1 }}>
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField name="name" label="Persona Name" value={formData.name} onChange={handleChange} fullWidth required autoFocus helperText="e.g., Support Agent" />
@@ -75,27 +70,32 @@ function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean,
 }
 
 
-// --- THIS IS THE MAIN FIX ---
-// The component now receives and uses the channelId from its props.
 export default function AgentPromptsManager({ prompts, channelId }: AgentPromptsManagerProps) {
-  // REMOVED: The broken useSearchParams logic is gone.
-  
-  // The hook now receives the correct channelId, so all mutations will work.
   const { updatePrompt, isUpdatingPrompt, addPrompt, isAddingPrompt } = useChannelConfig(channelId);
 
-  const [selectedPrompt, setSelectedPrompt] = useState<AgentPrompt | null>(prompts[0] || null);
-  const [promptText, setPromptText] = useState(selectedPrompt?.system_prompt || '');
+  const [selectedPrompt, setSelectedPrompt] = useState<AgentPrompt | null>(null);
+  const [promptText, setPromptText] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
 
+  // --- THIS IS A FIX ---
+  // This useEffect now correctly handles both initial load and updates when the `prompts` prop changes.
   useEffect(() => {
-    if (!selectedPrompt && prompts.length > 0) {
-        setSelectedPrompt(prompts[0]);
+    // If there's no selected prompt yet, or the selected one is no longer in the list, select the first one.
+    const currentPromptExists = prompts.some(p => p.id === selectedPrompt?.id);
+    if ((!selectedPrompt && prompts.length > 0) || !currentPromptExists) {
+        const newSelectedPrompt = prompts[0] || null;
+        setSelectedPrompt(newSelectedPrompt);
+        setPromptText(newSelectedPrompt?.system_prompt || '');
+    } else if (selectedPrompt) {
+        // If the selected prompt still exists, find the latest version of it from the `prompts` prop
+        // and update the text area. This handles the refresh-on-save.
+        const updatedPrompt = prompts.find(p => p.id === selectedPrompt.id);
+        if (updatedPrompt && updatedPrompt.system_prompt !== promptText) {
+            setPromptText(updatedPrompt.system_prompt);
+        }
     }
-    if (selectedPrompt) {
-        setPromptText(selectedPrompt.system_prompt);
-    }
-  }, [prompts, selectedPrompt]);
+  }, [prompts, selectedPrompt]); // Run this effect whenever the master list of prompts changes.
 
   const handleSelectPrompt = (prompt: AgentPrompt) => {
     setSelectedPrompt(prompt);
@@ -104,8 +104,13 @@ export default function AgentPromptsManager({ prompts, channelId }: AgentPrompts
 
   const handleSaveChanges = () => {
     if (!selectedPrompt) return;
+    
+    // Nothing changes here. The mutation invalidates the query, which triggers the useEffect above.
     updatePrompt({ promptId: selectedPrompt.id, system_prompt: promptText }, {
-      onSuccess: () => setSnackbar({ open: true, message: `"${selectedPrompt.name}" saved!`, severity: 'success' }),
+      onSuccess: () => {
+        setSnackbar({ open: true, message: `"${selectedPrompt.name}" saved!`, severity: 'success' });
+        // The magic now happens in the `useEffect` hook.
+      },
       onError: (err) => setSnackbar({ open: true, message: `Error: ${err.message}`, severity: 'error' }),
     });
   };
@@ -122,21 +127,8 @@ export default function AgentPromptsManager({ prompts, channelId }: AgentPrompts
 
   return (
     <>
-      <Paper sx={{ 
-        display: 'flex', 
-        flexDirection: { xs: 'column', sm: 'row' }, 
-        height: '70vh', 
-        minHeight: '500px',
-        maxHeight: '800px',
-      }}>
-
-        <Box sx={{ 
-            width: { xs: '100%', sm: '35%', md: '30%' }, 
-            borderRight: { sm: '1px solid' }, 
-            borderColor: 'divider',
-            display: 'flex',
-            flexDirection: 'column',
-        }}>
+      <Paper sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, height: '70vh', minHeight: '500px', maxHeight: '800px' }}>
+        <Box sx={{ width: { xs: '100%', sm: '35%', md: '30%' }, borderRight: { sm: '1px solid' }, borderColor: 'divider', display: 'flex', flexDirection: 'column' }}>
           <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <Typography variant="h6">Agent Personas</Typography>
             <Button size="small" startIcon={<AddCircleOutlineIcon />} onClick={() => setIsAddDialogOpen(true)}>Add</Button>
@@ -149,14 +141,7 @@ export default function AgentPromptsManager({ prompts, channelId }: AgentPrompts
             ))}
           </List>
         </Box>
-
-        <Box sx={{ 
-            flex: 1, 
-            p: 2, 
-            display: 'flex', 
-            flexDirection: 'column',
-            overflow: 'hidden', 
-        }}>
+        <Box sx={{ flex: 1, p: 2, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {selectedPrompt ? (
             <>
               <Box sx={{ flexShrink: 0 }}>
@@ -165,20 +150,14 @@ export default function AgentPromptsManager({ prompts, channelId }: AgentPrompts
                   ID: <code>{selectedPrompt.agent_id}</code>
                 </Typography>
               </Box>
-
               <TextField 
                 label="System Prompt" 
                 value={promptText} 
                 onChange={(e) => setPromptText(e.target.value)} 
                 multiline 
                 fullWidth 
-                sx={{ 
-                    flexGrow: 1, 
-                    '& .MuiInputBase-root': { height: '100%', alignItems: 'flex-start' },
-                    '& .MuiInputBase-input': { height: '100% !important', overflowY: 'auto !important' }
-                }}
+                sx={{ flexGrow: 1, '& .MuiInputBase-root': { height: '100%', alignItems: 'flex-start' }, '& .MuiInputBase-input': { height: '100% !important', overflowY: 'auto !important' } }}
                />
-
               <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
                 <Button variant="contained" onClick={handleSaveChanges} disabled={isUpdatingPrompt}>
                   {isUpdatingPrompt ? <CircularProgress size={24} /> : `Save Persona`}
@@ -192,9 +171,7 @@ export default function AgentPromptsManager({ prompts, channelId }: AgentPrompts
           )}
         </Box>
       </Paper>
-      
       <AddPromptDialog open={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} onSubmit={handleAddPrompt} isAdding={isAddingPrompt} />
-      
       {snackbar && (
         <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar(null)}>
           <Alert onClose={() => setSnackbar(null)} severity={snackbar.severity} sx={{ width: '100%' }}>
