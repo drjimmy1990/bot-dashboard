@@ -1,4 +1,3 @@
-// src/components/settings/AgentPromptsManager.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -22,14 +21,17 @@ import {
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import { useChannelConfig, AgentPrompt, AddPromptPayload } from '@/hooks/useChannelConfig';
-import { useSearchParams } from 'next/navigation';
+// REMOVED: No longer need useSearchParams
 
+// --- THIS IS A FIX ---
+// The component now expects a channelId to be passed in as a prop.
 interface AgentPromptsManagerProps {
   prompts: AgentPrompt[];
+  channelId: string;
 }
 
-// Dialog component for adding a new agent persona
-function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean, onClose: () => void, onSubmit: (data: Omit<AddPromptPayload, 'channel_id'>) => void, isAdding: boolean }) {
+// Dialog component for adding a new agent persona (Using your Grid syntax)
+function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean, onClose: () => void, onSubmit: (data: Omit<AddPromptPayload, 'channel_id' | 'organization_id'>) => void, isAdding: boolean }) {
     const [formData, setFormData] = useState({ name: '', agent_id: '', description: '', system_prompt: 'You are a helpful assistant.' });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,15 +42,16 @@ function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean,
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSubmit(formData);
+        // Reset form for next time
+        setFormData({ name: '', agent_id: '', description: '', system_prompt: 'You are a helpful assistant.' });
     };
 
     return (
         <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" PaperProps={{ component: 'form', onSubmit: handleSubmit }}>
             <DialogTitle>Add New Agent Persona</DialogTitle>
             <DialogContent>
+                {/* --- GRID SYNTAX REVERTED TO YOUR ORIGINAL STYLE --- */}
                 <Grid container spacing={2} sx={{ pt: 1 }}>
-                    {/* --- THIS IS THE FIX --- */}
-                    {/* The old 'item' prop is removed, and responsive sizes are passed to the 'size' prop. */}
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField name="name" label="Persona Name" value={formData.name} onChange={handleChange} fullWidth required autoFocus helperText="e.g., Support Agent" />
                     </Grid>
@@ -72,11 +75,12 @@ function AddPromptDialog({ open, onClose, onSubmit, isAdding }: { open: boolean,
 }
 
 
-// Main component
-export default function AgentPromptsManager({ prompts }: AgentPromptsManagerProps) {
-  const searchParams = useSearchParams();
-  const channelId = searchParams.get('channelId');
-
+// --- THIS IS THE MAIN FIX ---
+// The component now receives and uses the channelId from its props.
+export default function AgentPromptsManager({ prompts, channelId }: AgentPromptsManagerProps) {
+  // REMOVED: The broken useSearchParams logic is gone.
+  
+  // The hook now receives the correct channelId, so all mutations will work.
   const { updatePrompt, isUpdatingPrompt, addPrompt, isAddingPrompt } = useChannelConfig(channelId);
 
   const [selectedPrompt, setSelectedPrompt] = useState<AgentPrompt | null>(prompts[0] || null);
@@ -106,7 +110,7 @@ export default function AgentPromptsManager({ prompts }: AgentPromptsManagerProp
     });
   };
 
-  const handleAddPrompt = (data: Omit<AddPromptPayload, 'channel_id'>) => {
+  const handleAddPrompt = (data: Omit<AddPromptPayload, 'channel_id' | 'organization_id'>) => {
     addPrompt(data, {
         onSuccess: () => {
             setIsAddDialogOpen(false);

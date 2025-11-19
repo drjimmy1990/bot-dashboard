@@ -1,4 +1,3 @@
-// src/app/(app)/channels/[channelId]/settings/page.tsx
 'use client';
 
 import React from 'react';
@@ -46,17 +45,19 @@ function ChannelSettingsDisplay({ channelId }: { channelId: string }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, mt: 2 }}>
       
+      {/* ========================================================== */}
+      {/* THIS IS THE FIX: We now pass channelId as a prop to all children */}
+      {/* ========================================================== */}
+      
       <ChannelDetails channelId={channelId} />
       
-      <GeneralSettings config={data.config} />
+      <GeneralSettings config={data.config} channelId={channelId} />
       
-      <AgentPromptsManager prompts={data.prompts} />
+      <AgentPromptsManager prompts={data.prompts} channelId={channelId} />
       
-      <KeywordActionsManager keywords={data.keywords} />
+      <KeywordActionsManager keywords={data.keywords} channelId={channelId} />
 
-      {/* --- THIS IS THE FIX --- */}
-      {/* We are now passing the 'collections' data as a prop */}
-      <ContentCollectionsManager collections={data.collections} />
+      <ContentCollectionsManager collections={data.collections} channelId={channelId} />
 
     </Box>
   );

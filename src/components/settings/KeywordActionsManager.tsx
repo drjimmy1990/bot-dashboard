@@ -24,10 +24,13 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 
 import { useChannelConfig, KeywordAction } from '@/hooks/useChannelConfig';
-import { useSearchParams } from 'next/navigation';
+// REMOVED: No longer need useSearchParams
 
+// --- THIS IS A FIX ---
+// The component now expects a channelId to be passed in as a prop.
 interface KeywordActionsManagerProps {
   keywords: KeywordAction[];
+  channelId: string;
 }
 
 type EditingState = {
@@ -36,10 +39,12 @@ type EditingState = {
   action_type: string;
 };
 
-export default function KeywordActionsManager({ keywords }: KeywordActionsManagerProps) {
-  const searchParams = useSearchParams();
-  const channelId = searchParams.get('channelId');
+// --- THIS IS THE MAIN FIX ---
+// The component now receives and uses the channelId from its props.
+export default function KeywordActionsManager({ keywords, channelId }: KeywordActionsManagerProps) {
+  // REMOVED: The broken useSearchParams logic is gone.
   
+  // The hook now receives the correct channelId, so all mutations will work.
   const { addKeyword, isAddingKeyword, deleteKeyword, isDeletingKeyword, updateKeyword, isUpdatingKeyword } = useChannelConfig(channelId);
 
   const [newKeyword, setNewKeyword] = useState('');
@@ -80,7 +85,6 @@ export default function KeywordActionsManager({ keywords }: KeywordActionsManage
         Define automated actions or store variables for your n8n workflows.
       </Typography>
       
-      {/* --- THIS IS THE FIX --- */}
       <Grid container spacing={2} sx={{ mb: 2 }} alignItems="center">
         <Grid size={{ xs: 12, sm: 4 }}>
           <TextField

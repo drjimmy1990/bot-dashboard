@@ -17,15 +17,21 @@ import {
   CircularProgress
 } from '@mui/material';
 import { useChannelConfig, ChannelConfig } from '@/hooks/useChannelConfig';
-import { useSearchParams } from 'next/navigation';
+// REMOVED: No longer need useSearchParams
 
+// --- THIS IS A FIX ---
+// The component now expects a channelId to be passed in as a prop.
 interface GeneralSettingsProps {
   config: ChannelConfig;
+  channelId: string;
 }
 
-export default function GeneralSettings({ config }: GeneralSettingsProps) {
-  const searchParams = useSearchParams();
-  const channelId = searchParams.get('channelId');
+// --- THIS IS THE MAIN FIX ---
+// The component now receives and uses the channelId from its props.
+export default function GeneralSettings({ config, channelId }: GeneralSettingsProps) {
+  // REMOVED: The broken useSearchParams logic is gone.
+  
+  // The hook now receives the correct channelId, so all mutations will work.
   const { updateConfig, isUpdatingConfig } = useChannelConfig(channelId);
 
   const [formData, setFormData] = useState(config);
@@ -63,7 +69,6 @@ export default function GeneralSettings({ config }: GeneralSettingsProps) {
     <Paper sx={{ p: 3 }}>
       <Typography variant="h6" gutterBottom>General Settings</Typography>
       
-      {/* --- THIS IS THE FIX --- */}
       <Grid container spacing={3} alignItems="center">
         <Grid size={12}>
            <FormControlLabel

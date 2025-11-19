@@ -22,23 +22,24 @@ import {
   Tooltip
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import { supabase } from '@/lib/supabaseClient';
-import { useSearchParams } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query'; // Import useQueryClient
-import { ContentCollection } from '@/hooks/useChannelConfig'; // Import the type
+import { useChannelConfig, ContentCollection } from '@/hooks/useChannelConfig'; // Import the hook
+// REMOVED: No longer need useSearchParams or supabase client directly
 
-// Props interface for the component
+// --- THIS IS A FIX ---
+// The component now expects a channelId to be passed in as a prop.
 interface ContentCollectionsManagerProps {
   collections: ContentCollection[];
+  channelId: string;
 }
 
-// Dialog for adding a new collection
+// Dialog for adding a new collection (No changes needed here)
 function AddCollectionDialog({ open, onClose, onSubmit, isAdding }: { open: boolean, onClose: () => void, onSubmit: (name: string) => void, isAdding: boolean }) {
     const [name, setName] = useState('');
     
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSubmit(name);
+        setName(''); // Reset form
     }
 
     return (
@@ -68,14 +69,13 @@ function AddCollectionDialog({ open, onClose, onSubmit, isAdding }: { open: bool
 }
 
 
-// Main component now receives collections as a prop
-export default function ContentCollectionsManager({ collections }: ContentCollectionsManagerProps) {
-  const searchParams = useSearchParams();
-  const channelId = searchParams.get('channelId');
-  const queryClient = useQueryClient(); // Get query client instance
-
-  const [isSaving, setIsSaving] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
+// --- THIS IS THE MAIN FIX ---
+// The component now receives and uses the channelId from its props.
+export default function ContentCollectionsManager({ collections, channelId }: ContentCollectionsManagerProps) {
+  // REMOVED: The broken useSearchParams logic is gone.
+  
+  // The hook now receives the correct channelId, and we get all mutation functions from it.
+  const { addCollection, isAddingCollection, updateCollection, isUpdatingCollection } = useChannelConfig(channelId);
   
   const [selectedCollection, setSelectedCollection] = useState<ContentCollection | null>(null);
   const [editText, setEditText] = useState('');
@@ -84,8 +84,6 @@ export default function ContentCollectionsManager({ collections }: ContentCollec
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
-  
-  // All internal data fetching logic (useEffect, fetchCollections) has been removed.
 
   const handleOpenEditDialog = (collection: ContentCollection) => {
     setSelectedCollection(collection);
@@ -101,42 +99,25 @@ export default function ContentCollectionsManager({ collections }: ContentCollec
 
   const handleSaveChanges = async () => {
     if (!selectedCollection) return;
-    setIsSaving(true);
     const updatedItems = editText.split('\n').map(line => line.trim()).filter(line => line);
-
-    const { error } = await supabase
-      .from('content_collections')
-      .update({ items: updatedItems })
-      .eq('id', selectedCollection.id);
-
-    if (error) {
-      setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
-    } else {
-      setSnackbar({ open: true, message: 'Collection saved!', severity: 'success' });
-      handleCloseEditDialog();
-      // Invalidate the main config query to refetch all data for the page
-      queryClient.invalidateQueries({ queryKey: ['channelConfig', channelId] });
-    }
-    setIsSaving(false);
+    
+    updateCollection({ id: selectedCollection.id, items: updatedItems }, {
+      onSuccess: () => {
+        setSnackbar({ open: true, message: 'Collection saved!', severity: 'success' });
+        handleCloseEditDialog();
+      },
+      onError: (err) => setSnackbar({ open: true, message: `Error: ${err.message}`, severity: 'error' }),
+    });
   };
 
   const handleAddCollection = async (name: string) => {
-    if (!channelId) return;
-    setIsAdding(true);
-    const { error } = await supabase.rpc('create_content_collection', {
-        p_channel_id: channelId,
-        p_name: name
-    });
-    
-    if (error) {
-        setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
-    } else {
+    addCollection({ name }, {
+      onSuccess: () => {
         setSnackbar({ open: true, message: 'Collection created!', severity: 'success' });
         setIsAddDialogOpen(false);
-        // Invalidate the main config query to refetch all data
-        queryClient.invalidateQueries({ queryKey: ['channelConfig', channelId] });
-    }
-    setIsAdding(false);
+      },
+      onError: (err) => setSnackbar({ open: true, message: `Error: ${err.message}`, severity: 'error' }),
+    });
   };
 
   return (
@@ -172,13 +153,13 @@ export default function ContentCollectionsManager({ collections }: ContentCollec
           <TextField autoFocus margin="dense" label="Content Items (one per line)" value={editText} onChange={(e) => setEditText(e.target.value)} multiline rows={15} fullWidth variant="outlined" helperText="Enter URLs or text snippets, each on a new line."/>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseEditDialog} disabled={isSaving}>Cancel</Button>
-          <Button onClick={handleSaveChanges} variant="contained" disabled={isSaving}>{isSaving ? <CircularProgress size={24} /> : 'Save Collection'}</Button>
+          <Button onClick={handleCloseEditDialog} disabled={isUpdatingCollection}>Cancel</Button>
+          <Button onClick={handleSaveChanges} variant="contained" disabled={isUpdatingCollection}>{isUpdatingCollection ? <CircularProgress size={24} /> : 'Save Collection'}</Button>
         </DialogActions>
       </Dialog>
       
       {/* Add Dialog */}
-      <AddCollectionDialog open={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} onSubmit={handleAddCollection} isAdding={isAdding} />
+      <AddCollectionDialog open={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} onSubmit={handleAddCollection} isAdding={isAddingCollection} />
 
       {snackbar && (
         <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar(null)}>
