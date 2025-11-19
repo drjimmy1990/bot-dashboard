@@ -20,6 +20,7 @@ import GeneralSettings from '@/components/settings/GeneralSettings';
 import KeywordActionsManager from '@/components/settings/KeywordActionsManager';
 import ChannelDetails from '@/components/settings/ChannelDetails';
 import ContentCollectionsManager from '@/components/settings/ContentCollectionsManager';
+import ChannelCredentialsManager from '@/components/settings/ChannelCredentialsManager'; // <-- IMPORT THE NEW COMPONENT
 
 // This component displays the settings when a valid channelId is present
 function ChannelSettingsDisplay({ channelId }: { channelId: string }) {
@@ -45,11 +46,10 @@ function ChannelSettingsDisplay({ channelId }: { channelId: string }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, mt: 2 }}>
       
-      {/* ========================================================== */}
-      {/* THIS IS THE FIX: We now pass channelId as a prop to all children */}
-      {/* ========================================================== */}
-      
       <ChannelDetails channelId={channelId} />
+
+      {/* --- THIS IS THE NEW COMPONENT --- */}
+      <ChannelCredentialsManager channelId={channelId} />
       
       <GeneralSettings config={data.config} channelId={channelId} />
       
