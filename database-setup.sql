@@ -49,3 +49,69 @@ CREATE POLICY "Users can manage data in their organization" ON public.channel_co
 CREATE POLICY "Users can manage data in their organization" ON public.agent_prompts FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
 CREATE POLICY "Users can manage data in their organization" ON public.content_collections FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
 CREATE POLICY "Users can manage data in their organization" ON public.keyword_actions FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+
+
+
+
+
+
+
+
+
+
+-- ====================================================================
+--          DATABASE AUTOMATION RESTORATION SCRIPT
+-- This script adds back the triggers needed to update unread counts
+-- and last message previews for contacts.
+-- ====================================================================
+
+-- Step 1: Create the function that performs the update logic.
+-- It runs with DEFINER permissions to ensure it can update the contacts table.
+CREATE OR REPLACE FUNCTION public.update_contact_summary_on_message()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_contact_id UUID;
+BEGIN
+    -- Determine the contact_id from the new or old message row
+    v_contact_id := COALESCE(NEW.contact_id, OLD.contact_id);
+
+    -- Perform the update on the 'contacts' table
+    UPDATE public.contacts
+    SET 
+        -- Set the last interaction time to the most recent message's sent_at time
+        last_interaction_at = (SELECT MAX(m.sent_at) FROM public.messages m WHERE m.contact_id = v_contact_id),
+
+        -- Set the preview to the text of the last message, or a placeholder like '[Image]'
+        last_message_preview = (
+            SELECT CASE 
+                WHEN sub.content_type = 'text' THEN LEFT(sub.text_content, 70)
+                ELSE '[' || INITCAP(sub.content_type) || ']'
+            END
+            FROM public.messages sub WHERE sub.contact_id = v_contact_id ORDER BY sub.sent_at DESC LIMIT 1
+        ),
+
+        -- Recalculate the number of unread messages from the 'user'
+        unread_count = (
+            SELECT COUNT(*) FROM public.messages m
+            WHERE m.contact_id = v_contact_id AND m.sender_type = 'user' AND m.is_read_by_agent = FALSE
+        )
+    WHERE id = v_contact_id;
+
+    -- Return null because this is an AFTER trigger
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- Step 2: Create the trigger that calls the function.
+-- This tells the database to run the function AFTER any INSERT, UPDATE, or DELETE on the 'messages' table.
+
+-- First, drop the trigger if it exists to ensure a clean state
+DROP TRIGGER IF EXISTS messages_summary_trigger ON public.messages;
+
+-- Then, create the new trigger
+CREATE TRIGGER messages_summary_trigger
+AFTER INSERT OR UPDATE OR DELETE ON public.messages
+FOR EACH ROW EXECUTE FUNCTION public.update_contact_summary_on_message();
+
+-- ======================= END OF SCRIPT =======================
