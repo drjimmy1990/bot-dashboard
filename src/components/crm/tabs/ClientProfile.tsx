@@ -1,0 +1,141 @@
+// src/components/crm/tabs/ClientProfile.tsx
+'use client';
+
+import React, { useState, useEffect } from 'react';
+// --- THIS IS THE FIX ---
+// Added Snackbar, Alert, and InputAdornment to the list of MUI imports.
+import { 
+  Box, 
+  Paper, 
+  Grid, 
+  TextField, 
+  Button, 
+  CircularProgress, 
+  Typography, 
+  Snackbar, 
+  Alert, 
+  MenuItem, 
+  InputAdornment 
+} from '@mui/material';
+import SaveIcon from '@mui/icons-material/Save';
+import { CrmClient } from '@/lib/api';
+import { useClient, UpdateClientPayload } from '@/hooks/useClient';
+import ClientTagsManager from '../ClientTagsManager';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
+
+// We need to add our new field to the interface
+interface CrmClientWithPlatformId extends CrmClient {
+  platform_user_id?: string | null;
+}
+
+interface ClientProfileProps {
+  client: CrmClientWithPlatformId;
+}
+
+export default function ClientProfile({ client }: ClientProfileProps) {
+  const { updateClient, isUpdatingClient } = useClient(client.id);
+  const [formData, setFormData] = useState(client);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
+
+  useEffect(() => { setFormData(client); }, [client]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const hasFormChanges =
+    formData.company_name !== client.company_name ||
+    formData.email !== client.email ||
+    formData.phone !== client.phone ||
+    formData.secondary_phone !== client.secondary_phone ||
+    formData.client_type !== client.client_type ||
+    formData.lifecycle_stage !== client.lifecycle_stage ||
+    formData.source !== client.source;
+
+  const handleSaveChanges = () => {
+    if (!hasFormChanges) return;
+    const payload: UpdateClientPayload = {
+      company_name: formData.company_name,
+      email: formData.email,
+      phone: formData.phone,
+      secondary_phone: formData.secondary_phone,
+      client_type: formData.client_type,
+      lifecycle_stage: formData.lifecycle_stage,
+      source: formData.source,
+    };
+    updateClient(payload, {
+      onSuccess: () => { setSnackbar({ open: true, message: 'Client profile saved successfully!', severity: 'success' }); },
+      onError: (err: any) => { setSnackbar({ open: true, message: `Error: ${err.message}`, severity: 'error' }); },
+    });
+  };
+
+  return (
+    <>
+      <Paper sx={{ p: 3 }}>
+        <Typography variant="h6" gutterBottom> Client Details </Typography>
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>Contact Info</Typography>
+            <TextField name="company_name" label="Company Name" value={formData.company_name || ''} onChange={handleChange} fullWidth size="small" sx={{ mb: 2 }} />
+            <TextField name="email" label="Email" type="email" value={formData.email || ''} onChange={handleChange} fullWidth size="small" sx={{ mb: 2 }} />
+            <TextField name="phone" label="Primary Phone" value={formData.phone || ''} onChange={handleChange} fullWidth size="small" sx={{ mb: 2 }} />
+            <TextField name="secondary_phone" label="Secondary Phone" value={formData.secondary_phone || ''} onChange={handleChange} fullWidth size="small" />
+            <TextField
+              label="Platform User ID"
+              value={formData.platform_user_id || 'N/A'}
+              fullWidth
+              size="small"
+              sx={{ mt: 2 }}
+              disabled
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <VpnKeyIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+              helperText="The user's ID on the messaging platform (e.g., WhatsApp number)."
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>CRM Details</Typography>
+            <TextField name="client_type" label="Client Type" value={formData.client_type} onChange={handleChange} select fullWidth size="small" sx={{ mb: 2 }}>
+              <MenuItem value="lead">Lead</MenuItem>
+              <MenuItem value="prospect">Prospect</MenuItem>
+              <MenuItem value="customer">Customer</MenuItem>
+              <MenuItem value="partner">Partner</MenuItem>
+              <MenuItem value="inactive">Inactive</MenuItem>
+            </TextField>
+            <TextField name="lifecycle_stage" label="Lifecycle Stage" value={formData.lifecycle_stage} onChange={handleChange} select fullWidth size="small" sx={{ mb: 2 }}>
+                <MenuItem value="lead">Lead</MenuItem>
+                <MenuItem value="mql">Marketing Qualified Lead (MQL)</MenuItem>
+                <MenuItem value="sql">Sales Qualified Lead (SQL)</MenuItem>
+                <MenuItem value="opportunity">Opportunity</MenuItem>
+                <MenuItem value="customer">Customer</MenuItem>
+                <MenuItem value="evangelist">Evangelist</MenuItem>
+                <MenuItem value="churned">Churned</MenuItem>
+            </TextField>
+            <TextField name="source" label="Lead Source" value={formData.source || ''} onChange={handleChange} fullWidth size="small" sx={{ mb: 2 }} />
+            <Box sx={{ mt: 2 }}>
+              <ClientTagsManager clientId={client.id} currentTags={formData.tags} />
+            </Box>
+          </Grid>
+          <Grid size={12} sx={{ textAlign: 'right', mt: 2 }}>
+            <Button variant="contained" startIcon={isUpdatingClient ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />} onClick={handleSaveChanges} disabled={!hasFormChanges || isUpdatingClient}>
+              Save Changes
+            </Button>
+          </Grid>
+        </Grid>
+      </Paper>
+      
+      {snackbar && (
+        <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={() => setSnackbar(null)}>
+          <Alert onClose={() => setSnackbar(null)} severity={snackbar.severity} sx={{ width: '100%' }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      )}
+    </>
+  );
+}

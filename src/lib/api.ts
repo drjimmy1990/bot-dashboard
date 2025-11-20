@@ -4,6 +4,7 @@ import { supabase } from './supabaseClient';
 // --- Type Definitions ---
 // These interfaces define the shape of our data.
 
+// --- CORE CHAT INTERFACES (Existing) ---
 export interface Contact {
   id: string;
   channel_id: string;
@@ -15,6 +16,9 @@ export interface Contact {
   last_interaction_at: string;
   last_message_preview: string;
   unread_count: number;
+  // --- THIS IS THE MODIFICATION ---
+  // We will need this field from the join in `useChatContacts` later.
+  crm_clients: { id: string }[] | null; 
 }
 
 export interface Message {
@@ -27,7 +31,85 @@ export interface Message {
   sent_at: string;
 }
 
-// --- API Functions ---
+
+// --- NEW CRM INTERFACES ---
+
+export interface CrmClient {
+  id: string;
+  organization_id: string;
+  contact_id: string | null;
+  client_type: 'lead' | 'prospect' | 'customer' | 'partner' | 'inactive';
+  company_name: string | null;
+  email: string | null;
+  phone: string | null;
+  secondary_phone: string | null;
+  address: { [key: string]: any } | null;
+  ecommerce_customer_id: string | null;
+  total_orders: number;
+  total_revenue: number;
+  average_order_value: number;
+  source: string | null;
+  source_details: { [key: string]: any } | null;
+  utm_data: { [key: string]: any } | null;
+  lifecycle_stage: 'lead' | 'mql' | 'sql' | 'opportunity' | 'customer' | 'evangelist' | 'churned';
+  lead_score: number;
+  lead_quality: 'hot' | 'warm' | 'cold' | null;
+  assigned_to: string | null; // This is a profile UUID
+  tags: string[] | null;
+  custom_fields: { [key: string]: any } | null;
+  first_contact_date: string | null;
+  last_contact_date: string | null;
+  next_follow_up_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CrmActivity {
+  id: string;
+  organization_id: string;
+  client_id: string | null;
+  deal_id: string | null;
+  message_id: string | null;
+  activity_type: 'call' | 'email' | 'meeting' | 'task' | 'note' | 'chatbot_interaction' | 'website_visit';
+  subject: string;
+  description: string | null;
+  status: 'pending' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high' | 'urgent' | null;
+  due_date: string | null;
+  completed_at: string | null;
+  assigned_to: string | null; // Profile UUID
+  created_by: string | null; // Profile UUID
+  metadata: { [key: string]: any } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CrmNote {
+  id: string;
+  organization_id: string;
+  client_id: string | null;
+  deal_id: string | null;
+  title: string | null;
+  content: string;
+  note_type: 'general' | 'call_log' | 'meeting_summary' | 'important' | null;
+  is_pinned: boolean;
+  tags: string[] | null;
+  created_by: string | null; // Profile UUID
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CrmTag {
+  id: string;
+  organization_id: string;
+  name: string;
+  color: string | null;
+  category: string | null;
+  created_at: string;
+}
+
+
+// --- API Functions (Existing) ---
 // All functions now use direct Supabase SDK calls, relying on RLS for security.
 
 /**

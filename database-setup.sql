@@ -347,3 +347,311 @@ ALTER FUNCTION public.update_client_revenue() SET search_path = '';
 ALTER FUNCTION public.track_deal_stage_change() SET search_path = '';
 
 -- ======================= END OF SCRIPT =======================
+
+
+
+
+
+
+
+
+
+
+
+-- ====================================================================
+--          AUTOMATIC CRM CLIENT CREATION SCRIPT
+-- This script adds a trigger to automatically create a crm_clients
+-- record whenever a new contact is created.
+-- ====================================================================
+
+-- Step 1: Create the function that will be executed by the trigger.
+-- It runs with SECURITY DEFINER to ensure it has the necessary permissions.
+
+CREATE OR REPLACE FUNCTION public.create_client_on_new_contact()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = '' -- Hardened for security
+AS $$
+BEGIN
+  -- Insert a new record into crm_clients, using data from the new contact.
+  INSERT INTO public.crm_clients (
+    organization_id,
+    contact_id,
+    -- THIS IS THE NEW LINE --
+    company_name, 
+    email,
+    phone,
+    source,
+    first_contact_date
+  )
+  VALUES (
+    NEW.organization_id,
+    NEW.id,
+    -- THIS IS THE NEW LINE --
+    NEW.name, -- Use the contact's name as the default company name.
+    CASE WHEN NEW.name ~* '^[A-Za-z0-9._+%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$' THEN NEW.name ELSE NULL END,
+    NEW.platform_user_id,
+    NEW.platform,
+    NOW()
+  );
+  RETURN NEW;
+END;
+$$;
+
+-- Step 2: Create the trigger on the 'contacts' table.
+-- This tells the database to run our function AFTER a new row is INSERTED.
+
+-- First, drop the trigger if it already exists to ensure a clean setup.
+DROP TRIGGER IF EXISTS on_new_contact_create_client ON public.contacts;
+
+-- Then, create the new trigger.
+CREATE TRIGGER on_new_contact_create_client
+  AFTER INSERT ON public.contacts
+  FOR EACH ROW
+  EXECUTE FUNCTION public.create_client_on_new_contact();
+
+-- ======================= END OF SCRIPT =======================
+
+
+
+
+
+
+
+
+-- ====================================================================
+--          DATABASE RELATIONSHIP HARDENING SCRIPT
+-- This script ensures the foreign key relationship from crm_clients
+-- to contacts is correctly defined.
+-- ====================================================================
+
+-- First, give the existing constraint a predictable name by dropping it if it exists.
+-- This prevents errors if you run the script multiple times.
+-- Note: Replace 'crm_clients_contact_id_fkey' with the actual name of your
+-- foreign key constraint if you know it, otherwise this might show an error
+-- which is safe to ignore if the next command succeeds.
+ALTER TABLE public.crm_clients
+DROP CONSTRAINT IF EXISTS crm_clients_contact_id_fkey;
+
+-- Now, add the foreign key constraint with a specific name.
+-- This is what the Supabase UI does behind the scenes.
+ALTER TABLE public.crm_clients
+ADD CONSTRAINT crm_clients_contact_id_fkey
+FOREIGN KEY (contact_id)
+REFERENCES public.contacts (id)
+ON DELETE SET NULL; -- This part is optional but good practice: if a contact is deleted, just set the contact_id in crm_clients to NULL.
+
+-- ======================= END OF SCRIPT =======================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- ====================================================================
+--          CRM ROW-LEVEL SECURITY (RLS) RE-APPLICATION SCRIPT
+-- This script ensures RLS is enabled and correctly configured for all
+-- CRM-related tables.
+-- ====================================================================
+
+-- Step 1: Enable RLS on all CRM tables
+ALTER TABLE public.crm_clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crm_deals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crm_deal_stages_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crm_products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crm_orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crm_activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crm_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crm_tags ENABLE ROW LEVEL SECURITY;
+
+-- Step 2: Drop any existing policies to ensure a clean slate
+DROP POLICY IF EXISTS "Users can manage CRM clients in their organization" ON public.crm_clients;
+DROP POLICY IF EXISTS "Users can manage deals in their organization" ON public.crm_deals;
+DROP POLICY IF EXISTS "Users can view deal history in their organization" ON public.crm_deal_stages_history;
+DROP POLICY IF EXISTS "Users can manage products in their organization" ON public.crm_products;
+DROP POLICY IF EXISTS "Users can manage orders in their organization" ON public.crm_orders;
+DROP POLICY IF EXISTS "Users can manage activities in their organization" ON public.crm_activities;
+DROP POLICY IF EXISTS "Users can manage notes in their organization" ON public.crm_notes;
+DROP POLICY IF EXISTS "Users can manage tags in their organization" ON public.crm_tags;
+
+-- Step 3: Create the definitive policies
+-- This policy allows users to access data if the organization_id matches their own.
+-- The get_my_organization_id() function is defined in your main setup script.
+CREATE POLICY "Users can manage CRM clients in their organization" ON public.crm_clients
+  FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+
+CREATE POLICY "Users can manage deals in their organization" ON public.crm_deals
+  FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+
+CREATE POLICY "Users can view deal history in their organization" ON public.crm_deal_stages_history
+  FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+
+CREATE POLICY "Users can manage products in their organization" ON public.crm_products
+  FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+
+CREATE POLICY "Users can manage orders in their organization" ON public.crm_orders
+  FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+
+CREATE POLICY "Users can manage activities in their organization" ON public.crm_activities
+  FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+
+CREATE POLICY "Users can manage notes in their organization" ON public.crm_notes
+  FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+
+CREATE POLICY "Users can manage tags in their organization" ON public.crm_tags
+  FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+
+-- ======================= END OF SCRIPT =======================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- ====================================================================
+--          GET CONTACTS WITH CLIENTS (RPC FUNCTION)
+-- This function replaces the front-end query to definitively solve
+-- the RLS join issue. It runs with the permissions of the user.
+-- ====================================================================
+
+CREATE OR REPLACE FUNCTION get_contacts_for_channel(p_channel_id UUID, p_search_term TEXT DEFAULT '')
+RETURNS TABLE (
+  -- Re-define the full 'contacts' table structure here
+  id UUID,
+  organization_id UUID,
+  channel_id UUID,
+  platform TEXT,
+  platform_user_id TEXT,
+  name TEXT,
+  avatar_url TEXT,
+  ai_enabled BOOLEAN,
+  last_interaction_at TIMESTAMPTZ,
+  last_message_preview TEXT,
+  unread_count INTEGER,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ,
+  -- And add the crm_client_id we need
+  crm_client_id UUID
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    c.id,
+    c.organization_id,
+    c.channel_id,
+    c.platform,
+    c.platform_user_id,
+    c.name,
+    c.avatar_url,
+    c.ai_enabled,
+    c.last_interaction_at,
+    c.last_message_preview,
+    c.unread_count,
+    c.created_at,
+    c.updated_at,
+    -- Perform an explicit LEFT JOIN to get the client ID
+    cc.id AS crm_client_id
+  FROM
+    public.contacts AS c
+  LEFT JOIN
+    public.crm_clients AS cc ON c.id = cc.contact_id
+  WHERE
+    c.channel_id = p_channel_id
+    AND (
+      p_search_term = '' OR
+      c.name ILIKE '%' || p_search_term || '%' OR
+      c.platform_user_id ILIKE '%' || p_search_term || '%'
+    )
+  ORDER BY
+    c.unread_count DESC,
+    c.last_interaction_at DESC
+  LIMIT 100;
+END;
+$$;
+
+
+
+
+
+
+
+
+
+-- ====================================================================
+--          ADD PLATFORM ID TO CRM CLIENTS TABLE SCRIPT
+-- ====================================================================
+
+ALTER TABLE public.crm_clients
+ADD COLUMN platform_user_id TEXT;
+
+-- Optional: Add an index for faster lookups on this new column
+CREATE INDEX idx_crm_clients_platform_user_id ON public.crm_clients(platform_user_id);
+
+-- ======================= END OF SCRIPT =======================
+
+
+
+
+
+
+
+
+-- ====================================================================
+--          UPDATE CRM CLIENT CREATION TRIGGER (V3)
+-- ====================================================================
+
+CREATE OR REPLACE FUNCTION public.create_client_on_new_contact()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+  INSERT INTO public.crm_clients (
+    organization_id,
+    contact_id,
+    company_name,
+    email,
+    -- phone, -- We no longer set the phone number by default
+    platform_user_id, -- This is the new field we are populating
+    source,
+    first_contact_date
+  )
+  VALUES (
+    NEW.organization_id,
+    NEW.id,
+    NEW.name,
+    CASE WHEN NEW.name ~* '^[A-Za-z0-9._+%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$' THEN NEW.name ELSE NULL END,
+    -- NEW.platform_user_id, -- Old logic removed
+    NEW.platform_user_id, -- New logic added
+    NEW.platform,
+    NOW()
+  );
+  RETURN NEW;
+END;
+$$;

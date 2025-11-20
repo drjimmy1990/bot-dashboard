@@ -14,20 +14,24 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useUI } from '@/providers/UIProvider'; // Import the context hook
+import { useUI } from '@/providers/UIProvider';
 import HomeIcon from '@mui/icons-material/Home';
 import ChatIcon from '@mui/icons-material/Chat';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
-import DnsIcon from '@mui/icons-material/Dns'
+import DnsIcon from '@mui/icons-material/Dns';
+// --- THIS IS THE MODIFICATION ---
+import PeopleIcon from '@mui/icons-material/People'; // Import the new icon
 
 const drawerWidth = 240;
 
 const menuItems = [
   { text: 'Home', href: '/', icon: <HomeIcon /> },
   { text: 'Chat', href: '/chat', icon: <ChatIcon /> },
-  // Add the new line below
-  { text: 'Channels', href: '/channels', icon: <DnsIcon /> }, 
+  // --- THIS IS THE MODIFICATION ---
+  // Add the new "Clients" link to navigate to our CRM dashboard.
+  { text: 'Clients', href: '/clients', icon: <PeopleIcon /> },
+  { text: 'Channels', href: '/channels', icon: <DnsIcon /> },
   { text: 'Settings', href: '/settings', icon: <SettingsIcon /> },
   { text: 'Analytics', href: '/analytics', icon: <AnalyticsIcon />, disabled: true },
 ];
@@ -78,7 +82,6 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' 
   }),
 );
 
-// This component no longer needs any props.
 export default function AppSidebar() {
   const { isSidebarOpen, toggleSidebar } = useUI();
   const pathname = usePathname();
@@ -97,7 +100,9 @@ export default function AppSidebar() {
             <ListItemButton
               component={Link}
               href={item.href}
-              selected={pathname === item.href}
+              selected={pathname.startsWith(item.href) && item.href !== '/'}
+              // Special case for home page to avoid it always being selected
+              {...(item.href === '/' && { selected: pathname === '/' })}
               disabled={item.disabled}
               sx={{ minHeight: 48, justifyContent: isSidebarOpen ? 'initial' : 'center', px: 2.5 }}
             >
