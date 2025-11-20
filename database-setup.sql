@@ -56,9 +56,6 @@ CREATE POLICY "Users can manage data in their organization" ON public.keyword_ac
 
 
 
-
-
-
 -- ====================================================================
 --          DATABASE AUTOMATION RESTORATION SCRIPT
 -- This script adds back the triggers needed to update unread counts
@@ -118,16 +115,6 @@ FOR EACH ROW EXECUTE FUNCTION public.update_contact_summary_on_message();
 
 
 
-
-
-
-
-
-
-
-
-
-
 -- ====================================================================
 --          DATABASE FUNCTION HARDENING SCRIPT (COMPLETE)
 -- This script fixes all "Function Search Path Mutable" warnings.
@@ -140,3 +127,223 @@ ALTER FUNCTION public.update_contact_summary_on_message() SET search_path = '';
 -- Harden the other functions to clear all warnings from the linter
 ALTER FUNCTION public.create_channel_and_config(text, text, text) SET search_path = '';
 ALTER FUNCTION public.get_my_organization_id() SET search_path = '';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- ====================================================================
+--          CRM & ANALYTICS EXTENSION SCRIPT (V12 - FINAL)
+-- This script adds all CRM and Analytics features to your existing database.
+-- ====================================================================
+
+-- ====================================================================
+-- SECTION 1: CORE CRM TABLES
+-- ====================================================================
+
+CREATE TABLE public.crm_clients (
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  -- IMPROVEMENT: Added UNIQUE constraint to ensure one CRM client per contact.
+  contact_id UUID UNIQUE REFERENCES public.contacts(id) ON DELETE SET NULL,
+  client_type TEXT NOT NULL DEFAULT 'lead' CHECK (client_type IN ('lead', 'prospect', 'customer', 'partner', 'inactive')),
+  company_name TEXT,
+  email TEXT,
+  phone TEXT,
+  secondary_phone TEXT,
+  address JSONB,
+  ecommerce_customer_id TEXT,
+  total_orders INTEGER DEFAULT 0,
+  total_revenue NUMERIC(12, 2) DEFAULT 0,
+  average_order_value NUMERIC(12, 2) DEFAULT 0,
+  source TEXT,
+  source_details JSONB,
+  utm_data JSONB,
+  lifecycle_stage TEXT DEFAULT 'lead' CHECK (lifecycle_stage IN ('lead', 'mql', 'sql', 'opportunity', 'customer', 'evangelist', 'churned')),
+  lead_score INTEGER DEFAULT 0,
+  lead_quality TEXT CHECK (lead_quality IN ('hot', 'warm', 'cold')),
+  assigned_to UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  tags TEXT[],
+  custom_fields JSONB,
+  first_contact_date TIMESTAMPTZ DEFAULT NOW(),
+  last_contact_date TIMESTAMPTZ,
+  next_follow_up_date TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT unique_ecommerce_customer UNIQUE (organization_id, ecommerce_customer_id)
+);
+-- Indexes (Your original indexes were excellent, no changes needed)
+CREATE INDEX idx_crm_clients_organization ON public.crm_clients(organization_id);
+CREATE INDEX idx_crm_clients_contact ON public.crm_clients(contact_id);
+CREATE INDEX idx_crm_clients_type ON public.crm_clients(client_type);
+CREATE INDEX idx_crm_clients_assigned ON public.crm_clients(assigned_to);
+CREATE INDEX idx_crm_clients_lifecycle ON public.crm_clients(lifecycle_stage);
+CREATE INDEX idx_crm_clients_email ON public.crm_clients(email);
+CREATE INDEX idx_crm_clients_ecommerce ON public.crm_clients(ecommerce_customer_id);
+
+-- (All other tables: crm_deals, crm_deal_stages_history, crm_products, crm_orders, crm_activities, crm_notes, crm_tags are perfect as you wrote them. They will be created here.)
+CREATE TABLE public.crm_deals (id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(), organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE, client_id UUID NOT NULL REFERENCES public.crm_clients(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT, deal_value NUMERIC(12, 2) NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'USD', stage TEXT NOT NULL DEFAULT 'prospecting' CHECK (stage IN ('prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won', 'closed_lost')), probability INTEGER DEFAULT 0 CHECK (probability >= 0 AND probability <= 100), expected_close_date DATE, actual_close_date DATE, products JSONB, owner_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL, lost_reason TEXT, lost_reason_details TEXT, won_reason TEXT, competitor TEXT, tags TEXT[], custom_fields JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), stage_changed_at TIMESTAMPTZ DEFAULT NOW());
+CREATE INDEX idx_crm_deals_organization ON public.crm_deals(organization_id); CREATE INDEX idx_crm_deals_client ON public.crm_deals(client_id); CREATE INDEX idx_crm_deals_stage ON public.crm_deals(stage); CREATE INDEX idx_crm_deals_owner ON public.crm_deals(owner_id); CREATE INDEX idx_crm_deals_close_date ON public.crm_deals(expected_close_date);
+CREATE TABLE public.crm_deal_stages_history (id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(), organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE, deal_id UUID NOT NULL REFERENCES public.crm_deals(id) ON DELETE CASCADE, from_stage TEXT, to_stage TEXT NOT NULL, changed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL, notes TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE INDEX idx_deal_stages_history_deal ON public.crm_deal_stages_history(deal_id); CREATE INDEX idx_deal_stages_history_created ON public.crm_deal_stages_history(created_at);
+CREATE TABLE public.crm_products (id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(), organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT, sku TEXT, category TEXT, price NUMERIC(12, 2) NOT NULL DEFAULT 0, cost NUMERIC(12, 2), currency TEXT NOT NULL DEFAULT 'USD', ecommerce_product_id TEXT, is_active BOOLEAN NOT NULL DEFAULT TRUE, custom_fields JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT unique_ecommerce_product UNIQUE (organization_id, ecommerce_product_id));
+CREATE INDEX idx_crm_products_organization ON public.crm_products(organization_id); CREATE INDEX idx_crm_products_active ON public.crm_products(is_active); CREATE INDEX idx_crm_products_ecommerce ON public.crm_products(ecommerce_product_id);
+CREATE TABLE public.crm_orders (id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(), organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE, client_id UUID NOT NULL REFERENCES public.crm_clients(id) ON DELETE CASCADE, deal_id UUID REFERENCES public.crm_deals(id) ON DELETE SET NULL, order_number TEXT NOT NULL, ecommerce_order_id TEXT, subtotal NUMERIC(12, 2) NOT NULL DEFAULT 0, tax NUMERIC(12, 2) DEFAULT 0, shipping NUMERIC(12, 2) DEFAULT 0, discount NUMERIC(12, 2) DEFAULT 0, total NUMERIC(12, 2) NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'USD', status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded')), items JSONB, shipping_address JSONB, tracking_number TEXT, order_date TIMESTAMPTZ NOT NULL DEFAULT NOW(), shipped_date TIMESTAMPTZ, delivered_date TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT unique_order_number UNIQUE (organization_id, order_number));
+CREATE INDEX idx_crm_orders_organization ON public.crm_orders(organization_id); CREATE INDEX idx_crm_orders_client ON public.crm_orders(client_id); CREATE INDEX idx_crm_orders_status ON public.crm_orders(status); CREATE INDEX idx_crm_orders_date ON public.crm_orders(order_date); CREATE INDEX idx_crm_orders_ecommerce ON public.crm_orders(ecommerce_order_id);
+CREATE TABLE public.crm_activities (id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(), organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE, client_id UUID REFERENCES public.crm_clients(id) ON DELETE CASCADE, deal_id UUID REFERENCES public.crm_deals(id) ON DELETE CASCADE, message_id UUID REFERENCES public.messages(id) ON DELETE SET NULL, activity_type TEXT NOT NULL CHECK (activity_type IN ('call', 'email', 'meeting', 'task', 'note', 'chatbot_interaction', 'website_visit')), subject TEXT NOT NULL, description TEXT, status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'cancelled')), priority TEXT CHECK (priority IN ('low', 'medium', 'high', 'urgent')), due_date TIMESTAMPTZ, completed_at TIMESTAMPTZ, assigned_to UUID REFERENCES public.profiles(id) ON DELETE SET NULL, created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL, metadata JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE INDEX idx_crm_activities_organization ON public.crm_activities(organization_id); CREATE INDEX idx_crm_activities_client ON public.crm_activities(client_id); CREATE INDEX idx_crm_activities_deal ON public.crm_activities(deal_id); CREATE INDEX idx_crm_activities_type ON public.crm_activities(activity_type); CREATE INDEX idx_crm_activities_assigned ON public.crm_activities(assigned_to); CREATE INDEX idx_crm_activities_due ON public.crm_activities(due_date); CREATE INDEX idx_crm_activities_status ON public.crm_activities(status);
+CREATE TABLE public.crm_notes (id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(), organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE, client_id UUID REFERENCES public.crm_clients(id) ON DELETE CASCADE, deal_id UUID REFERENCES public.crm_deals(id) ON DELETE CASCADE, title TEXT, content TEXT NOT NULL, note_type TEXT CHECK (note_type IN ('general', 'call_log', 'meeting_summary', 'important')), is_pinned BOOLEAN DEFAULT FALSE, tags TEXT[], created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE INDEX idx_crm_notes_organization ON public.crm_notes(organization_id); CREATE INDEX idx_crm_notes_client ON public.crm_notes(client_id); CREATE INDEX idx_crm_notes_deal ON public.crm_notes(deal_id); CREATE INDEX idx_crm_notes_pinned ON public.crm_notes(is_pinned);
+CREATE TABLE public.crm_tags (id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(), organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE, name TEXT NOT NULL, color TEXT DEFAULT '#3B82F6', category TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT unique_tag_per_org UNIQUE (organization_id, name));
+CREATE INDEX idx_crm_tags_organization ON public.crm_tags(organization_id); CREATE INDEX idx_crm_tags_category ON public.crm_tags(category);
+
+-- ====================================================================
+-- SECTION 2: ANALYTICS MATERIALIZED VIEWS
+-- ====================================================================
+
+-- (Materialized Views for deal_metrics, client_metrics, revenue_metrics, and chatbot_effectiveness are perfect. No changes needed.)
+CREATE MATERIALIZED VIEW public.analytics_deal_metrics AS SELECT d.organization_id, d.stage, d.owner_id, COUNT(*) as deal_count, SUM(d.deal_value) as total_value, AVG(d.deal_value) as avg_deal_size, SUM(CASE WHEN d.stage = 'closed_won' THEN d.deal_value ELSE 0 END) as won_value, SUM(CASE WHEN d.stage = 'closed_lost' THEN d.deal_value ELSE 0 END) as lost_value, AVG(d.probability) as avg_probability, AVG(EXTRACT(EPOCH FROM (COALESCE(d.actual_close_date::timestamptz, NOW()) - d.created_at)) / 86400) as avg_deal_cycle_days, DATE_TRUNC('month', d.created_at) as period_month FROM public.crm_deals d GROUP BY d.organization_id, d.stage, d.owner_id, DATE_TRUNC('month', d.created_at);
+CREATE UNIQUE INDEX idx_analytics_deal_metrics ON public.analytics_deal_metrics(organization_id, stage, COALESCE(owner_id, '00000000-0000-0000-0000-000000000000'::uuid), period_month);
+CREATE MATERIALIZED VIEW public.analytics_client_metrics AS SELECT c.organization_id, c.lifecycle_stage, c.client_type, c.source, c.assigned_to, COUNT(*) as client_count, SUM(c.total_revenue) as total_revenue, AVG(c.total_revenue) as avg_revenue_per_client, AVG(c.total_orders) as avg_orders_per_client, AVG(c.average_order_value) as avg_order_value, AVG(c.lead_score) as avg_lead_score, DATE_TRUNC('month', c.created_at) as period_month FROM public.crm_clients c GROUP BY c.organization_id, c.lifecycle_stage, c.client_type, c.source, c.assigned_to, DATE_TRUNC('month', c.created_at);
+CREATE UNIQUE INDEX idx_analytics_client_metrics ON public.analytics_client_metrics(organization_id, COALESCE(lifecycle_stage, 'unknown'), COALESCE(client_type, 'unknown'), COALESCE(source, 'unknown'), COALESCE(assigned_to, '00000000-0000-0000-0000-000000000000'::uuid), period_month);
+CREATE MATERIALIZED VIEW public.analytics_revenue_metrics AS SELECT o.organization_id, SUM(o.total) as total_revenue, COUNT(DISTINCT o.client_id) as unique_customers, COUNT(*) as order_count, AVG(o.total) as avg_order_value, SUM(CASE WHEN o.status = 'delivered' THEN o.total ELSE 0 END) as delivered_revenue, SUM(CASE WHEN o.status = 'cancelled' OR o.status = 'refunded' THEN o.total ELSE 0 END) as lost_revenue, DATE_TRUNC('day', o.order_date) as period_day, DATE_TRUNC('week', o.order_date) as period_week, DATE_TRUNC('month', o.order_date) as period_month, DATE_TRUNC('year', o.order_date) as period_year FROM public.crm_orders o GROUP BY o.organization_id, DATE_TRUNC('day', o.order_date), DATE_TRUNC('week', o.order_date), DATE_TRUNC('month', o.order_date), DATE_TRUNC('year', o.order_date);
+CREATE UNIQUE INDEX idx_analytics_revenue_metrics ON public.analytics_revenue_metrics(organization_id, period_day);
+CREATE MATERIALIZED VIEW public.analytics_chatbot_effectiveness AS SELECT a.organization_id, COUNT(DISTINCT a.client_id) as unique_clients_engaged, COUNT(*) as total_chatbot_interactions, COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.client_id END) as successful_interactions, AVG(EXTRACT(EPOCH FROM (a.completed_at - a.created_at)) / 60) as avg_interaction_duration_minutes, DATE_TRUNC('day', a.created_at) as period_day FROM public.crm_activities a WHERE a.activity_type = 'chatbot_interaction' GROUP BY a.organization_id, DATE_TRUNC('day', a.created_at);
+CREATE UNIQUE INDEX idx_analytics_chatbot_effectiveness ON public.analytics_chatbot_effectiveness(organization_id, period_day);
+
+-- IMPROVEMENT: Simplified analytics_channel_performance view
+CREATE MATERIALIZED VIEW public.analytics_channel_performance AS
+SELECT
+  ch.organization_id,
+  ch.id as channel_id,
+  ch.name as channel_name,
+  ch.platform,
+  COUNT(DISTINCT c.id) as total_contacts,
+  COUNT(m.id) as total_messages, -- Simplified to total messages
+  COUNT(m.id) FILTER (WHERE m.sender_type = 'user') as incoming_messages,
+  COUNT(m.id) FILTER (WHERE m.sender_type = 'agent') as agent_responses,
+  COUNT(m.id) FILTER (WHERE m.sender_type = 'ai') as ai_responses,
+  DATE_TRUNC('month', m.sent_at) as period_month
+FROM public.channels ch
+LEFT JOIN public.contacts c ON c.channel_id = ch.id
+LEFT JOIN public.messages m ON m.channel_id = ch.id
+GROUP BY ch.organization_id, ch.id, ch.name, ch.platform, DATE_TRUNC('month', m.sent_at);
+
+CREATE UNIQUE INDEX idx_analytics_channel_performance ON public.analytics_channel_performance(
+  organization_id,
+  channel_id,
+  COALESCE(period_month, '1970-01-01'::timestamptz)
+);
+
+-- ====================================================================
+-- SECTION 3: ANALYTICAL & HELPER FUNCTIONS
+-- ====================================================================
+
+-- (Functions calculate_client_ltv, calculate_win_rate, refresh_all_analytics are perfect. No changes needed.)
+CREATE OR REPLACE FUNCTION public.calculate_client_ltv(client_uuid UUID) RETURNS NUMERIC AS $$ DECLARE ltv NUMERIC; BEGIN SELECT COALESCE(SUM(total), 0) INTO ltv FROM public.crm_orders WHERE client_id = client_uuid AND status NOT IN ('cancelled', 'refunded'); RETURN ltv; END; $$ LANGUAGE plpgsql STABLE;
+CREATE OR REPLACE FUNCTION public.calculate_win_rate(org_id UUID, start_date TIMESTAMPTZ DEFAULT NULL, end_date TIMESTAMPTZ DEFAULT NULL) RETURNS NUMERIC AS $$ DECLARE win_rate NUMERIC; BEGIN SELECT CASE WHEN COUNT(*) = 0 THEN 0 ELSE (COUNT(*) FILTER (WHERE stage = 'closed_won')::NUMERIC / COUNT(*)::NUMERIC) * 100 END INTO win_rate FROM public.crm_deals WHERE organization_id = org_id AND stage IN ('closed_won', 'closed_lost') AND (start_date IS NULL OR created_at >= start_date) AND (end_date IS NULL OR created_at <= end_date); RETURN ROUND(win_rate, 2); END; $$ LANGUAGE plpgsql STABLE;
+CREATE OR REPLACE FUNCTION public.refresh_all_analytics() RETURNS void AS $$ BEGIN REFRESH MATERIALIZED VIEW CONCURRENTLY public.analytics_deal_metrics; REFRESH MATERIALIZED VIEW CONCURRENTLY public.analytics_client_metrics; REFRESH MATERIALIZED VIEW CONCURRENTLY public.analytics_revenue_metrics; REFRESH MATERIALIZED VIEW CONCURRENTLY public.analytics_channel_performance; REFRESH MATERIALIZED VIEW CONCURRENTLY public.analytics_chatbot_effectiveness; END; $$ LANGUAGE plpgsql;
+
+-- IMPROVEMENT: Hardening SECURITY DEFINER functions to remove security warnings.
+CREATE OR REPLACE FUNCTION public.get_crm_dashboard_summary(org_id UUID) RETURNS TABLE (total_clients BIGINT, total_customers BIGINT, total_leads BIGINT, total_deals BIGINT, open_deals_value NUMERIC, closed_won_deals BIGINT, total_revenue NUMERIC, avg_order_value NUMERIC, pending_activities BIGINT) AS $$ BEGIN RETURN QUERY SELECT (SELECT COUNT(*) FROM public.crm_clients WHERE organization_id = org_id), (SELECT COUNT(*) FROM public.crm_clients WHERE organization_id = org_id AND client_type = 'customer'), (SELECT COUNT(*) FROM public.crm_clients WHERE organization_id = org_id AND client_type = 'lead'), (SELECT COUNT(*) FROM public.crm_deals WHERE organization_id = org_id), (SELECT COALESCE(SUM(deal_value), 0) FROM public.crm_deals WHERE organization_id = org_id AND stage NOT IN ('closed_won', 'closed_lost')), (SELECT COUNT(*) FROM public.crm_deals WHERE organization_id = org_id AND stage = 'closed_won'), (SELECT COALESCE(SUM(total), 0) FROM public.crm_orders WHERE organization_id = org_id AND status NOT IN ('cancelled', 'refunded')), (SELECT COALESCE(AVG(total), 0) FROM public.crm_orders WHERE organization_id = org_id AND status NOT IN ('cancelled', 'refunded')), (SELECT COUNT(*) FROM public.crm_activities WHERE organization_id = org_id AND status = 'pending'); END; $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
+CREATE OR REPLACE FUNCTION public.get_conversion_funnel(org_id UUID) RETURNS TABLE (lifecycle_stage TEXT, count BIGINT, percentage NUMERIC) AS $$ BEGIN RETURN QUERY SELECT c.lifecycle_stage, COUNT(*) as count, ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as percentage FROM public.crm_clients c WHERE c.organization_id = org_id GROUP BY c.lifecycle_stage ORDER BY CASE c.lifecycle_stage WHEN 'lead' THEN 1 WHEN 'mql' THEN 2 WHEN 'sql' THEN 3 WHEN 'opportunity' THEN 4 WHEN 'customer' THEN 5 WHEN 'evangelist' THEN 6 WHEN 'churned' THEN 7 END; END; $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
+
+-- ====================================================================
+-- SECTION 4: TRIGGERS & AUTOMATION
+-- ====================================================================
+
+-- (All your original triggers are excellent and well-written. No changes needed.)
+CREATE OR REPLACE FUNCTION public.update_client_revenue() RETURNS TRIGGER AS $$ BEGIN UPDATE public.crm_clients SET total_orders = (SELECT COUNT(*) FROM public.crm_orders WHERE client_id = NEW.client_id AND status NOT IN ('cancelled', 'refunded')), total_revenue = (SELECT COALESCE(SUM(total), 0) FROM public.crm_orders WHERE client_id = NEW.client_id AND status NOT IN ('cancelled', 'refunded')), average_order_value = (SELECT COALESCE(AVG(total), 0) FROM public.crm_orders WHERE client_id = NEW.client_id AND status NOT IN ('cancelled', 'refunded')), last_contact_date = NOW(), updated_at = NOW() WHERE id = NEW.client_id; RETURN NEW; END; $$ LANGUAGE plpgsql;
+CREATE TRIGGER trigger_update_client_revenue AFTER INSERT OR UPDATE ON public.crm_orders FOR EACH ROW EXECUTE FUNCTION public.update_client_revenue();
+CREATE OR REPLACE FUNCTION public.track_deal_stage_change() RETURNS TRIGGER AS $$ BEGIN IF OLD.stage IS DISTINCT FROM NEW.stage THEN INSERT INTO public.crm_deal_stages_history (organization_id, deal_id, from_stage, to_stage, changed_by) VALUES (NEW.organization_id, NEW.id, OLD.stage, NEW.stage, auth.uid()); NEW.stage_changed_at = NOW(); END IF; NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql;
+CREATE TRIGGER trigger_track_deal_stage_change BEFORE UPDATE ON public.crm_deals FOR EACH ROW EXECUTE FUNCTION public.track_deal_stage_change();
+CREATE OR REPLACE FUNCTION public.create_activity_from_message() RETURNS TRIGGER AS $$ DECLARE client_record UUID; BEGIN SELECT id INTO client_record FROM public.crm_clients WHERE contact_id = NEW.contact_id LIMIT 1; IF client_record IS NOT NULL THEN INSERT INTO public.crm_activities (organization_id, client_id, message_id, activity_type, subject, description, status, created_by) VALUES (NEW.organization_id, client_record, NEW.id, CASE WHEN NEW.sender_type = 'ai' THEN 'chatbot_interaction' ELSE 'email' END, 'Message from ' || (SELECT platform FROM public.channels WHERE id = NEW.channel_id), LEFT(NEW.text_content, 500), 'completed', auth.uid()); END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
+CREATE TRIGGER trigger_create_activity_from_message AFTER INSERT ON public.messages FOR EACH ROW WHEN (NEW.sender_type IN ('user', 'ai')) EXECUTE FUNCTION public.create_activity_from_message();
+CREATE OR REPLACE FUNCTION public.update_last_contact() RETURNS TRIGGER AS $$ BEGIN UPDATE public.crm_clients SET last_contact_date = NEW.created_at WHERE id = NEW.client_id; RETURN NEW; END; $$ LANGUAGE plpgsql;
+CREATE TRIGGER trigger_update_last_contact AFTER INSERT ON public.crm_activities FOR EACH ROW WHEN (NEW.client_id IS NOT NULL) EXECUTE FUNCTION public.update_last_contact();
+CREATE OR REPLACE FUNCTION public.update_updated_at() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql;
+CREATE TRIGGER trigger_crm_clients_updated_at BEFORE UPDATE ON public.crm_clients FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+CREATE TRIGGER trigger_crm_products_updated_at BEFORE UPDATE ON public.crm_products FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+CREATE TRIGGER trigger_crm_orders_updated_at BEFORE UPDATE ON public.crm_orders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+CREATE TRIGGER trigger_crm_activities_updated_at BEFORE UPDATE ON public.crm_activities FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+CREATE TRIGGER trigger_crm_notes_updated_at BEFORE UPDATE ON public.crm_notes FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+-- ====================================================================
+-- SECTION 5: ROW-LEVEL SECURITY (RLS)
+-- ====================================================================
+
+ALTER TABLE public.crm_clients ENABLE ROW LEVEL SECURITY; ALTER TABLE public.crm_deals ENABLE ROW LEVEL SECURITY; ALTER TABLE public.crm_deal_stages_history ENABLE ROW LEVEL SECURITY; ALTER TABLE public.crm_products ENABLE ROW LEVEL SECURITY; ALTER TABLE public.crm_orders ENABLE ROW LEVEL SECURITY; ALTER TABLE public.crm_activities ENABLE ROW LEVEL SECURITY; ALTER TABLE public.crm_notes ENABLE ROW LEVEL SECURITY; ALTER TABLE public.crm_tags ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage CRM clients in their organization" ON public.crm_clients FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+CREATE POLICY "Users can manage deals in their organization" ON public.crm_deals FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+CREATE POLICY "Users can view deal history in their organization" ON public.crm_deal_stages_history FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+CREATE POLICY "Users can manage products in their organization" ON public.crm_products FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+CREATE POLICY "Users can manage orders in their organization" ON public.crm_orders FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+CREATE POLICY "Users can manage activities in their organization" ON public.crm_activities FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+CREATE POLICY "Users can manage notes in their organization" ON public.crm_notes FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+CREATE POLICY "Users can manage tags in their organization" ON public.crm_tags FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+
+-- ====================================================================
+-- INSTALLATION COMPLETE
+-- ====================================================================
+
+
+
+
+
+
+
+
+
+
+-- ====================================================================
+--          CRM FUNCTION HARDENING SCRIPT
+-- This script fixes the "Function Search Path Mutable" warnings for
+-- all new CRM and Analytics functions by setting a secure, empty search_path.
+-- ====================================================================
+
+-- Harden all SECURITY DEFINER functions
+ALTER FUNCTION public.get_crm_dashboard_summary(uuid) SET search_path = '';
+ALTER FUNCTION public.get_conversion_funnel(uuid) SET search_path = '';
+
+-- Harden all other functions to clear all warnings from the linter
+-- Even though these are not all SECURITY DEFINER, setting the path is best practice.
+ALTER FUNCTION public.create_activity_from_message() SET search_path = '';
+ALTER FUNCTION public.update_last_contact() SET search_path = '';
+ALTER FUNCTION public.update_updated_at() SET search_path = '';
+ALTER FUNCTION public.calculate_client_ltv(uuid) SET search_path = '';
+ALTER FUNCTION public.calculate_win_rate(uuid, timestamptz, timestamptz) SET search_path = '';
+ALTER FUNCTION public.refresh_all_analytics() SET search_path = '';
+ALTER FUNCTION public.update_client_revenue() SET search_path = '';
+ALTER FUNCTION public.track_deal_stage_change() SET search_path = '';
+
+-- ======================= END OF SCRIPT =======================
