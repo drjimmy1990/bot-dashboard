@@ -10,8 +10,6 @@ import NoteIcon from '@mui/icons-material/Note';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import CallIcon from '@mui/icons-material/Call';
 import EmailIcon from '@mui/icons-material/Email';
-// --- THIS IS THE FIX ---
-// Import CrmClient along with the other types.
 import { CrmNote, CrmActivity, CrmClient } from '@/lib/api';
 import { useClient, AddNotePayload } from '@/hooks/useClient';
 import NoteDialog from '../NoteDialog';
@@ -23,6 +21,7 @@ interface ClientTimelineProps {
 }
 
 type TimelineEvent = (CrmNote & { type: 'note' }) | (CrmActivity & { type: 'activity' });
+
 const getEventIcon = (event: TimelineEvent) => {
   if (event.type === 'note') return <NoteIcon />;
   switch (event.activity_type) {
@@ -33,11 +32,9 @@ const getEventIcon = (event: TimelineEvent) => {
   }
 };
 
-
 export default function ClientTimeline({ client, notes, activities }: ClientTimelineProps) {
   const [isNoteDialogOpen, setNoteDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
-
   const { addNote, isAddingNote } = useClient(client.id);
 
   const handleAddNote = (noteData: AddNotePayload) => {
@@ -53,14 +50,16 @@ export default function ClientTimeline({ client, notes, activities }: ClientTime
   };
 
   const timelineEvents = useMemo(() => {
-    const filteredActivities = activities.filter(a => a.activity_type !== 'chatbot_interaction');
+    // --- THIS IS THE SIMPLIFICATION ---
+    // No filtering is needed anymore. We just combine notes and activities.
     const combined: TimelineEvent[] = [
       ...notes.map(n => ({ ...n, type: 'note' as const })),
-      ...filteredActivities.map(a => ({ ...a, type: 'activity' as const })),
+      ...activities.map(a => ({ ...a, type: 'activity' as const })),
     ];
     combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return combined;
   }, [notes, activities]);
+  
   const formatDate = (dateString: string) => { return new Date(dateString).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); };
 
   return (

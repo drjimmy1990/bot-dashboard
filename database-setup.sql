@@ -655,3 +655,85 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+
+
+
+
+
+
+
+-- ====================================================================
+--          FIX CRM ACTIVITY TRIGGER (V3 - DEFINITIVE)
+-- This script corrects the trigger to ONLY log messages from the AI
+-- as a 'chatbot_interaction' activity. It will ignore user messages.
+-- ====================================================================
+
+CREATE OR REPLACE FUNCTION public.create_activity_from_message()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  client_record_id UUID;
+BEGIN
+  -- Find the crm_client associated with the message's contact
+  SELECT id INTO client_record_id FROM public.crm_clients WHERE contact_id = NEW.contact_id LIMIT 1;
+
+  -- Only proceed if a client record was found
+  IF client_record_id IS NOT NULL THEN
+    INSERT INTO public.crm_activities (
+      organization_id,
+      client_id,
+      message_id,
+      activity_type,
+      subject,
+      description,
+      status,
+      created_by
+    ) VALUES (
+      NEW.organization_id,
+      client_record_id,
+      NEW.id,
+      'chatbot_interaction',
+      'AI Message on ' || (SELECT platform FROM public.channels WHERE id = NEW.channel_id),
+      LEFT(NEW.text_content, 500),
+      'completed',
+      auth.uid()
+    );
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+-- Now, modify the TRIGGER itself to have a WHEN clause.
+-- This is the most efficient way to handle this.
+
+-- Drop the old trigger
+DROP TRIGGER IF EXISTS trigger_create_activity_from_message ON public.messages;
+
+-- Create the new, smarter trigger
+CREATE TRIGGER trigger_create_activity_from_message
+  AFTER INSERT ON public.messages
+  FOR EACH ROW
+  -- THIS IS THE CRITICAL CHANGE: Only run the function if the sender is 'ai'
+  WHEN (NEW.sender_type = 'ai')
+  EXECUTE FUNCTION public.create_activity_from_message();
+
+-- ======================= END OF SCRIPT =======================
+
+
+
+
+
+
+-- ====================================================================
+--          DISABLE AUTOMATIC ACTIVITY CREATION SCRIPT
+-- This script disables the trigger that automatically logs AI
+-- messages to the crm_activities table.
+-- ====================================================================
+
+ALTER TABLE public.messages
+DISABLE TRIGGER trigger_create_activity_from_message;
+
+-- ======================= END OF SCRIPT =======================

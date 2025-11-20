@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 // --- THIS IS THE FIX ---
-// Added Snackbar, Alert, and InputAdornment to the list of MUI imports.
+// Every single required component from MUI is listed here.
 import { 
   Box, 
   Paper, 
@@ -23,7 +23,6 @@ import { useClient, UpdateClientPayload } from '@/hooks/useClient';
 import ClientTagsManager from '../ClientTagsManager';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 
-// We need to add our new field to the interface
 interface CrmClientWithPlatformId extends CrmClient {
   platform_user_id?: string | null;
 }
@@ -44,17 +43,22 @@ export default function ClientProfile({ client }: ClientProfileProps) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
   
-  const hasFormChanges =
+  const handleTagsChange = (newTags: string[]) => {
+    setFormData(prev => ({ ...prev, tags: newTags }));
+  };
+
+  const hasChanges =
     formData.company_name !== client.company_name ||
     formData.email !== client.email ||
     formData.phone !== client.phone ||
     formData.secondary_phone !== client.secondary_phone ||
     formData.client_type !== client.client_type ||
     formData.lifecycle_stage !== client.lifecycle_stage ||
-    formData.source !== client.source;
+    formData.source !== client.source ||
+    JSON.stringify([...(formData.tags || [])].sort()) !== JSON.stringify([...(client.tags || [])].sort());
 
   const handleSaveChanges = () => {
-    if (!hasFormChanges) return;
+    if (!hasChanges) return;
     const payload: UpdateClientPayload = {
       company_name: formData.company_name,
       email: formData.email,
@@ -63,6 +67,7 @@ export default function ClientProfile({ client }: ClientProfileProps) {
       client_type: formData.client_type,
       lifecycle_stage: formData.lifecycle_stage,
       source: formData.source,
+      tags: formData.tags,
     };
     updateClient(payload, {
       onSuccess: () => { setSnackbar({ open: true, message: 'Client profile saved successfully!', severity: 'success' }); },
@@ -81,22 +86,7 @@ export default function ClientProfile({ client }: ClientProfileProps) {
             <TextField name="email" label="Email" type="email" value={formData.email || ''} onChange={handleChange} fullWidth size="small" sx={{ mb: 2 }} />
             <TextField name="phone" label="Primary Phone" value={formData.phone || ''} onChange={handleChange} fullWidth size="small" sx={{ mb: 2 }} />
             <TextField name="secondary_phone" label="Secondary Phone" value={formData.secondary_phone || ''} onChange={handleChange} fullWidth size="small" />
-            <TextField
-              label="Platform User ID"
-              value={formData.platform_user_id || 'N/A'}
-              fullWidth
-              size="small"
-              sx={{ mt: 2 }}
-              disabled
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <VpnKeyIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              }}
-              helperText="The user's ID on the messaging platform (e.g., WhatsApp number)."
-            />
+            <TextField label="Platform User ID" value={formData.platform_user_id || 'N/A'} fullWidth size="small" sx={{ mt: 2 }} disabled InputProps={{ startAdornment: ( <InputAdornment position="start"> <VpnKeyIcon fontSize="small" /> </InputAdornment> ), }} helperText="The user's ID on the messaging platform (e.g., WhatsApp number)." />
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>CRM Details</Typography>
@@ -118,11 +108,11 @@ export default function ClientProfile({ client }: ClientProfileProps) {
             </TextField>
             <TextField name="source" label="Lead Source" value={formData.source || ''} onChange={handleChange} fullWidth size="small" sx={{ mb: 2 }} />
             <Box sx={{ mt: 2 }}>
-              <ClientTagsManager clientId={client.id} currentTags={formData.tags} />
+              <ClientTagsManager tags={formData.tags} onTagsChange={handleTagsChange} />
             </Box>
           </Grid>
           <Grid size={12} sx={{ textAlign: 'right', mt: 2 }}>
-            <Button variant="contained" startIcon={isUpdatingClient ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />} onClick={handleSaveChanges} disabled={!hasFormChanges || isUpdatingClient}>
+            <Button variant="contained" startIcon={isUpdatingClient ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />} onClick={handleSaveChanges} disabled={!hasChanges || isUpdatingClient}>
               Save Changes
             </Button>
           </Grid>
