@@ -115,3 +115,28 @@ AFTER INSERT OR UPDATE OR DELETE ON public.messages
 FOR EACH ROW EXECUTE FUNCTION public.update_contact_summary_on_message();
 
 -- ======================= END OF SCRIPT =======================
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- ====================================================================
+--          DATABASE FUNCTION HARDENING SCRIPT (COMPLETE)
+-- This script fixes all "Function Search Path Mutable" warnings.
+-- ====================================================================
+
+-- Harden the SECURITY DEFINER functions (the important ones)
+ALTER FUNCTION public.handle_new_user() SET search_path = '';
+ALTER FUNCTION public.update_contact_summary_on_message() SET search_path = '';
+
+-- Harden the other functions to clear all warnings from the linter
+ALTER FUNCTION public.create_channel_and_config(text, text, text) SET search_path = '';
+ALTER FUNCTION public.get_my_organization_id() SET search_path = '';
