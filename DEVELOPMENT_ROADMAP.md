@@ -28,9 +28,8 @@
 5. ❌ No tag management system
 6. ❌ No product/order management UI
 7. ❌ Bug in search functionality (useClientList)
-8. ❌ No real-time updates for messages
-9. ❌ No file upload handling
-10. ❌ No notification system
+8. ❌ No file upload UI (Backend supports it, but frontend missing)
+9. ❌ No system-wide notification system (Chat is real-time, but system alerts are missing)
 
 ---
 
