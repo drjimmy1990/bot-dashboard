@@ -443,68 +443,6 @@ Transform basic client management into a comprehensive CRM with full Client 360 
 
 **Features**:
 - Define custom fields per entity (client/deal)
-- Field types: text, number, date, select, multi-select, boolean
-- Required/optional flag
-- Default values
-- Field ordering
-
-### 🛠️ Technical Implementation
-
-#### New Hooks
-```typescript
-// src/hooks/useTags.ts
-export const useTags = (orgId: string)
-export const useTag = (tagId: string)
-export const useCreateTag = ()
-export const useUpdateTag = ()
-export const useDeleteTag = ()
-
-// src/hooks/useActivities.ts
-export const useActivities = (clientId: string, filters: ActivityFilters)
-export const useCreateActivity = ()
-export const useUpdateActivity = ()
-export const useDeleteActivity = ()
-
-// src/hooks/useNotes.ts
-export const useNotes = (clientId: string, filters: NoteFilters)
-export const useCreateNote = ()
-export const useUpdateNote = ()
-export const useDeleteNote = ()
-
-// Enhance existing useClient hook with mutations
-```
-
-#### Components Structure
-```
-src/app/(app)/clients/
-├── page.tsx                          # Client list
-├── [id]/
-│   └── page.tsx                     # Client 360 view
-├── components/
-│   ├── ClientListTable.tsx
-│   ├── ClientFilters.tsx
-│   ├── ClientBulkActions.tsx
-│   ├── Client360Layout.tsx
-│   ├── ClientHeader.tsx
-│   ├── ClientLeftPanel.tsx
-│   ├── tabs/
-│   │   ├── OverviewTab.tsx
-│   │   ├── ConversationTab.tsx
-│   │   ├── ActivitiesTab.tsx
-│   │   ├── NotesTab.tsx
-│   │   ├── DealsTab.tsx
-│   │   └── OrdersTab.tsx
-│   ├── ActivityTimeline.tsx
-│   ├── ActivityModal.tsx
-│   ├── NoteEditor.tsx
-│   ├── ClientEditModal.tsx
-│   └── TagSelector.tsx
-
-src/app/(app)/settings/
-├── tags/
-│   └── page.tsx
-└── custom-fields/
-    └── page.tsx
 ```
 
 ### 📦 Deliverables
@@ -854,36 +792,32 @@ Add advanced features, external integrations, and productivity enhancements.
 
 ### 📋 Features to Implement
 
-#### 5.1 Real-time Updates
-- WebSocket connection via Supabase Realtime
-- Real-time message updates in chat
+#### 5.1 System-wide Real-time & Presence
+- **Note**: Chat messages are already real-time. This phase adds global real-time features.
 - Real-time notification delivery
 - Real-time deal stage changes
 - Presence indicators (who's online)
+- Typing indicators
 
 **Implementation**:
 ```typescript
-// Subscribe to channel messages
+// Subscribe to global events
 supabase
-  .channel('messages')
+  .channel('global')
   .on('postgres_changes', { 
-    event: 'INSERT', 
+    event: '*', 
     schema: 'public', 
-    table: 'messages' 
-  }, handleNewMessage)
+    table: 'notifications' 
+  }, handleNotification)
   .subscribe()
 ```
 
-#### 5.2 File Upload & Management
-- File upload to Supabase Storage
-- Attach files to:
-  - Clients
-  - Deals
-  - Activities
-  - Messages
-- File preview (images, PDFs)
-- File download
-- File sharing
+#### 5.2 Advanced File Management
+- **Note**: Basic file upload added in Phase 2. This phase adds advanced management.
+- Centralized file library
+- File categorization (Contracts, Invoices, etc.)
+- File sharing permissions
+- Bulk download
 
 **Structure**:
 ```
