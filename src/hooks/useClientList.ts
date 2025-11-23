@@ -1,7 +1,7 @@
 // src/hooks/useClientList.ts
 'use client';
 
-import { useQuery, keepPreviousData } from '@tanstack/react-query'; // <-- IMPORT keepPreviousData
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { CrmClient } from '@/lib/api';
 import { useEffect, useState } from 'react';
@@ -45,8 +45,11 @@ async function fetchClientList({
 
   if (searchTerm) {
     const searchQuery = `%${searchTerm}%`;
+    // --- THIS IS THE FIX ---
+    // The query now searches on valid columns: company_name, email, phone, and platform_user_id.
+    // The incorrect 'name' column has been removed.
     query = query.or(
-      `name.ilike.${searchQuery},company_name.ilike.${searchQuery},email.ilike.${searchQuery},phone.ilike.${searchQuery}`
+      `company_name.ilike.${searchQuery},email.ilike.${searchQuery},phone.ilike.${searchQuery},platform_user_id.ilike.${searchQuery}`
     );
   }
 
@@ -77,8 +80,6 @@ export const useClientList = ({
   return useQuery<ClientListResponse>({
     queryKey,
     queryFn: () => fetchClientList({ page, pageSize, searchTerm: debouncedSearchTerm }),
-    // --- THIS IS THE FIX for TanStack Query v5 ---
-    // The property is now 'placeholderData' and it uses a helper function.
     placeholderData: keepPreviousData,
   });
 };
