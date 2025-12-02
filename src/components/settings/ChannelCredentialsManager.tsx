@@ -10,7 +10,11 @@ import {
   Snackbar,
   Alert,
   TextField,
+  IconButton,
+  Divider,
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
 import { supabase } from '@/lib/supabaseClient';
 
 // This component expects the channelId as a prop
@@ -18,48 +22,93 @@ interface ChannelCredentialsManagerProps {
   channelId: string;
 }
 
+interface CredentialField {
+  key: string;
+  value: string;
+}
+
 export default function ChannelCredentialsManager({ channelId }: ChannelCredentialsManagerProps) {
   // We use local state to manage this component's data
-  const [credentials, setCredentials] = useState<string>('');
+  const [fields, setFields] = useState<CredentialField[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' | 'info' } | null>(null);
 
   // Fetch the credentials when the component loads
   useEffect(() => {
     async function fetchCredentials() {
       setIsLoading(true);
       setError('');
-      
+
       const { data, error } = await supabase
         .from('channels')
         .select('credentials')
         .eq('id', channelId)
         .single();
-      
+
       if (error) {
         setError(error.message);
       } else if (data && data.credentials) {
-        // We'll use JSON.stringify to display the JSON object in the text field
-        setCredentials(JSON.stringify(data.credentials, null, 2)); // The '2' formats it nicely
+        // Parse the JSON object into an array of fields
+        try {
+          const credentialsObj = typeof data.credentials === 'string'
+            ? JSON.parse(data.credentials)
+            : data.credentials;
+
+          if (credentialsObj && typeof credentialsObj === 'object' && !Array.isArray(credentialsObj)) {
+            const newFields = Object.entries(credentialsObj).map(([key, value]) => ({
+              key,
+              value: String(value), // Ensure value is a string
+            }));
+            setFields(newFields);
+          } else {
+            // If it's not a valid object (e.g. null or array), start with empty or handle gracefully
+            setFields([]);
+          }
+        } catch (e) {
+          console.error("Failed to parse credentials", e);
+          setFields([]);
+        }
       }
       setIsLoading(false);
     }
     fetchCredentials();
   }, [channelId]);
 
+  const handleFieldChange = (index: number, field: 'key' | 'value', newValue: string) => {
+    const newFields = [...fields];
+    newFields[index][field] = newValue;
+    setFields(newFields);
+  };
+
+  const handleAddField = () => {
+    setFields([...fields, { key: '', value: '' }]);
+  };
+
+  const handleDeleteField = (index: number) => {
+    const newFields = fields.filter((_, i) => i !== index);
+    setFields(newFields);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
-    let credentialsToSave;
-    
-    // Try to parse the text as JSON before saving
-    try {
-      credentialsToSave = JSON.parse(credentials);
-    } catch (e) {
-      setSnackbar({ open: true, message: 'Error: Invalid JSON format.', severity: 'error' });
-      setIsSaving(false);
-      return;
+
+    // Convert array of fields back to JSON object
+    const credentialsToSave: Record<string, string> = {};
+    let hasEmptyKeys = false;
+
+    fields.forEach((field) => {
+      if (field.key.trim()) {
+        credentialsToSave[field.key.trim()] = field.value;
+      } else {
+        // If key is empty but value exists, we might want to warn, but for now we just skip or flag
+        if (field.value) hasEmptyKeys = true;
+      }
+    });
+
+    if (hasEmptyKeys) {
+      setSnackbar({ open: true, message: 'Warning: Fields with empty keys were ignored.', severity: 'warning' });
     }
 
     const { error: updateError } = await supabase
@@ -74,7 +123,7 @@ export default function ChannelCredentialsManager({ channelId }: ChannelCredenti
     }
     setIsSaving(false);
   };
-  
+
   if (isLoading) {
     return (
       <Paper sx={{ p: 3, textAlign: 'center' }}>
@@ -92,26 +141,60 @@ export default function ChannelCredentialsManager({ channelId }: ChannelCredenti
       <Typography variant="h6" gutterBottom>
         Channel Credentials
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Store sensitive information like API tokens or secrets for this channel's n8n workflows. This data is stored as a secure JSON object.
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Manage the API keys and secrets for this channel. Add key-value pairs below.
       </Typography>
-      
-      <TextField
-        label="Credentials (JSON format)"
-        value={credentials}
-        onChange={(e) => setCredentials(e.target.value)}
-        fullWidth
-        multiline
-        rows={8}
-        variant="outlined"
-        placeholder={`{\n  "api_key": "your-key",\n  "api_secret": "your-secret"\n}`}
-        sx={{ '& .MuiInputBase-input': { fontFamily: 'monospace' } }}
-      />
-      
-      <Box sx={{ textAlign: 'right', mt: 2 }}>
-        <Button 
-          variant="contained" 
-          onClick={handleSave} 
+
+      <Box sx={{ mb: 3 }}>
+        {fields.map((field, index) => (
+          <Box key={index} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'flex-start' }}>
+            <TextField
+              label="Key"
+              value={field.key}
+              onChange={(e) => handleFieldChange(index, 'key', e.target.value)}
+              variant="outlined"
+              size="small"
+              sx={{ flex: 1 }}
+              placeholder="e.g. api_key"
+            />
+            <TextField
+              label="Value"
+              value={field.value}
+              onChange={(e) => handleFieldChange(index, 'value', e.target.value)}
+              variant="outlined"
+              size="small"
+              sx={{ flex: 1 }}
+              placeholder="e.g. 12345abcde"
+              type="text"
+            />
+            <IconButton onClick={() => handleDeleteField(index)} color="error" size="small" sx={{ mt: 0.5 }}>
+              <DeleteIcon />
+            </IconButton>
+          </Box>
+        ))}
+
+        {fields.length === 0 && (
+          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mb: 2 }}>
+            No credentials added yet.
+          </Typography>
+        )}
+
+        <Button
+          startIcon={<AddIcon />}
+          onClick={handleAddField}
+          variant="outlined"
+          size="small"
+        >
+          Add Field
+        </Button>
+      </Box>
+
+      <Divider sx={{ my: 2 }} />
+
+      <Box sx={{ textAlign: 'right' }}>
+        <Button
+          variant="contained"
+          onClick={handleSave}
           disabled={isSaving}
         >
           {isSaving ? <CircularProgress size={24} /> : 'Save Credentials'}
