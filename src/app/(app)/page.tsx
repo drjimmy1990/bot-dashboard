@@ -1,8 +1,8 @@
 // src/app/(app)/page.tsx
-'use client'; 
-    
+'use client';
+
 import React from 'react';
-import { Box, Typography, Paper, Grid, Card, CardActionArea, CardContent } from '@mui/material';
+import { Box, Typography, Grid, Card, CardActionArea } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import ChatIcon from '@mui/icons-material/Chat';
 import DnsIcon from '@mui/icons-material/Dns';
@@ -30,17 +30,17 @@ export default function HomePage() {
       <Typography variant="h4" gutterBottom>
         Welcome to the Dashboard
       </Typography>
-      
+
       <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 4 }}>
         Select a section to begin managing your automated communications.
       </Typography>
-    
+
       <Grid container spacing={3}>
         {sections.map((section) => (
           <Grid size={{ xs: 12, md: 6 }} key={section.title}>
             <Card sx={{ height: '100%' }}>
-              <CardActionArea 
-                sx={{ p: 2, height: '100%', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 3 }} 
+              <CardActionArea
+                sx={{ p: 2, height: '100%', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 3 }}
                 onClick={() => router.push(section.path)}
               >
                 {section.icon}

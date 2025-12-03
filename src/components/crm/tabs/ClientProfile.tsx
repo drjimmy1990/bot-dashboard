@@ -4,18 +4,18 @@
 import React, { useState, useEffect } from 'react';
 // --- THIS IS THE FIX ---
 // Every single required component from MUI is listed here.
-import { 
-  Box, 
-  Paper, 
-  Grid, 
-  TextField, 
-  Button, 
-  CircularProgress, 
-  Typography, 
-  Snackbar, 
-  Alert, 
-  MenuItem, 
-  InputAdornment 
+import {
+  Box,
+  Paper,
+  Grid,
+  TextField,
+  Button,
+  CircularProgress,
+  Typography,
+  Snackbar,
+  Alert,
+  MenuItem,
+  InputAdornment
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import { CrmClient } from '@/lib/api';
@@ -42,7 +42,7 @@ export default function ClientProfile({ client }: ClientProfileProps) {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
-  
+
   const handleTagsChange = (newTags: string[]) => {
     setFormData(prev => ({ ...prev, tags: newTags }));
   };
@@ -71,7 +71,7 @@ export default function ClientProfile({ client }: ClientProfileProps) {
     };
     updateClient(payload, {
       onSuccess: () => { setSnackbar({ open: true, message: 'Client profile saved successfully!', severity: 'success' }); },
-      onError: (err: any) => { setSnackbar({ open: true, message: `Error: ${err.message}`, severity: 'error' }); },
+      onError: (err: Error) => { setSnackbar({ open: true, message: `Error: ${err.message}`, severity: 'error' }); },
     });
   };
 
@@ -86,7 +86,7 @@ export default function ClientProfile({ client }: ClientProfileProps) {
             <TextField name="email" label="Email" type="email" value={formData.email || ''} onChange={handleChange} fullWidth size="small" sx={{ mb: 2 }} />
             <TextField name="phone" label="Primary Phone" value={formData.phone || ''} onChange={handleChange} fullWidth size="small" sx={{ mb: 2 }} />
             <TextField name="secondary_phone" label="Secondary Phone" value={formData.secondary_phone || ''} onChange={handleChange} fullWidth size="small" />
-            <TextField label="Platform User ID" value={formData.platform_user_id || 'N/A'} fullWidth size="small" sx={{ mt: 2 }} disabled InputProps={{ startAdornment: ( <InputAdornment position="start"> <VpnKeyIcon fontSize="small" /> </InputAdornment> ), }} helperText="The user's ID on the messaging platform (e.g., WhatsApp number)." />
+            <TextField label="Platform User ID" value={formData.platform_user_id || 'N/A'} fullWidth size="small" sx={{ mt: 2 }} disabled InputProps={{ startAdornment: (<InputAdornment position="start"> <VpnKeyIcon fontSize="small" /> </InputAdornment>), }} helperText="The user's ID on the messaging platform (e.g., WhatsApp number)." />
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>CRM Details</Typography>
@@ -98,13 +98,13 @@ export default function ClientProfile({ client }: ClientProfileProps) {
               <MenuItem value="inactive">Inactive</MenuItem>
             </TextField>
             <TextField name="lifecycle_stage" label="Lifecycle Stage" value={formData.lifecycle_stage} onChange={handleChange} select fullWidth size="small" sx={{ mb: 2 }}>
-                <MenuItem value="lead">Lead</MenuItem>
-                <MenuItem value="mql">Marketing Qualified Lead (MQL)</MenuItem>
-                <MenuItem value="sql">Sales Qualified Lead (SQL)</MenuItem>
-                <MenuItem value="opportunity">Opportunity</MenuItem>
-                <MenuItem value="customer">Customer</MenuItem>
-                <MenuItem value="evangelist">Evangelist</MenuItem>
-                <MenuItem value="churned">Churned</MenuItem>
+              <MenuItem value="lead">Lead</MenuItem>
+              <MenuItem value="mql">Marketing Qualified Lead (MQL)</MenuItem>
+              <MenuItem value="sql">Sales Qualified Lead (SQL)</MenuItem>
+              <MenuItem value="opportunity">Opportunity</MenuItem>
+              <MenuItem value="customer">Customer</MenuItem>
+              <MenuItem value="evangelist">Evangelist</MenuItem>
+              <MenuItem value="churned">Churned</MenuItem>
             </TextField>
             <TextField name="source" label="Lead Source" value={formData.source || ''} onChange={handleChange} fullWidth size="small" sx={{ mb: 2 }} />
             <Box sx={{ mt: 2 }}>
@@ -118,7 +118,7 @@ export default function ClientProfile({ client }: ClientProfileProps) {
           </Grid>
         </Grid>
       </Paper>
-      
+
       {snackbar && (
         <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={() => setSnackbar(null)}>
           <Alert onClose={() => setSnackbar(null)} severity={snackbar.severity} sx={{ width: '100%' }}>

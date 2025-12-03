@@ -34,38 +34,38 @@ interface ContentCollectionsManagerProps {
 
 // Dialog for adding a new collection (No changes needed here)
 function AddCollectionDialog({ open, onClose, onSubmit, isAdding }: { open: boolean, onClose: () => void, onSubmit: (name: string) => void, isAdding: boolean }) {
-    const [name, setName] = useState('');
-    
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSubmit(name);
-        setName(''); // Reset form
-    }
+  const [name, setName] = useState('');
 
-    return (
-        <Dialog open={open} onClose={onClose} PaperProps={{component: 'form', onSubmit: handleSubmit}} fullWidth maxWidth="xs">
-            <DialogTitle>Add New Collection</DialogTitle>
-            <DialogContent>
-                <TextField
-                    autoFocus
-                    margin="dense"
-                    name="name"
-                    label="Collection Name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    fullWidth
-                    required
-                    helperText="e.g., 'Testimonials' or 'Product Images'"
-                />
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose} disabled={isAdding}>Cancel</Button>
-                <Button type="submit" variant="contained" disabled={isAdding || !name.trim()}>
-                    {isAdding ? <CircularProgress size={24}/> : "Create"}
-                </Button>
-            </DialogActions>
-        </Dialog>
-    );
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(name);
+    setName(''); // Reset form
+  }
+
+  return (
+    <Dialog open={open} onClose={onClose} PaperProps={{ component: 'form', onSubmit: handleSubmit }} fullWidth maxWidth="xs">
+      <DialogTitle>Add New Collection</DialogTitle>
+      <DialogContent>
+        <TextField
+          autoFocus
+          margin="dense"
+          name="name"
+          label="Collection Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          fullWidth
+          required
+          helperText="e.g., 'Testimonials' or 'Product Images'"
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={isAdding}>Cancel</Button>
+        <Button type="submit" variant="contained" disabled={isAdding || !name.trim()}>
+          {isAdding ? <CircularProgress size={24} /> : "Create"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 }
 
 
@@ -73,16 +73,16 @@ function AddCollectionDialog({ open, onClose, onSubmit, isAdding }: { open: bool
 // The component now receives and uses the channelId from its props.
 export default function ContentCollectionsManager({ collections, channelId }: ContentCollectionsManagerProps) {
   // REMOVED: The broken useSearchParams logic is gone.
-  
+
   // The hook now receives the correct channelId, and we get all mutation functions from it.
   const { addCollection, isAddingCollection, updateCollection, isUpdatingCollection } = useChannelConfig(channelId);
-  
+
   const [selectedCollection, setSelectedCollection] = useState<ContentCollection | null>(null);
   const [editText, setEditText] = useState('');
-  
+
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  
+
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
 
   const handleOpenEditDialog = (collection: ContentCollection) => {
@@ -100,7 +100,7 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
   const handleSaveChanges = async () => {
     if (!selectedCollection) return;
     const updatedItems = editText.split('\n').map(line => line.trim()).filter(line => line);
-    
+
     updateCollection({ id: selectedCollection.id, items: updatedItems }, {
       onSuccess: () => {
         setSnackbar({ open: true, message: 'Collection saved!', severity: 'success' });
@@ -124,12 +124,12 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
     <>
       <Paper sx={{ p: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-            <Typography variant="h6" gutterBottom sx={{mb: 0}}>Content Collections</Typography>
-            <Tooltip title="Add New Collection">
-                <IconButton onClick={() => setIsAddDialogOpen(true)} color="primary">
-                    <AddCircleOutlineIcon />
-                </IconButton>
-            </Tooltip>
+          <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>Content Collections</Typography>
+          <Tooltip title="Add New Collection">
+            <IconButton onClick={() => setIsAddDialogOpen(true)} color="primary">
+              <AddCircleOutlineIcon />
+            </IconButton>
+          </Tooltip>
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Manage lists of content, like image URLs, used by your AI agents.
@@ -141,23 +141,23 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
             </ListItemButton>
           ))}
           {collections.length === 0 && (
-              <Typography color="text.secondary" textAlign="center" sx={{py: 2}}>No collections found. Click the '+' to add one.</Typography>
+            <Typography color="text.secondary" textAlign="center" sx={{ py: 2 }}>No collections found. Click the &apos;+&apos; to add one.</Typography>
           )}
         </List>
       </Paper>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onClose={handleCloseEditDialog} fullWidth maxWidth="md">
-        <DialogTitle>Edit "{selectedCollection?.name}"</DialogTitle>
+        <DialogTitle>Edit &quot;{selectedCollection?.name}&quot;</DialogTitle>
         <DialogContent>
-          <TextField autoFocus margin="dense" label="Content Items (one per line)" value={editText} onChange={(e) => setEditText(e.target.value)} multiline rows={15} fullWidth variant="outlined" helperText="Enter URLs or text snippets, each on a new line."/>
+          <TextField autoFocus margin="dense" label="Content Items (one per line)" value={editText} onChange={(e) => setEditText(e.target.value)} multiline rows={15} fullWidth variant="outlined" helperText="Enter URLs or text snippets, each on a new line." />
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseEditDialog} disabled={isUpdatingCollection}>Cancel</Button>
           <Button onClick={handleSaveChanges} variant="contained" disabled={isUpdatingCollection}>{isUpdatingCollection ? <CircularProgress size={24} /> : 'Save Collection'}</Button>
         </DialogActions>
       </Dialog>
-      
+
       {/* Add Dialog */}
       <AddCollectionDialog open={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} onSubmit={handleAddCollection} isAdding={isAddingCollection} />
 

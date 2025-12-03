@@ -8,14 +8,15 @@ import { User } from '@supabase/supabase-js';
 
 // Helper hook to reliably get the current user session.
 function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => { setUser(session?.user ?? null); setLoading(false); });
-    supabase.auth.getSession().then(({ data: { session } }) => { if (!user) setUser(session?.user ?? null); setLoading(false); });
-    return () => subscription.unsubscribe();
-  }, []);
-  return { user, loading };
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => { setUser(session?.user ?? null); setLoading(false); });
+        supabase.auth.getSession().then(({ data: { session } }) => { if (!user) setUser(session?.user ?? null); setLoading(false); });
+        return () => subscription.unsubscribe();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    return { user, loading };
 }
 
 // Type definitions for the channel and its creation payload.
@@ -25,7 +26,7 @@ export type NewChannelPayload = { name: string; platform: 'whatsapp' | 'facebook
 // Async function to fetch all channels for the logged-in user.
 async function fetchChannels(): Promise<Channel[]> {
     const { data, error } = await supabase.from('channels').select('id, organization_id, name, platform, platform_channel_id, is_active').order('name');
-    if (error) throw error; 
+    if (error) throw error;
     return data || [];
 }
 
@@ -49,7 +50,7 @@ export const useChannels = () => {
             });
 
             if (rpcError) throw rpcError;
-            
+
             // The RPC function now returns the new channel's ID and its organization ID.
             const newChannelId = data.id;
             const orgId = data.organization_id;
@@ -85,6 +86,6 @@ export const useChannels = () => {
             queryClient.invalidateQueries({ queryKey });
         }
     });
-    
+
     return { channels, isLoading: isAuthLoading || isLoading, isError, error, addChannel, isAdding };
 };

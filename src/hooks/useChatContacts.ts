@@ -54,17 +54,17 @@ export const useChatContacts = (channelId: string | null, searchTerm?: string) =
   const updateNameMutation = useMutation({ mutationFn: api.updateContactName, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['contacts', channelId] }); }, });
   const toggleAiMutation = useMutation({ mutationFn: api.toggleAiStatus, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['contacts', channelId] }); }, });
   const deleteContactMutation = useMutation({ mutationFn: api.deleteContact, onSuccess: (data, contactId) => { queryClient.invalidateQueries({ queryKey: ['contacts', channelId] }); queryClient.removeQueries({ queryKey: ['messages', contactId] }); } });
-  
+
   // (Realtime logic remains the same)
   useEffect(() => {
     if (!channelId) return;
     const subscriptionChannel: RealtimeChannel = supabase
       .channel(`public:contacts:channel_id=eq.${channelId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'contacts', filter: `channel_id=eq.${channelId}` }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contacts', filter: `channel_id=eq.${channelId}` }, () => {
         queryClient.invalidateQueries({ queryKey: ['contacts', channelId] });
       }).subscribe();
     return () => { supabase.removeChannel(subscriptionChannel); };
   }, [queryClient, channelId]);
-  
+
   return { contacts, isLoadingContacts, updateName: updateNameMutation.mutate, toggleAi: toggleAiMutation.mutate, deleteContact: deleteContactMutation.mutate };
 };

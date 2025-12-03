@@ -7,7 +7,7 @@ import { Box, Typography, Paper, TextField, InputAdornment } from '@mui/material
 // --- THIS IS THE FIX ---
 // GridValueGetterParams is not a named export. We don't need to import it.
 // The type will be inferred correctly by TypeScript or we can use the `GridValueGetter` type if needed.
-import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridPaginationModel, GridRowParams } from '@mui/x-data-grid';
 import SearchIcon from '@mui/icons-material/Search';
 import { useClientList } from '@/hooks/useClientList';
 import { CrmClient } from '@/lib/api';
@@ -71,7 +71,7 @@ export default function ClientsListPage() {
     searchTerm: searchTerm,
   });
 
-  const handleRowClick = (params: any) => {
+  const handleRowClick = (params: GridRowParams) => {
     router.push(`/clients/${params.id}`);
   };
 

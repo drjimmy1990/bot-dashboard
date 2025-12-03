@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
   Typography,
   Paper,
   Grid,
@@ -30,7 +29,7 @@ interface GeneralSettingsProps {
 // The component now receives and uses the channelId from its props.
 export default function GeneralSettings({ config, channelId }: GeneralSettingsProps) {
   // REMOVED: The broken useSearchParams logic is gone.
-  
+
   // The hook now receives the correct channelId, so all mutations will work.
   const { updateConfig, isUpdatingConfig } = useChannelConfig(channelId);
 
@@ -46,45 +45,45 @@ export default function GeneralSettings({ config, channelId }: GeneralSettingsPr
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
-  
+
   const handleSliderChange = (event: Event, newValue: number | number[]) => {
     setFormData(prev => ({ ...prev, ai_temperature: newValue as number }));
   };
-  
+
   const handleSaveChanges = () => {
     // We only send the fields that can be changed on this form
     const payload: Partial<ChannelConfig> = {
-        is_bot_active: formData.is_bot_active,
-        ai_model: formData.ai_model,
-        ai_temperature: formData.ai_temperature,
+      is_bot_active: formData.is_bot_active,
+      ai_model: formData.ai_model,
+      ai_temperature: formData.ai_temperature,
     };
 
     updateConfig(payload, {
-        onSuccess: () => setSnackbar({ open: true, message: 'Settings saved!', severity: 'success' }),
-        onError: (err) => setSnackbar({ open: true, message: `Error: ${err.message}`, severity: 'error' }),
+      onSuccess: () => setSnackbar({ open: true, message: 'Settings saved!', severity: 'success' }),
+      onError: (err) => setSnackbar({ open: true, message: `Error: ${err.message}`, severity: 'error' }),
     });
   };
 
   return (
     <Paper sx={{ p: 3 }}>
       <Typography variant="h6" gutterBottom>General Settings</Typography>
-      
+
       <Grid container spacing={3} alignItems="center">
         <Grid size={12}>
-           <FormControlLabel
-                control={
-                    <Switch
-                        checked={formData.is_bot_active}
-                        onChange={handleChange}
-                        name="is_bot_active"
-                        color="success"
-                    />
-                }
-                label={formData.is_bot_active ? "Bot is ON" : "Bot is OFF"}
-            />
-            <Typography variant="caption" display="block" color="text.secondary">
-                This is the master switch. If off, the AI will not respond to any messages.
-            </Typography>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData.is_bot_active}
+                onChange={handleChange}
+                name="is_bot_active"
+                color="success"
+              />
+            }
+            label={formData.is_bot_active ? "Bot is ON" : "Bot is OFF"}
+          />
+          <Typography variant="caption" display="block" color="text.secondary">
+            This is the master switch. If off, the AI will not respond to any messages.
+          </Typography>
         </Grid>
         <Grid size={12}>
           <TextField
@@ -112,13 +111,13 @@ export default function GeneralSettings({ config, channelId }: GeneralSettingsPr
           />
         </Grid>
         <Grid size={12} sx={{ textAlign: 'right' }}>
-            <Button variant="contained" onClick={handleSaveChanges} disabled={isUpdatingConfig}>
-                {isUpdatingConfig ? <CircularProgress size={24} /> : 'Save General Settings'}
-            </Button>
+          <Button variant="contained" onClick={handleSaveChanges} disabled={isUpdatingConfig}>
+            {isUpdatingConfig ? <CircularProgress size={24} /> : 'Save General Settings'}
+          </Button>
         </Grid>
       </Grid>
 
-       {snackbar && (
+      {snackbar && (
         <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar(null)}>
           <Alert onClose={() => setSnackbar(null)} severity={snackbar.severity} sx={{ width: '100%' }}>
             {snackbar.message}

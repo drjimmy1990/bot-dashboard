@@ -32,11 +32,11 @@ export default function OrganizationSettings() {
     async function fetchOrganization() {
       setLoading(true);
       // RLS ensures this only fetches the organization for the currently logged-in user.
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('organizations')
         .select('id, name')
         .single();
-      
+
       if (data) {
         setOrganization(data);
         setOrgName(data.name);
@@ -72,9 +72,9 @@ export default function OrganizationSettings() {
       </Paper>
     );
   }
-  
+
   if (!organization) {
-      return <Alert severity="warning">Could not load organization details.</Alert>
+    return <Alert severity="warning">Could not load organization details.</Alert>
   }
 
   return (

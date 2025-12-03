@@ -21,6 +21,8 @@ export type UpdateClientPayload = Partial<Omit<CrmClient, 'id' | 'organization_i
 // Define the payload for creating a new note
 export type AddNotePayload = Omit<CrmNote, 'id' | 'organization_id' | 'client_id' | 'created_at' | 'updated_at' | 'created_by'>;
 
+// Define the payload for logging a new activity
+export type AddActivityPayload = Omit<CrmActivity, 'id' | 'organization_id' | 'created_at' | 'updated_at' | 'created_by'>;
 
 // --- API Fetcher Function ---
 
@@ -52,7 +54,7 @@ async function fetchClient360Data(clientId: string): Promise<Client360Data> {
     if (contactError) console.warn(`Could not fetch associated contact: ${contactError.message}`);
     else contact = contactData;
   }
-  
+
   return {
     client: clientRes.data,
     contact,
@@ -74,7 +76,7 @@ export const useClient = (clientId: string | null) => {
     queryFn: () => fetchClient360Data(clientId!),
     enabled: !!clientId, // Only run the query if a clientId is provided
   });
-  
+
   // --- MUTATIONS ---
 
   // Mutation to update the core details of the client
@@ -97,7 +99,7 @@ export const useClient = (clientId: string | null) => {
   const { mutate: addNote, isPending: isAddingNote } = useMutation({
     mutationFn: async (payload: AddNotePayload) => {
       if (!data?.client) throw new Error("Client data not available.");
-      
+
       const { error } = await supabase
         .from('crm_notes')
         .insert({
@@ -112,15 +114,24 @@ export const useClient = (clientId: string | null) => {
     },
   });
 
-  // Placeholder for logging a new activity (can be implemented fully later)
+  // Mutation to log a new activity
   const { mutate: logActivity, isPending: isLoggingActivity } = useMutation({
-      mutationFn: async (payload: any) => { // Replace 'any' with a proper ActivityPayload type later
-          console.log("Logging activity:", payload);
-          // TODO: Implement the Supabase call to insert into 'crm_activities'
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey });
-      },
+    mutationFn: async (payload: AddActivityPayload) => {
+      if (!data?.client) throw new Error("Client data not available.");
+
+      const { error } = await supabase
+        .from('crm_activities')
+        .insert({
+          ...payload,
+          client_id: clientId!,
+          organization_id: data.client.organization_id,
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
   });
 
   return {

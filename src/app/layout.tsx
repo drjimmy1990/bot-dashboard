@@ -6,6 +6,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from '@/theme';
 import QueryProvider from '@/providers/QueryProvider';
+import AuthProvider from '@/providers/AuthProvider';
 import './globals.css';
 import { UIProvider } from '@/providers/UIProvider';
 import { ChannelProvider } from '@/providers/ChannelProvider';
@@ -31,13 +32,15 @@ export default function RootLayout({
           <ThemeProvider theme={theme}>
             <CssBaseline />
             <QueryProvider>
-              {/* UIProvider must be here, wrapping the children */}
-              <UIProvider>
-                <ChannelProvider>
-                  {/* All other layouts, like (app)/layout.tsx, will be rendered here as 'children' */}
-                  {children}
-                </ChannelProvider>
-              </UIProvider>
+              <AuthProvider>
+                {/* UIProvider must be here, wrapping the children */}
+                <UIProvider>
+                  <ChannelProvider>
+                    {/* All other layouts, like (app)/layout.tsx, will be rendered here as 'children' */}
+                    {children}
+                  </ChannelProvider>
+                </UIProvider>
+              </AuthProvider>
             </QueryProvider>
           </ThemeProvider>
         </AppRouterCacheProvider>

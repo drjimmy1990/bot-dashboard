@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/lib/api.ts
 import { supabase } from './supabaseClient';
 
@@ -18,7 +19,7 @@ export interface Contact {
   unread_count: number;
   // --- THIS IS THE MODIFICATION ---
   // We will need this field from the join in `useChatContacts` later.
-  crm_clients: { id: string }[] | null; 
+  crm_clients: { id: string }[] | null;
 }
 
 export interface Message {
@@ -153,17 +154,17 @@ export const getMessagesForContact = async (contactId: string): Promise<Message[
  * @param contactId - The UUID of the contact.
  */
 export const markChatAsRead = async (contactId: string) => {
-    const { error } = await supabase
-      .from('messages')
-      .update({ is_read_by_agent: true })
-      .eq('contact_id', contactId)
-      .eq('sender_type', 'user'); // Only mark user messages as read
+  const { error } = await supabase
+    .from('messages')
+    .update({ is_read_by_agent: true })
+    .eq('contact_id', contactId)
+    .eq('sender_type', 'user'); // Only mark user messages as read
 
-    if (error) {
-      console.error("Error marking chat as read:", error);
-      throw new Error(error.message);
-    }
-    return { success: true };
+  if (error) {
+    console.error("Error marking chat as read:", error);
+    throw new Error(error.message);
+  }
+  return { success: true };
 }
 
 /**
@@ -171,18 +172,18 @@ export const markChatAsRead = async (contactId: string) => {
  * @param params - Object containing contactId and the newName.
  */
 export const updateContactName = async ({ contactId, newName }: { contactId: string, newName: string }) => {
-    const { data, error } = await supabase
-      .from('contacts')
-      .update({ name: newName })
-      .eq('id', contactId)
-      .select()
-      .single();
+  const { data, error } = await supabase
+    .from('contacts')
+    .update({ name: newName })
+    .eq('id', contactId)
+    .select()
+    .single();
 
-    if (error) {
-      console.error("Error updating contact name:", error);
-      throw new Error(error.message);
-    }
-    return data;
+  if (error) {
+    console.error("Error updating contact name:", error);
+    throw new Error(error.message);
+  }
+  return data;
 }
 
 /**
@@ -190,16 +191,16 @@ export const updateContactName = async ({ contactId, newName }: { contactId: str
  * @param params - Object containing contactId and the newStatus.
  */
 export const toggleAiStatus = async ({ contactId, newStatus }: { contactId: string, newStatus: boolean }) => {
-    const { error } = await supabase
-      .from('contacts')
-      .update({ ai_enabled: newStatus })
-      .eq('id', contactId);
+  const { error } = await supabase
+    .from('contacts')
+    .update({ ai_enabled: newStatus })
+    .eq('id', contactId);
 
-    if (error) {
-      console.error("Error toggling AI status:", error);
-      throw new Error(error.message);
-    }
-    return { success: true };
+  if (error) {
+    console.error("Error toggling AI status:", error);
+    throw new Error(error.message);
+  }
+  return { success: true };
 }
 
 /**
@@ -207,16 +208,16 @@ export const toggleAiStatus = async ({ contactId, newStatus }: { contactId: stri
  * @param contactId - The UUID of the contact to delete.
  */
 export const deleteContact = async (contactId: string) => {
-    const { error } = await supabase
-      .from('contacts')
-      .delete()
-      .eq('id', contactId);
+  const { error } = await supabase
+    .from('contacts')
+    .delete()
+    .eq('id', contactId);
 
-    if (error) {
-      console.error("Error deleting contact:", error);
-      throw new Error(error.message);
-    }
-    return { success: true };
+  if (error) {
+    console.error("Error deleting contact:", error);
+    throw new Error(error.message);
+  }
+  return { success: true };
 }
 
 /**
@@ -225,39 +226,39 @@ export const deleteContact = async (contactId: string) => {
  * @param payload - The message payload.
  */
 export const sendMessage = async (payload: {
-    contact_id: string;
-    channel_id: string;
-    organization_id: string;
-    content_type: 'text' | 'image';
-    text_content?: string;
-    attachment_url?: string;
-    platform: string;
+  contact_id: string;
+  channel_id: string;
+  organization_id: string;
+  content_type: 'text' | 'image';
+  text_content?: string;
+  attachment_url?: string;
+  platform: string;
 }) => {
-    // Determine the correct Edge Function to call based on the contact's platform.
-    let edgeFunctionName = '';
-    switch (payload.platform) {
-        case 'whatsapp':
-            edgeFunctionName = 'send-agent-whatsapp-message';
-            break;
-        case 'facebook':
-            edgeFunctionName = 'send-facebook-agent-message';
-            break;
-        // Add other platforms like 'instagram' here in the future
-        default:
-            throw new Error(`Unsupported platform for sending agent message: ${payload.platform}`);
-    }
-    
-    // The Edge Function is responsible for inserting the message into the DB
-    // and triggering the corresponding n8n webhook.
-    const { data, error } = await supabase.functions.invoke(edgeFunctionName, {
-        body: payload // Send the entire payload to the function
-    });
+  // Determine the correct Edge Function to call based on the contact's platform.
+  let edgeFunctionName = '';
+  switch (payload.platform) {
+    case 'whatsapp':
+      edgeFunctionName = 'send-agent-whatsapp-message';
+      break;
+    case 'facebook':
+      edgeFunctionName = 'send-facebook-agent-message';
+      break;
+    // Add other platforms like 'instagram' here in the future
+    default:
+      throw new Error(`Unsupported platform for sending agent message: ${payload.platform}`);
+  }
 
-    if (error) {
-      console.error(`Error invoking ${edgeFunctionName}:`, error);
-      throw new Error(error.message);
-    }
+  // The Edge Function is responsible for inserting the message into the DB
+  // and triggering the corresponding n8n webhook.
+  const { data, error } = await supabase.functions.invoke(edgeFunctionName, {
+    body: payload // Send the entire payload to the function
+  });
 
-    // The edge function should return the newly created message record.
-    return data.message;
+  if (error) {
+    console.error(`Error invoking ${edgeFunctionName}:`, error);
+    throw new Error(error.message);
+  }
+
+  // The edge function should return the newly created message record.
+  return data.message;
 }

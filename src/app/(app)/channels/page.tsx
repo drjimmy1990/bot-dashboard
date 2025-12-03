@@ -15,13 +15,12 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
-  IconButton
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SettingsIcon from '@mui/icons-material/Settings';
 import Link from 'next/link';
 
-import { useChannels } from '@/hooks/useChannels';
+import { useChannels, NewChannelPayload } from '@/hooks/useChannels';
 import ChannelForm from '@/components/channels/ChannelForm';
 import PlatformAvatar from '@/components/ui/PlatformAvatar';
 
@@ -31,7 +30,7 @@ export default function ChannelsPage() {
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
 
 
-  const handleAddChannel = (channelData: any) => {
+  const handleAddChannel = (channelData: NewChannelPayload) => {
     addChannel(channelData, {
       onSuccess: () => {
         setIsFormOpen(false);
@@ -110,11 +109,11 @@ export default function ChannelsPage() {
               />
             </ListItem>
           ))}
-           {channels.length === 0 && (
+          {channels.length === 0 && (
             <ListItem>
-                <ListItemText primary="No channels found." secondary="Click 'Add Channel' to get started." sx={{textAlign: 'center', py: 4}} />
+              <ListItemText primary="No channels found." secondary="Click 'Add Channel' to get started." sx={{ textAlign: 'center', py: 4 }} />
             </ListItem>
-           )}
+          )}
         </List>
       </Paper>
 
@@ -124,7 +123,7 @@ export default function ChannelsPage() {
         onSubmit={handleAddChannel}
         isSubmitting={isAdding}
       />
-      
+
       {snackbar && (
         <Snackbar
           open={snackbar.open}

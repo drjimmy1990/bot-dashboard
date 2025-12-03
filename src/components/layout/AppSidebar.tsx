@@ -33,7 +33,7 @@ const menuItems = [
   { text: 'Clients', href: '/clients', icon: <PeopleIcon /> },
   { text: 'Channels', href: '/channels', icon: <DnsIcon /> },
   { text: 'Settings', href: '/settings', icon: <SettingsIcon /> },
-  { text: 'Analytics', href: '/analytics', icon: <AnalyticsIcon />, disabled: true },
+  { text: 'Analytics', href: '/analytics', icon: <AnalyticsIcon /> },
 ];
 
 const openedMixin = (theme: Theme): CSSObject => ({
@@ -103,7 +103,6 @@ export default function AppSidebar() {
               selected={pathname.startsWith(item.href) && item.href !== '/'}
               // Special case for home page to avoid it always being selected
               {...(item.href === '/' && { selected: pathname === '/' })}
-              disabled={item.disabled}
               sx={{ minHeight: 48, justifyContent: isSidebarOpen ? 'initial' : 'center', px: 2.5 }}
             >
               <ListItemIcon sx={{ minWidth: 0, mr: isSidebarOpen ? 3 : 'auto', justifyContent: 'center' }}>

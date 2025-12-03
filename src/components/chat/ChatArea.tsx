@@ -48,14 +48,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         .select('*, crm_clients!contact_id(id)')
         .eq('id', contactId!)
         .single();
-      
+
       if (directError) throw new Error(directError.message);
 
       // The result of a single() join is an object, not an array.
       // We need to reshape it slightly to match our expected type.
       const reshapedData = {
-          ...directData,
-          crm_clients: directData.crm_clients ? { id: (directData.crm_clients as any).id } : null
+        ...directData,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        crm_clients: directData.crm_clients ? { id: (directData.crm_clients as any).id } : null
       };
 
       return reshapedData as ContactWithClient;
@@ -80,38 +81,38 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     return (
       <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, bgcolor: 'background.default' }}>
         <Paper elevation={0} sx={{ p: 4, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'transparent' }}>
-            <ChatIcon sx={{ fontSize: 60, color: 'text.secondary' }} />
-            <Typography variant="h5">Select a Conversation</Typography>
-            <Typography color="text.secondary">Choose a contact from the list on the left to view their messages.</Typography>
+          <ChatIcon sx={{ fontSize: 60, color: 'text.secondary' }} />
+          <Typography variant="h5">Select a Conversation</Typography>
+          <Typography color="text.secondary">Choose a contact from the list on the left to view their messages.</Typography>
         </Paper>
       </Box>
     );
   }
-  
+
   if (isLoadingContact) {
-      return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><CircularProgress /></Box>
+    return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><CircularProgress /></Box>
   }
-  
+
   if (!contact) return <Alert severity="error">Could not load contact details.</Alert>;
 
   return (
     <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
       <Box sx={{ p: 1, pl: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <Box>
-            <Typography variant="h6" component="div">{contact.name || 'Unknown Contact'}</Typography>
-            <Typography variant="body2" color="text.secondary">{contact.platform_user_id}</Typography>
+          <Typography variant="h6" component="div">{contact.name || 'Unknown Contact'}</Typography>
+          <Typography variant="body2" color="text.secondary">{contact.platform_user_id}</Typography>
         </Box>
         <Box>
-            <Tooltip title="View CRM Profile">
-              <span>
-                <IconButton onClick={handleViewProfile} disabled={!contact.crm_clients?.id} aria-label="view profile">
-                  <PersonIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Delete Contact">
-              <IconButton onClick={handleDelete} color="error" aria-label="delete contact"><DeleteIcon /></IconButton>
-            </Tooltip>
+          <Tooltip title="View CRM Profile">
+            <span>
+              <IconButton onClick={handleViewProfile} disabled={!contact.crm_clients?.id} aria-label="view profile">
+                <PersonIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Delete Contact">
+            <IconButton onClick={handleDelete} color="error" aria-label="delete contact"><DeleteIcon /></IconButton>
+          </Tooltip>
         </Box>
       </Box>
 
@@ -119,10 +120,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         {isLoadingMessages ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
         ) : (
-          messages.map((msg) => ( <MessageBubble key={msg.id} message={msg} platform={contact.platform} /> ))
+          messages.map((msg) => (<MessageBubble key={msg.id} message={msg} platform={contact.platform} />))
         )}
       </Box>
-      
+
       <Box sx={{ flexShrink: 0 }}>
         <MessageInput value={messageText} onChange={(e) => setMessageText(e.target.value)} onSendText={handleSend} onSendImageByUrl={(url) => onSendImageByUrl(url, contact.platform)} disabled={isLoadingMessages} isSending={isSendingMessage} />
       </Box>

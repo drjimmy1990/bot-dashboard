@@ -11,7 +11,7 @@ import { useEffect } from 'react';
 // 1. Hook now accepts channelId and organizationId
 export const useChatMessages = (contactId: string | null, channelId: string | null, organizationId: string | null) => {
   const queryClient = useQueryClient();
-  
+
   // REMOVED: Validation for old hardcoded IDs
 
   // --- QUERY ---
@@ -19,13 +19,13 @@ export const useChatMessages = (contactId: string | null, channelId: string | nu
     queryKey: ['messages', contactId],
     queryFn: async () => {
       if (!contactId) return [];
-      
+
       await Promise.all([
         api.markChatAsRead(contactId),
         // 2. Invalidate the dynamic contacts query key
         queryClient.invalidateQueries({ queryKey: ['contacts', channelId] })
       ]);
-      
+
       return api.getMessagesForContact(contactId);
     },
     // 3. Query is enabled only when we have all necessary IDs
@@ -36,30 +36,30 @@ export const useChatMessages = (contactId: string | null, channelId: string | nu
   const sendMessageMutation = useMutation({
     // The mutation function's variables are defined by what we pass to `mutate()`
     mutationFn: (vars: {
-        contact_id: string;
-        content_type: string;
-        text_content?: string;
-        attachment_url?: string;
-        platform: string;
+      contact_id: string;
+      content_type: 'text' | 'image';
+      text_content?: string;
+      attachment_url?: string;
+      platform: string;
     }) => {
-        // 4. Critical: Ensure channelId and organizationId are passed to the API call
-        if (!channelId || !organizationId) {
-            // This should ideally not happen if the UI disables the send button, but it's a good safeguard.
-            return Promise.reject(new Error("Cannot send message: channel or organization ID is missing."));
-        }
-        return api.sendMessage({
-            ...vars,
-            channel_id: channelId,
-            organization_id: organizationId,
-        });
+      // 4. Critical: Ensure channelId and organizationId are passed to the API call
+      if (!channelId || !organizationId) {
+        // This should ideally not happen if the UI disables the send button, but it's a good safeguard.
+        return Promise.reject(new Error("Cannot send message: channel or organization ID is missing."));
+      }
+      return api.sendMessage({
+        ...vars,
+        channel_id: channelId,
+        organization_id: organizationId,
+      });
     },
     onSuccess: (newMessage) => {
       if (!newMessage) return;
-      
+
       queryClient.setQueryData(['messages', contactId], (oldData: api.Message[] | undefined) => {
         return oldData ? [...oldData, newMessage] : [newMessage];
       });
-      
+
       // 5. Invalidate the dynamic contacts query key
       queryClient.invalidateQueries({ queryKey: ['contacts', channelId] });
     },
@@ -78,18 +78,18 @@ export const useChatMessages = (contactId: string | null, channelId: string | nu
         (payload) => {
           console.log('New message via realtime:', payload);
           const newMessage = payload.new as api.Message;
-          
+
           queryClient.setQueryData(['messages', contactId], (oldData: api.Message[] | undefined) => {
             if (oldData?.find(msg => msg.id === newMessage.id)) return oldData;
             return oldData ? [...oldData, newMessage] : [newMessage];
           });
-          
+
           if (document.hasFocus()) {
             api.markChatAsRead(contactId)
               // 7. Invalidate the dynamic contacts query key
               .then(() => queryClient.invalidateQueries({ queryKey: ['contacts', channelId] }));
           } else {
-             queryClient.invalidateQueries({ queryKey: ['contacts', channelId] });
+            queryClient.invalidateQueries({ queryKey: ['contacts', channelId] });
           }
         }
       )
@@ -98,7 +98,7 @@ export const useChatMessages = (contactId: string | null, channelId: string | nu
     return () => {
       supabase.removeChannel(channel);
     };
-  // 8. Add channelId to the dependency array
+    // 8. Add channelId to the dependency array
   }, [contactId, queryClient, channelId]);
 
 

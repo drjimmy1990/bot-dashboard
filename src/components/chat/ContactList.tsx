@@ -12,13 +12,6 @@ import { useChatContacts } from '@/hooks/useChatContacts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '@/lib/api';
 
-// --- THIS IS A FIX ---
-// We explicitly define the type of contact we expect from the hook.
-// This includes the `crm_client_id` from our RPC function.
-type ContactWithClient = api.Contact & {
-  crm_client_id: string | null;
-};
-
 interface ContactListProps {
   selectedContactId: string | null;
   onSelectContact: (id: string) => void;
@@ -40,13 +33,13 @@ const ContactList: React.FC<ContactListProps> = ({ selectedContactId, onSelectCo
         <FormControl fullWidth size="small" sx={{ mb: 2 }}>
           <InputLabel id="channel-selector-label">Channel</InputLabel>
           <Select labelId="channel-selector-label" label="Channel" value={activeChannel?.id || ''} onChange={handleChannelChange} disabled={isLoadingChannels}>
-            {channels.map((channel) => ( <MenuItem key={channel.id} value={channel.id}> <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}> <PlatformAvatar platform={channel.platform} sx={{ width: 24, height: 24 }} /> <Typography variant="body2">{channel.name}</Typography> </Box> </MenuItem> ))}
+            {channels.map((channel) => (<MenuItem key={channel.id} value={channel.id}> <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}> <PlatformAvatar platform={channel.platform} sx={{ width: 24, height: 24 }} /> <Typography variant="body2">{channel.name}</Typography> </Box> </MenuItem>))}
           </Select>
         </FormControl>
-        <TextField fullWidth variant="outlined" size="small" placeholder="Search by name or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} InputProps={{ startAdornment: ( <InputAdornment position="start"> <SearchIcon /> </InputAdornment> ), }} />
+        <TextField fullWidth variant="outlined" size="small" placeholder="Search by name or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} InputProps={{ startAdornment: (<InputAdornment position="start"> <SearchIcon /> </InputAdornment>), }} />
       </Box>
       <List sx={{ overflowY: 'auto', flexGrow: 1, overflowX: 'hidden' }}>
-        {isLoadingContacts ? ( <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}> <CircularProgress /> </Box> ) : contacts.length > 0 ? (
+        {isLoadingContacts ? (<Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}> <CircularProgress /> </Box>) : contacts.length > 0 ? (
           contacts.map((contact) => {
             // --- THIS IS THE FIX ---
             // We extract the complex JSX into a variable. This simplifies the code
@@ -74,7 +67,7 @@ const ContactList: React.FC<ContactListProps> = ({ selectedContactId, onSelectCo
               </ListItem>
             );
           })
-        ) : ( <Typography sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}> {searchTerm ? 'No contacts match your search.' : 'No contacts found in this channel.'} </Typography> )}
+        ) : (<Typography sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}> {searchTerm ? 'No contacts match your search.' : 'No contacts found in this channel.'} </Typography>)}
       </List>
     </Box>
   );

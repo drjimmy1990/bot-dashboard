@@ -32,12 +32,12 @@ export default function UserProfile() {
 
       if (user) {
         // The full name is stored in a separate 'profiles' table.
-        const { data: profile, error } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('full_name')
           .eq('id', user.id)
           .single();
-        
+
         if (profile) {
           setFullName(profile.full_name || '');
         }
@@ -63,11 +63,11 @@ export default function UserProfile() {
     }
     setSaving(false);
   };
-  
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     // The middleware will handle redirecting to the login page.
-    window.location.reload(); 
+    window.location.reload();
   };
 
 
@@ -119,12 +119,12 @@ export default function UserProfile() {
         </Grid>
         <Divider sx={{ my: 3 }} />
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-                Need to log out?
-            </Typography>
-            <Button variant="outlined" color="error" onClick={handleSignOut}>
-                Sign Out
-            </Button>
+          <Typography variant="body2" color="text.secondary">
+            Need to log out?
+          </Typography>
+          <Button variant="outlined" color="error" onClick={handleSignOut}>
+            Sign Out
+          </Button>
         </Box>
       </Paper>
 

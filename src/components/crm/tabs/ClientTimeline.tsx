@@ -43,7 +43,7 @@ export default function ClientTimeline({ client, notes, activities }: ClientTime
         setSnackbar({ open: true, message: 'Note added successfully!', severity: 'success' });
         setNoteDialogOpen(false);
       },
-      onError: (err: any) => {
+      onError: (err: Error) => {
         setSnackbar({ open: true, message: `Error: ${err.message}`, severity: 'error' });
       },
     });
@@ -59,13 +59,13 @@ export default function ClientTimeline({ client, notes, activities }: ClientTime
     combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return combined;
   }, [notes, activities]);
-  
+
   const formatDate = (dateString: string) => { return new Date(dateString).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); };
 
   return (
     <>
       <Paper sx={{ p: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, px:1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, px: 1 }}>
           <Typography variant="h6">Client History</Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button variant="outlined" startIcon={<NoteAddIcon />} size="small" onClick={() => setNoteDialogOpen(true)}>
@@ -76,7 +76,7 @@ export default function ClientTimeline({ client, notes, activities }: ClientTime
             </Button>
           </Box>
         </Box>
-        
+
         {timelineEvents.length === 0 ? (
           <Typography color="text.secondary" textAlign="center" sx={{ py: 5 }}>
             No manual notes or activities have been recorded for this client yet.
