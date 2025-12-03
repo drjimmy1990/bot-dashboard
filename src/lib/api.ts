@@ -46,6 +46,7 @@ export interface CrmClient {
   secondary_phone: string | null;
   address: { [key: string]: any } | null;
   ecommerce_customer_id: string | null;
+  platform_user_id: string | null; // Added field
   total_orders: number;
   total_revenue: number;
   average_order_value: number;
