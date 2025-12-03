@@ -66,7 +66,7 @@ export default function ConversionFunnel({ data, isLoading }: ConversionFunnelPr
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
                 Conversion Funnel
             </Typography>
-            <Box sx={{ height: 350, width: '100%' }}>
+            <Box sx={{ height: 350, minHeight: 350, width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                         data={data}

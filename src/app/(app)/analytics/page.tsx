@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
     };
 
     return (
-        <Box sx={{ p: 2, maxWidth: '85%', mx: 'auto', width: '100%' }}>
+        <Box sx={{ p: 2, maxWidth: '80%', mx: 'auto', width: '100%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Box>
                     <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
@@ -206,21 +206,32 @@ export default function AnalyticsPage() {
 
             <CustomTabPanel value={tabValue} index={0}>
                 <Grid container spacing={3}>
-                    <Grid size={{ xs: 12, md: 8 }}>
+                    {/* Revenue Trends */}
+                    <Grid size={{ xs: 12 }}>
                         <RevenueAnalytics data={revenue} isLoading={isRevenueLoading} />
                     </Grid>
-                    <Grid size={{ xs: 12, md: 4 }}>
-                        <ConversionFunnel data={funnel} isLoading={isFunnelLoading} />
+
+                    {/* Deal Analytics (Pipeline & Trends) */}
+                    <Grid size={{ xs: 12 }}>
+                        <DealAnalytics
+                            data={deals}
+                            trendData={dealsTrend}
+                            isLoading={isDealsLoading || isDealsTrendLoading}
+                        />
                     </Grid>
-                    <Grid size={{ xs: 12, md: 8 }}>
-                        <DealAnalytics data={deals} trendData={dealsTrend} isLoading={isDealsLoading || isDealsTrendLoading} />
-                    </Grid>
-                    <Grid size={{ xs: 12, md: 4 }}>
+
+                    {/* Message Distribution & Volume */}
+                    <Grid size={{ xs: 12 }}>
                         <MessageDistributionChart
                             data={channelPerformance}
                             trendData={messageTrends}
                             selectedChannelId={selectedChannelId || null}
                         />
+                    </Grid>
+
+                    {/* Conversion Funnel */}
+                    <Grid size={{ xs: 12 }}>
+                        <ConversionFunnel data={funnel} isLoading={isFunnelLoading} />
                     </Grid>
                 </Grid>
             </CustomTabPanel>

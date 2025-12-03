@@ -9,11 +9,19 @@ interface MessageDistributionChartProps {
     data?: ChannelPerformance[];
     trendData?: any[];
     selectedChannelId?: string | null;
+    showDistribution?: boolean;
+    showTrend?: boolean;
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
 
-export default function MessageDistributionChart({ data, trendData, selectedChannelId }: MessageDistributionChartProps) {
+export default function MessageDistributionChart({
+    data,
+    trendData,
+    selectedChannelId,
+    showDistribution = true,
+    showTrend = true
+}: MessageDistributionChartProps) {
     const theme = useTheme();
 
     const chartData = React.useMemo(() => {
@@ -61,36 +69,38 @@ export default function MessageDistributionChart({ data, trendData, selectedChan
             }}
         >
             {/* Distribution (Pie Chart) */}
-            <Box sx={{ height: 300, width: '100%' }}>
-                <Typography variant="h6" gutterBottom>
-                    Message Distribution
-                </Typography>
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                        <Pie
-                            data={chartData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius="80%"
-                            fill="#8884d8"
-                            dataKey="value"
-                        >
-                            {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip formatter={(value: number) => new Intl.NumberFormat('en-US').format(value)} />
-                        <Legend verticalAlign="bottom" height={36} />
-                    </PieChart>
-                </ResponsiveContainer>
-            </Box>
+            {showDistribution && (
+                <Box sx={{ height: 300, minHeight: 300, width: '100%' }}>
+                    <Typography variant="h6" gutterBottom>
+                        Message Distribution
+                    </Typography>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                            <Pie
+                                data={chartData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                outerRadius="80%"
+                                fill="#8884d8"
+                                dataKey="value"
+                            >
+                                {chartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip formatter={(value: number) => new Intl.NumberFormat('en-US').format(value)} />
+                            <Legend verticalAlign="bottom" height={36} />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </Box>
+            )}
 
-            <Divider />
+            {showDistribution && showTrend && <Divider />}
 
             {/* Message Volume Trends (Line Chart) */}
-            {trendData && trendData.length > 0 && (
-                <Box sx={{ height: 300, width: '100%' }}>
+            {showTrend && trendData && trendData.length > 0 && (
+                <Box sx={{ height: 300, minHeight: 300, width: '100%' }}>
                     <Typography variant="h6" gutterBottom>
                         Message Volume Trend
                     </Typography>

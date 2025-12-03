@@ -23,17 +23,13 @@ import { useClient, UpdateClientPayload } from '@/hooks/useClient';
 import ClientTagsManager from '../ClientTagsManager';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 
-interface CrmClientWithPlatformId extends CrmClient {
-  platform_user_id?: string | null;
-}
-
 interface ClientProfileProps {
-  client: CrmClientWithPlatformId;
+  client: CrmClient;
 }
 
 export default function ClientProfile({ client }: ClientProfileProps) {
   const { updateClient, isUpdatingClient } = useClient(client.id);
-  const [formData, setFormData] = useState(client);
+  const [formData, setFormData] = useState<CrmClient>(client);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
 
   useEffect(() => { setFormData(client); }, [client]);
@@ -111,7 +107,7 @@ export default function ClientProfile({ client }: ClientProfileProps) {
               <ClientTagsManager tags={formData.tags} onTagsChange={handleTagsChange} />
             </Box>
           </Grid>
-          <Grid size={12} sx={{ textAlign: 'right', mt: 2 }}>
+          <Grid size={{ xs: 12 }} sx={{ textAlign: 'right', mt: 2 }}>
             <Button variant="contained" startIcon={isUpdatingClient ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />} onClick={handleSaveChanges} disabled={!hasChanges || isUpdatingClient}>
               Save Changes
             </Button>

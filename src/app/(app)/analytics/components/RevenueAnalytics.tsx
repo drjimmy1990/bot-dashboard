@@ -56,7 +56,7 @@ export default function RevenueAnalytics({ data, isLoading }: RevenueAnalyticsPr
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
                 Revenue Trends
             </Typography>
-            <Box sx={{ height: 350, width: '100%' }}>
+            <Box sx={{ height: 350, minHeight: 350, width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                         data={data}
