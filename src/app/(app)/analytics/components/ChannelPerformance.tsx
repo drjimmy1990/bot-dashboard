@@ -61,7 +61,7 @@ export default function ChannelPerformanceChart({ data, isLoading }: ChannelPerf
                             label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                             outerRadius={120}
                             fill="#8884d8"
-                            dataKey="message_count"
+                            dataKey="total_messages"
                             nameKey="channel_name"
                         >
                             {data.map((entry, index) => (
@@ -69,10 +69,22 @@ export default function ChannelPerformanceChart({ data, isLoading }: ChannelPerf
                             ))}
                         </Pie>
                         <Tooltip
-                            contentStyle={{
-                                backgroundColor: theme.palette.background.paper,
-                                border: `1px solid ${theme.palette.divider}`,
-                                borderRadius: 8
+                            content={({ active, payload }: any) => {
+                                if (active && payload && payload.length) {
+                                    const d = payload[0].payload;
+                                    return (
+                                        <Paper sx={{ p: 1.5 }}>
+                                            <Typography variant="subtitle2">{d.channel_name}</Typography>
+                                            <Typography variant="body2" color="textSecondary">Total: {d.total_messages}</Typography>
+                                            <Box sx={{ mt: 1 }}>
+                                                <Typography variant="caption" display="block">Incoming: {d.incoming_messages}</Typography>
+                                                <Typography variant="caption" display="block">Agent: {d.agent_responses}</Typography>
+                                                <Typography variant="caption" display="block">AI: {d.ai_responses}</Typography>
+                                            </Box>
+                                        </Paper>
+                                    );
+                                }
+                                return null;
                             }}
                         />
                         <Legend />

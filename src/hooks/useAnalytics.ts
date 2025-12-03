@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 
 // --- Types ---
@@ -48,6 +48,15 @@ export interface ChannelPerformance {
     agent_responses: number;
     ai_responses: number;
     period_month: string;
+}
+
+export interface ChatbotEffectiveness {
+    organization_id: string;
+    unique_clients_engaged: number;
+    total_chatbot_interactions: number;
+    successful_interactions: number;
+    avg_interaction_duration_minutes: number;
+    period_day: string;
 }
 
 // --- Hooks ---
@@ -128,11 +137,35 @@ export const useChannelPerformance = (orgId: string) => {
     });
 };
 
-export const useAnalyticsControl = () => {
-    return {
-        refreshAnalytics: async () => {
-            const { error } = await supabase.rpc('refresh_all_analytics');
+
+
+export const useChatbotEffectiveness = (orgId: string) => {
+    return useQuery({
+        queryKey: ['analytics', 'chatbot', orgId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('analytics_chatbot_effectiveness')
+                .select('*')
+                .eq('organization_id', orgId)
+                .order('period_day', { ascending: false });
+
             if (error) throw error;
-        }
+            return data as ChatbotEffectiveness[];
+        },
+        enabled: !!orgId,
+    });
+};
+
+export const useAnalyticsControl = () => {
+    const queryClient = useQueryClient();
+
+    const refreshAnalytics = async () => {
+        const { error } = await supabase.rpc('refresh_all_analytics');
+        if (error) throw error;
+
+        // Invalidate all analytics queries
+        queryClient.invalidateQueries({ queryKey: ['analytics'] });
     };
+
+    return { refreshAnalytics };
 };

@@ -1,22 +1,101 @@
 'use client';
 
 import React from 'react';
-import { Paper, Typography, Box } from '@mui/material';
+import { Paper, Typography, Box, Grid, CircularProgress, Divider } from '@mui/material';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import TimerIcon from '@mui/icons-material/Timer';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PeopleIcon from '@mui/icons-material/People';
+import { useChatbotEffectiveness } from '@/hooks/useAnalytics';
+import { useOrganization } from '@/hooks/useOrganization';
 
 export default function ChatbotAnalytics() {
+    const { data: orgId } = useOrganization();
+    const { data, isLoading } = useChatbotEffectiveness(orgId || '');
+
+    if (isLoading) {
+        return (
+            <Paper sx={{ p: 3, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CircularProgress size={24} sx={{ mr: 2 }} />
+                <Typography color="textSecondary">Loading AI analytics...</Typography>
+            </Paper>
+        );
+    }
+
+    if (!data || data.length === 0) {
+        return (
+            <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <Typography variant="h6" gutterBottom>Chatbot Effectiveness</Typography>
+                <Typography color="textSecondary">No AI interaction data available yet.</Typography>
+            </Paper>
+        );
+    }
+
+    // Calculate aggregates
+    const totalInteractions = data.reduce((sum, item) => sum + item.total_chatbot_interactions, 0);
+    const totalSuccessful = data.reduce((sum, item) => sum + item.successful_interactions, 0);
+    const totalEngaged = data.reduce((sum, item) => sum + item.unique_clients_engaged, 0);
+
+    // Weighted average for duration
+    const totalDuration = data.reduce((sum, item) => sum + (item.avg_interaction_duration_minutes * item.total_chatbot_interactions), 0);
+    const avgDuration = totalInteractions > 0 ? totalDuration / totalInteractions : 0;
+
+    const resolutionRate = totalInteractions > 0 ? (totalSuccessful / totalInteractions) * 100 : 0;
+
+    const metrics = [
+        {
+            label: 'Resolution Rate',
+            value: `${resolutionRate.toFixed(1)}%`,
+            icon: <CheckCircleIcon color="success" />,
+            desc: 'Interactions resolved by AI'
+        },
+        {
+            label: 'Avg. Handling Time',
+            value: `${avgDuration.toFixed(1)}m`,
+            icon: <TimerIcon color="info" />,
+            desc: 'Average duration per chat'
+        },
+        {
+            label: 'Total Interactions',
+            value: totalInteractions,
+            icon: <SmartToyIcon color="primary" />,
+            desc: 'Total AI messages sent'
+        },
+        {
+            label: 'Engaged Clients',
+            value: totalEngaged,
+            icon: <PeopleIcon color="secondary" />,
+            desc: 'Unique clients served'
+        }
+    ];
+
     return (
-        <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <Paper sx={{ p: 3, height: '100%' }}>
             <Typography variant="h6" gutterBottom>
                 Chatbot Effectiveness
             </Typography>
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography color="textSecondary" paragraph>
-                    Detailed chatbot analytics coming soon.
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                    This module will track AI resolution rates, average handling time, and sentiment analysis.
-                </Typography>
-            </Box>
+            <Divider sx={{ mb: 3 }} />
+
+            <Grid container spacing={2}>
+                {metrics.map((metric) => (
+                    <Grid size={{ xs: 6 }} key={metric.label}>
+                        <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1, height: '100%' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                {metric.icon}
+                                <Typography variant="subtitle2" sx={{ ml: 1, fontWeight: 600 }}>
+                                    {metric.label}
+                                </Typography>
+                            </Box>
+                            <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                                {metric.value}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">
+                                {metric.desc}
+                            </Typography>
+                        </Box>
+                    </Grid>
+                ))}
+            </Grid>
         </Paper>
     );
 }

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { Paper, Typography } from '@mui/material';
+import { Paper, Typography, Box } from '@mui/material';
 import { ChannelPerformance } from '@/hooks/useAnalytics';
 
 interface MessageDistributionChartProps {
@@ -40,29 +40,31 @@ export default function MessageDistributionChart({ data, selectedChannelId }: Me
     }
 
     return (
-        <Paper sx={{ p: 3, height: 400 }}>
+        <Paper sx={{ p: 3, height: 400, display: 'flex', flexDirection: 'column' }}>
             <Typography variant="h6" gutterBottom>
                 Message Distribution
             </Typography>
-            <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                    <Pie
-                        data={chartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={120}
-                        fill="#8884d8"
-                        dataKey="value"
-                    >
-                        {chartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => new Intl.NumberFormat('en-US').format(value)} />
-                    <Legend />
-                </PieChart>
-            </ResponsiveContainer>
+            <Box sx={{ flexGrow: 1, minHeight: 0, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                        <Pie
+                            data={chartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius="80%"
+                            fill="#8884d8"
+                            dataKey="value"
+                        >
+                            {chartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => new Intl.NumberFormat('en-US').format(value)} />
+                        <Legend verticalAlign="bottom" height={36} />
+                    </PieChart>
+                </ResponsiveContainer>
+            </Box>
         </Paper>
     );
 }
