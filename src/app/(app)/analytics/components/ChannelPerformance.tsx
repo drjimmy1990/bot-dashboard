@@ -65,7 +65,7 @@ export default function ChannelPerformanceChart({ data, isLoading }: ChannelPerf
             </Typography>
             <Box sx={{ height: 350, width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
+                    <PieChart margin={{ top: 0, right: 0, bottom: 25, left: 0 }}>
                         <Pie
                             data={data as any[]}
                             cx="50%"

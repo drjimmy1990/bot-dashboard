@@ -97,7 +97,7 @@ export default function MessageDistributionChart({ data, trendData, selectedChan
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart
                             data={trendData}
-                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 25 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
                             <XAxis

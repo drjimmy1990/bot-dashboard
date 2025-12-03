@@ -75,7 +75,7 @@ export default function ConversionFunnel({ data, isLoading }: ConversionFunnelPr
                             top: 5,
                             right: 30,
                             left: 40,
-                            bottom: 5,
+                            bottom: 25,
                         }}
                     >
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={theme.palette.divider} />

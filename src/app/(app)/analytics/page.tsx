@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
     };
 
     return (
-        <Box sx={{ p: 2, maxWidth: '1600px', mx: 'auto', width: '100%' }}>
+        <Box sx={{ p: 2, maxWidth: '85%', mx: 'auto', width: '100%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Box>
                     <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>

@@ -64,7 +64,7 @@ export default function RevenueAnalytics({ data, isLoading }: RevenueAnalyticsPr
                             top: 5,
                             right: 30,
                             left: 20,
-                            bottom: 5,
+                            bottom: 25,
                         }}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
