@@ -72,6 +72,7 @@ export const useDashboardSummary = (orgId: string) => {
             return (Array.isArray(data) && data.length > 0 ? data[0] : data) as DashboardSummary;
         },
         enabled: !!orgId,
+        staleTime: 5 * 60 * 1000, // 5 minutes
     });
 };
 
@@ -91,6 +92,7 @@ export const useRevenueMetrics = (orgId: string, period: 'day' | 'week' | 'month
             return data as unknown as RevenueMetric[];
         },
         enabled: !!orgId,
+        staleTime: 5 * 60 * 1000, // 5 minutes
     });
 };
 
@@ -109,6 +111,7 @@ export const useConversionFunnel = (orgId: string) => {
             })) as ConversionFunnelStep[];
         },
         enabled: !!orgId,
+        staleTime: 5 * 60 * 1000, // 5 minutes
     });
 };
 
@@ -125,6 +128,7 @@ export const useDealMetrics = (orgId: string) => {
             return data as unknown as DealMetric[];
         },
         enabled: !!orgId,
+        staleTime: 5 * 60 * 1000, // 5 minutes
     });
 };
 
@@ -141,6 +145,7 @@ export const useChannelPerformance = (orgId: string) => {
             return data as ChannelPerformance[];
         },
         enabled: !!orgId,
+        staleTime: 5 * 60 * 1000, // 5 minutes
     });
 };
 
@@ -166,6 +171,7 @@ export const useChatbotEffectiveness = (orgId: string, channelId?: string | null
             return data as ChatbotEffectiveness[];
         },
         enabled: !!orgId,
+        staleTime: 5 * 60 * 1000, // 5 minutes
     });
 };
 
