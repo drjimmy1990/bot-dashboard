@@ -66,12 +66,13 @@ export default function AnalyticsPage() {
     const [tabValue, setTabValue] = useState(0);
     const [selectedChannelId, setSelectedChannelId] = useState<string>('');
     const [dateRange, setDateRange] = useState<DateRangeOption>('30d');
+    const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day');
 
     // Fetch data
-    const { data: summary, isLoading: isSummaryLoading, refetch: refetchSummary } = useDashboardSummary(orgId || '');
-    const { data: revenue, isLoading: isRevenueLoading } = useRevenueMetrics(orgId || '');
-    const { data: funnel, isLoading: isFunnelLoading } = useConversionFunnel(orgId || '');
-    const { data: deals, isLoading: isDealsLoading } = useDealMetrics(orgId || '');
+    const { data: summary, isLoading: isSummaryLoading, refetch: refetchSummary } = useDashboardSummary(orgId || '', selectedChannelId || null);
+    const { data: revenue, isLoading: isRevenueLoading } = useRevenueMetrics(orgId || '', period, selectedChannelId || null);
+    const { data: funnel, isLoading: isFunnelLoading } = useConversionFunnel(orgId || '', selectedChannelId || null);
+    const { data: deals, isLoading: isDealsLoading } = useDealMetrics(orgId || '', selectedChannelId || null);
     const { data: channelPerformance, isLoading: isChannelLoading } = useChannelPerformance(orgId || '');
     const { channels } = useChannels();
     const { refreshAnalytics } = useAnalyticsControl();
@@ -108,6 +109,20 @@ export default function AnalyticsPage() {
                     </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 2 }}>
+                    <FormControl sx={{ minWidth: 120 }} size="small">
+                        <InputLabel id="period-select-label">Period</InputLabel>
+                        <Select
+                            labelId="period-select-label"
+                            id="period-select"
+                            value={period}
+                            label="Period"
+                            onChange={(e) => setPeriod(e.target.value as 'day' | 'week' | 'month')}
+                        >
+                            <MenuItem value="day">Daily</MenuItem>
+                            <MenuItem value="week">Weekly</MenuItem>
+                            <MenuItem value="month">Monthly</MenuItem>
+                        </Select>
+                    </FormControl>
                     <DateRangePicker value={dateRange} onChange={setDateRange} />
                     <FormControl sx={{ minWidth: 200 }} size="small">
                         <InputLabel id="channel-select-label">Filter by Channel</InputLabel>

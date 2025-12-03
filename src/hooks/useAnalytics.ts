@@ -62,11 +62,14 @@ export interface ChatbotEffectiveness {
 
 // --- Hooks ---
 
-export const useDashboardSummary = (orgId: string) => {
+export const useDashboardSummary = (orgId: string, channelId?: string | null) => {
     return useQuery({
-        queryKey: ['analytics', 'summary', orgId],
+        queryKey: ['analytics', 'summary', orgId, channelId],
         queryFn: async () => {
-            const { data, error } = await supabase.rpc('get_crm_dashboard_summary', { org_id: orgId });
+            const { data, error } = await supabase.rpc('get_crm_dashboard_summary', {
+                org_id: orgId,
+                p_channel_id: channelId || null
+            });
             if (error) throw error;
             // RPC returns an array for TABLE return types
             return (Array.isArray(data) && data.length > 0 ? data[0] : data) as DashboardSummary;
@@ -76,17 +79,23 @@ export const useDashboardSummary = (orgId: string) => {
     });
 };
 
-export const useRevenueMetrics = (orgId: string, period: 'day' | 'week' | 'month' = 'day') => {
+export const useRevenueMetrics = (orgId: string, period: 'day' | 'week' | 'month' = 'day', channelId?: string | null) => {
     return useQuery({
-        queryKey: ['analytics', 'revenue', orgId, period],
+        queryKey: ['analytics', 'revenue', orgId, period, channelId],
         queryFn: async () => {
-            // In a real implementation, we would filter by date range based on 'period'
-            // For now, we fetch from the materialized view
-            const { data, error } = await supabase
+            const periodColumn = period === 'week' ? 'period_week' : period === 'month' ? 'period_month' : 'period_day';
+
+            let query = supabase
                 .from('analytics_revenue_metrics')
-                .select('date:period_day, revenue:total_revenue, order_count, avg_order_value')
+                .select(`date:${periodColumn}, revenue:total_revenue, order_count, avg_order_value`)
                 .eq('organization_id', orgId)
-                .order('period_day', { ascending: true });
+                .order(periodColumn, { ascending: true });
+
+            if (channelId) {
+                query = query.eq('channel_id', channelId);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
             return data as unknown as RevenueMetric[];
@@ -96,11 +105,14 @@ export const useRevenueMetrics = (orgId: string, period: 'day' | 'week' | 'month
     });
 };
 
-export const useConversionFunnel = (orgId: string) => {
+export const useConversionFunnel = (orgId: string, channelId?: string | null) => {
     return useQuery({
-        queryKey: ['analytics', 'funnel', orgId],
+        queryKey: ['analytics', 'funnel', orgId, channelId],
         queryFn: async () => {
-            const { data, error } = await supabase.rpc('get_conversion_funnel', { org_id: orgId });
+            const { data, error } = await supabase.rpc('get_conversion_funnel', {
+                org_id: orgId,
+                p_channel_id: channelId || null
+            });
             if (error) throw error;
 
             // Map RPC result to interface
@@ -115,14 +127,20 @@ export const useConversionFunnel = (orgId: string) => {
     });
 };
 
-export const useDealMetrics = (orgId: string) => {
+export const useDealMetrics = (orgId: string, channelId?: string | null) => {
     return useQuery({
-        queryKey: ['analytics', 'deals', orgId],
+        queryKey: ['analytics', 'deals', orgId, channelId],
         queryFn: async () => {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('analytics_deal_metrics')
                 .select('stage, count:deal_count, value:total_value, avg_deal_size')
                 .eq('organization_id', orgId);
+
+            if (channelId) {
+                query = query.eq('channel_id', channelId);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
             return data as unknown as DealMetric[];
