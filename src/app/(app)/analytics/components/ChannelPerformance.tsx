@@ -46,8 +46,21 @@ export default function ChannelPerformanceChart({ data, isLoading }: ChannelPerf
     }
 
     return (
-        <Paper sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
+        <Paper
+            elevation={0}
+            sx={{
+                p: 3,
+                height: '100%',
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 3,
+                transition: 'box-shadow 0.2s',
+                '&:hover': {
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                }
+            }}
+        >
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
                 Channel Volume
             </Typography>
             <Box sx={{ height: 350, width: '100%' }}>

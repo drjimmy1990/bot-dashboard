@@ -43,7 +43,23 @@ export default function MessageDistributionChart({ data, trendData, selectedChan
     }
 
     return (
-        <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <Paper
+            elevation={0}
+            sx={{
+                p: 3,
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 3,
+                transition: 'box-shadow 0.2s',
+                '&:hover': {
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                }
+            }}
+        >
             {/* Distribution (Pie Chart) */}
             <Box sx={{ height: 300, width: '100%' }}>
                 <Typography variant="h6" gutterBottom>

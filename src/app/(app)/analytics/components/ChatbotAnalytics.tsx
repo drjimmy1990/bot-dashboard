@@ -74,26 +74,50 @@ export default function ChatbotAnalytics({ selectedChannelId }: ChatbotAnalytics
     ];
 
     return (
-        <Paper sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
+        <Paper
+            elevation={0}
+            sx={{
+                p: 3,
+                height: '100%',
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 3,
+                transition: 'box-shadow 0.2s',
+                '&:hover': {
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                }
+            }}
+        >
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
                 Chatbot Effectiveness
             </Typography>
-            <Divider sx={{ mb: 3 }} />
+            <Divider sx={{ mb: 3, mt: 2 }} />
 
             <Grid container spacing={2}>
                 {metrics.map((metric) => (
                     <Grid size={{ xs: 6 }} key={metric.label}>
-                        <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1, height: '100%' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                {metric.icon}
-                                <Typography variant="subtitle2" sx={{ ml: 1, fontWeight: 600 }}>
+                        <Box
+                            sx={{
+                                p: 2.5,
+                                bgcolor: 'background.paper',
+                                borderRadius: 2,
+                                height: '100%',
+                                border: '1px solid',
+                                borderColor: 'divider',
+                            }}
+                        >
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                                <Box sx={{ color: 'text.secondary', display: 'flex' }}>
+                                    {React.isValidElement(metric.icon) ? React.cloneElement(metric.icon as React.ReactElement<any>, { fontSize: 'small' }) : metric.icon}
+                                </Box>
+                                <Typography variant="subtitle2" sx={{ ml: 1, fontWeight: 600, fontSize: '0.85rem' }}>
                                     {metric.label}
                                 </Typography>
                             </Box>
-                            <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                            <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5, fontSize: '1.75rem' }}>
                                 {metric.value}
                             </Typography>
-                            <Typography variant="caption" color="textSecondary">
+                            <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.5 }}>
                                 {metric.desc}
                             </Typography>
                         </Box>

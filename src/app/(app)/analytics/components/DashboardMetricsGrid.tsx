@@ -124,36 +124,45 @@ export default function DashboardMetricsGrid({ data, channelPerformance, selecte
             <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 2 }}>
                 Business Overview
             </Typography>
-            <Grid container spacing={3} mb={4}>
+            <Grid container spacing={2} mb={4}>
                 {metrics.map((metric, index) => (
                     <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
                         <Paper
+                            elevation={0}
                             sx={{
-                                p: 3,
+                                p: 2.5,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 height: '100%',
                                 position: 'relative',
                                 overflow: 'hidden',
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 3,
+                                transition: 'transform 0.2s, box-shadow 0.2s',
+                                '&:hover': {
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                                }
                             }}
                         >
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                                <Typography color="textSecondary" variant="subtitle2" sx={{ fontWeight: 600 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                                <Typography color="textSecondary" variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
                                     {metric.label}
                                 </Typography>
                                 <Box
                                     sx={{
-                                        p: 1,
-                                        borderRadius: '50%',
+                                        p: 0.8,
+                                        borderRadius: 2,
                                         bgcolor: `${metric.color}15`, // 15% opacity
                                         display: 'flex',
                                         color: metric.color,
                                     }}
                                 >
-                                    {metric.icon}
+                                    {React.isValidElement(metric.icon) ? React.cloneElement(metric.icon as React.ReactElement<any>, { fontSize: 'small' }) : metric.icon}
                                 </Box>
                             </Box>
-                            <Typography variant="h4" component="div" sx={{ fontWeight: 700 }}>
+                            <Typography variant="h4" component="div" sx={{ fontWeight: 700, fontSize: '1.75rem' }}>
                                 {metric.value !== undefined ? metric.format(metric.value) : '-'}
                             </Typography>
                         </Paper>
@@ -164,36 +173,45 @@ export default function DashboardMetricsGrid({ data, channelPerformance, selecte
             <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 2 }}>
                 Communication & Engagement {selectedChannelId && '(Filtered)'}
             </Typography>
-            <Grid container spacing={3} mb={4}>
+            <Grid container spacing={2} mb={4}>
                 {communicationMetrics.map((metric, index) => (
                     <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
                         <Paper
+                            elevation={0}
                             sx={{
-                                p: 3,
+                                p: 2.5,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 height: '100%',
                                 position: 'relative',
                                 overflow: 'hidden',
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 3,
+                                transition: 'transform 0.2s, box-shadow 0.2s',
+                                '&:hover': {
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                                }
                             }}
                         >
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                                <Typography color="textSecondary" variant="subtitle2" sx={{ fontWeight: 600 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                                <Typography color="textSecondary" variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
                                     {metric.label}
                                 </Typography>
                                 <Box
                                     sx={{
-                                        p: 1,
-                                        borderRadius: '50%',
+                                        p: 0.8,
+                                        borderRadius: 2,
                                         bgcolor: `${metric.color}15`, // 15% opacity
                                         display: 'flex',
                                         color: metric.color,
                                     }}
                                 >
-                                    {metric.icon}
+                                    {React.isValidElement(metric.icon) ? React.cloneElement(metric.icon as React.ReactElement<any>, { fontSize: 'small' }) : metric.icon}
                                 </Box>
                             </Box>
-                            <Typography variant="h4" component="div" sx={{ fontWeight: 700 }}>
+                            <Typography variant="h4" component="div" sx={{ fontWeight: 700, fontSize: '1.75rem' }}>
                                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                                 {(metric as any).value !== undefined ? (metric as any).format((metric as any).value) : '-'}
                             </Typography>
