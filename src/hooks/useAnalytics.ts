@@ -62,13 +62,15 @@ export interface ChatbotEffectiveness {
 
 // --- Hooks ---
 
-export const useDashboardSummary = (orgId: string, channelId?: string | null) => {
+export const useDashboardSummary = (orgId: string, channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
     return useQuery({
-        queryKey: ['analytics', 'summary', orgId, channelId],
+        queryKey: ['analytics', 'summary', orgId, channelId, startDate?.toISOString(), endDate?.toISOString()],
         queryFn: async () => {
             const { data, error } = await supabase.rpc('get_crm_dashboard_summary', {
                 org_id: orgId,
-                p_channel_id: channelId || null
+                p_channel_id: channelId || null,
+                start_date: startDate ? startDate.toISOString() : null,
+                end_date: endDate ? endDate.toISOString() : null
             });
             if (error) throw error;
             // RPC returns an array for TABLE return types
@@ -79,23 +81,17 @@ export const useDashboardSummary = (orgId: string, channelId?: string | null) =>
     });
 };
 
-export const useRevenueMetrics = (orgId: string, period: 'day' | 'week' | 'month' = 'day', channelId?: string | null) => {
+export const useRevenueMetrics = (orgId: string, period: 'day' | 'week' | 'month' = 'day', channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
     return useQuery({
-        queryKey: ['analytics', 'revenue', orgId, period, channelId],
+        queryKey: ['analytics', 'revenue', orgId, period, channelId, startDate?.toISOString(), endDate?.toISOString()],
         queryFn: async () => {
-            const periodColumn = period === 'week' ? 'period_week' : period === 'month' ? 'period_month' : 'period_day';
-
-            let query = supabase
-                .from('analytics_revenue_metrics')
-                .select(`date:${periodColumn}, revenue:total_revenue, order_count, avg_order_value`)
-                .eq('organization_id', orgId)
-                .order(periodColumn, { ascending: true });
-
-            if (channelId) {
-                query = query.eq('channel_id', channelId);
-            }
-
-            const { data, error } = await query;
+            const { data, error } = await supabase.rpc('get_revenue_trends', {
+                org_id: orgId,
+                period_type: period,
+                p_channel_id: channelId || null,
+                start_date: startDate ? startDate.toISOString() : null,
+                end_date: endDate ? endDate.toISOString() : null
+            });
 
             if (error) throw error;
             return data as unknown as RevenueMetric[];
@@ -105,13 +101,15 @@ export const useRevenueMetrics = (orgId: string, period: 'day' | 'week' | 'month
     });
 };
 
-export const useConversionFunnel = (orgId: string, channelId?: string | null) => {
+export const useConversionFunnel = (orgId: string, channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
     return useQuery({
-        queryKey: ['analytics', 'funnel', orgId, channelId],
+        queryKey: ['analytics', 'funnel', orgId, channelId, startDate?.toISOString(), endDate?.toISOString()],
         queryFn: async () => {
             const { data, error } = await supabase.rpc('get_conversion_funnel', {
                 org_id: orgId,
-                p_channel_id: channelId || null
+                p_channel_id: channelId || null,
+                start_date: startDate ? startDate.toISOString() : null,
+                end_date: endDate ? endDate.toISOString() : null
             });
             if (error) throw error;
 
@@ -127,37 +125,72 @@ export const useConversionFunnel = (orgId: string, channelId?: string | null) =>
     });
 };
 
-export const useDealMetrics = (orgId: string, channelId?: string | null) => {
+export const useDealMetrics = (orgId: string, channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
     return useQuery({
-        queryKey: ['analytics', 'deals', orgId, channelId],
+        queryKey: ['analytics', 'deals', orgId, channelId, startDate?.toISOString(), endDate?.toISOString()],
         queryFn: async () => {
-            let query = supabase
-                .from('analytics_deal_metrics')
-                .select('stage, count:deal_count, value:total_value, avg_deal_size')
-                .eq('organization_id', orgId);
-
-            if (channelId) {
-                query = query.eq('channel_id', channelId);
-            }
-
-            const { data, error } = await query;
+            const { data, error } = await supabase.rpc('get_deal_pipeline_snapshot', {
+                org_id: orgId,
+                p_channel_id: channelId || null,
+                start_date: startDate ? startDate.toISOString() : null,
+                end_date: endDate ? endDate.toISOString() : null
+            });
 
             if (error) throw error;
-            return data as unknown as DealMetric[];
+            return data as DealMetric[];
         },
         enabled: !!orgId,
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
 };
 
-export const useChannelPerformance = (orgId: string) => {
+export const useDealTrends = (orgId: string, period: 'day' | 'week' | 'month', channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
     return useQuery({
-        queryKey: ['analytics', 'channels', orgId],
+        queryKey: ['analytics', 'deals_trend', orgId, period, channelId, startDate?.toISOString(), endDate?.toISOString()],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('analytics_channel_performance')
-                .select('*')
-                .eq('organization_id', orgId);
+            const { data, error } = await supabase.rpc('get_deal_trends', {
+                org_id: orgId,
+                period_type: period,
+                p_channel_id: channelId || null,
+                start_date: startDate ? startDate.toISOString() : null,
+                end_date: endDate ? endDate.toISOString() : null
+            });
+            if (error) throw error;
+            return data;
+        },
+        enabled: !!orgId,
+        staleTime: 5 * 60 * 1000,
+    });
+};
+
+export const useMessageVolumeTrends = (orgId: string, period: 'day' | 'week' | 'month', channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
+    return useQuery({
+        queryKey: ['analytics', 'messages_trend', orgId, period, channelId, startDate?.toISOString(), endDate?.toISOString()],
+        queryFn: async () => {
+            const { data, error } = await supabase.rpc('get_message_volume_trends', {
+                org_id: orgId,
+                period_type: period,
+                p_channel_id: channelId || null,
+                start_date: startDate ? startDate.toISOString() : null,
+                end_date: endDate ? endDate.toISOString() : null
+            });
+            if (error) throw error;
+            return data;
+        },
+        enabled: !!orgId,
+        staleTime: 5 * 60 * 1000,
+    });
+};
+
+export const useChannelPerformance = (orgId: string, startDate?: Date | null, endDate?: Date | null) => {
+    return useQuery({
+        queryKey: ['analytics', 'channels', orgId, startDate?.toISOString(), endDate?.toISOString()],
+        queryFn: async () => {
+            const { data, error } = await supabase.rpc('get_channel_performance_snapshot', {
+                org_id: orgId,
+                start_date: startDate ? startDate.toISOString() : null,
+                end_date: endDate ? endDate.toISOString() : null
+            });
 
             if (error) throw error;
             return data as ChannelPerformance[];

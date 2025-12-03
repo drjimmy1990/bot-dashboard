@@ -10,7 +10,9 @@ import {
     useRevenueMetrics,
     useConversionFunnel,
     useDealMetrics,
+    useDealTrends,
     useChannelPerformance,
+    useMessageVolumeTrends,
     useAnalyticsControl
 } from '@/hooks/useAnalytics';
 import { useChannels } from '@/hooks/useChannels';
@@ -68,12 +70,42 @@ export default function AnalyticsPage() {
     const [dateRange, setDateRange] = useState<DateRangeOption>('30d');
     const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day');
 
+    // Calculate start and end dates based on dateRange
+    const { startDate, endDate } = React.useMemo(() => {
+        const now = new Date();
+        // Normalize to end of day to avoid millisecond mismatches causing refetches
+        now.setHours(23, 59, 59, 999);
+
+        let start: Date | null = null;
+        let end: Date | null = now;
+
+        if (dateRange === '7d') {
+            start = new Date(now);
+            start.setDate(now.getDate() - 7);
+            start.setHours(0, 0, 0, 0); // Start of day
+        } else if (dateRange === '30d') {
+            start = new Date(now);
+            start.setDate(now.getDate() - 30);
+            start.setHours(0, 0, 0, 0);
+        } else if (dateRange === '90d') {
+            start = new Date(now);
+            start.setDate(now.getDate() - 90);
+            start.setHours(0, 0, 0, 0);
+        } else {
+            start = null;
+            end = null;
+        }
+        return { startDate: start, endDate: end };
+    }, [dateRange]);
+
     // Fetch data
-    const { data: summary, isLoading: isSummaryLoading, refetch: refetchSummary } = useDashboardSummary(orgId || '', selectedChannelId || null);
-    const { data: revenue, isLoading: isRevenueLoading } = useRevenueMetrics(orgId || '', period, selectedChannelId || null);
-    const { data: funnel, isLoading: isFunnelLoading } = useConversionFunnel(orgId || '', selectedChannelId || null);
-    const { data: deals, isLoading: isDealsLoading } = useDealMetrics(orgId || '', selectedChannelId || null);
-    const { data: channelPerformance, isLoading: isChannelLoading } = useChannelPerformance(orgId || '');
+    const { data: summary, isLoading: isSummaryLoading, refetch: refetchSummary } = useDashboardSummary(orgId || '', selectedChannelId || null, startDate, endDate);
+    const { data: revenue, isLoading: isRevenueLoading } = useRevenueMetrics(orgId || '', period, selectedChannelId || null, startDate, endDate);
+    const { data: funnel, isLoading: isFunnelLoading } = useConversionFunnel(orgId || '', selectedChannelId || null, startDate, endDate);
+    const { data: deals, isLoading: isDealsLoading } = useDealMetrics(orgId || '', selectedChannelId || null, startDate, endDate);
+    const { data: dealsTrend, isLoading: isDealsTrendLoading } = useDealTrends(orgId || '', period, selectedChannelId || null, startDate, endDate);
+    const { data: channelPerformance, isLoading: isChannelLoading } = useChannelPerformance(orgId || '', startDate, endDate);
+    const { data: messageTrends, isLoading: isMessageTrendsLoading } = useMessageVolumeTrends(orgId || '', period, selectedChannelId || null, startDate, endDate);
     const { channels } = useChannels();
     const { refreshAnalytics } = useAnalyticsControl();
 
@@ -178,16 +210,17 @@ export default function AnalyticsPage() {
                         <RevenueAnalytics data={revenue} isLoading={isRevenueLoading} />
                     </Grid>
                     <Grid size={{ xs: 12, md: 4 }}>
-                        <MessageDistributionChart
-                            data={channelPerformance}
-                            selectedChannelId={selectedChannelId || null}
-                        />
-                    </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
                         <ConversionFunnel data={funnel} isLoading={isFunnelLoading} />
                     </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <DealAnalytics data={deals} isLoading={isDealsLoading} />
+                    <Grid size={{ xs: 12, md: 8 }}>
+                        <DealAnalytics data={deals} trendData={dealsTrend} isLoading={isDealsLoading || isDealsTrendLoading} />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 4 }}>
+                        <MessageDistributionChart
+                            data={channelPerformance}
+                            trendData={messageTrends}
+                            selectedChannelId={selectedChannelId || null}
+                        />
                     </Grid>
                 </Grid>
             </CustomTabPanel>
@@ -197,10 +230,10 @@ export default function AnalyticsPage() {
                     <Grid size={{ xs: 12 }}>
                         <RevenueAnalytics data={revenue} isLoading={isRevenueLoading} />
                     </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <DealAnalytics data={deals} isLoading={isDealsLoading} />
+                    <Grid size={{ xs: 12 }}>
+                        <DealAnalytics data={deals} trendData={dealsTrend} isLoading={isDealsLoading || isDealsTrendLoading} />
                     </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={{ xs: 12 }}>
                         <ConversionFunnel data={funnel} isLoading={isFunnelLoading} />
                     </Grid>
                 </Grid>
@@ -217,6 +250,7 @@ export default function AnalyticsPage() {
                     <Grid size={{ xs: 12 }}>
                         <MessageDistributionChart
                             data={channelPerformance}
+                            trendData={messageTrends}
                             selectedChannelId={selectedChannelId || null}
                         />
                     </Grid>

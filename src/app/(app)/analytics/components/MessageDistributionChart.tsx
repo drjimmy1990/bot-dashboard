@@ -1,18 +1,21 @@
 'use client';
 
 import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { Paper, Typography, Box } from '@mui/material';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { Paper, Typography, Box, useTheme, Divider } from '@mui/material';
 import { ChannelPerformance } from '@/hooks/useAnalytics';
 
 interface MessageDistributionChartProps {
     data?: ChannelPerformance[];
+    trendData?: any[];
     selectedChannelId?: string | null;
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
 
-export default function MessageDistributionChart({ data, selectedChannelId }: MessageDistributionChartProps) {
+export default function MessageDistributionChart({ data, trendData, selectedChannelId }: MessageDistributionChartProps) {
+    const theme = useTheme();
+
     const chartData = React.useMemo(() => {
         if (!data) return [];
 
@@ -31,7 +34,7 @@ export default function MessageDistributionChart({ data, selectedChannelId }: Me
         ].filter(item => item.value > 0);
     }, [data, selectedChannelId]);
 
-    if (chartData.length === 0) {
+    if (!data || data.length === 0) {
         return (
             <Paper sx={{ p: 3, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Typography color="textSecondary">No message data available</Typography>
@@ -40,11 +43,12 @@ export default function MessageDistributionChart({ data, selectedChannelId }: Me
     }
 
     return (
-        <Paper sx={{ p: 3, height: 400, display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="h6" gutterBottom>
-                Message Distribution
-            </Typography>
-            <Box sx={{ flexGrow: 1, minHeight: 0, width: '100%' }}>
+        <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {/* Distribution (Pie Chart) */}
+            <Box sx={{ height: 300, width: '100%' }}>
+                <Typography variant="h6" gutterBottom>
+                    Message Distribution
+                </Typography>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                         <Pie
@@ -65,6 +69,40 @@ export default function MessageDistributionChart({ data, selectedChannelId }: Me
                     </PieChart>
                 </ResponsiveContainer>
             </Box>
+
+            <Divider />
+
+            {/* Message Volume Trends (Line Chart) */}
+            {trendData && trendData.length > 0 && (
+                <Box sx={{ height: 300, width: '100%' }}>
+                    <Typography variant="h6" gutterBottom>
+                        Message Volume Trend
+                    </Typography>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                            data={trendData}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                        >
+                            <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+                            <XAxis
+                                dataKey="date"
+                                stroke={theme.palette.text.secondary}
+                                tick={{ fontSize: 12 }}
+                                tickFormatter={(value) => new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            />
+                            <YAxis stroke={theme.palette.text.secondary} tick={{ fontSize: 12 }} />
+                            <Tooltip
+                                contentStyle={{ backgroundColor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}`, borderRadius: 8 }}
+                                labelFormatter={(label) => new Date(label).toLocaleDateString()}
+                            />
+                            <Legend />
+                            <Line type="monotone" dataKey="total_messages" name="Total" stroke="#8884d8" strokeWidth={2} dot={false} />
+                            <Line type="monotone" dataKey="ai_responses" name="AI" stroke="#82ca9d" strokeWidth={2} dot={false} />
+                            <Line type="monotone" dataKey="agent_responses" name="Agent" stroke="#ffc658" strokeWidth={2} dot={false} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </Box>
+            )}
         </Paper>
     );
 }

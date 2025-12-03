@@ -388,17 +388,230 @@ $$;
 -- 7. Analytics: Refresh All Views
 CREATE OR REPLACE FUNCTION public.refresh_all_analytics() RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 BEGIN
-  REFRESH MATERIALIZED VIEW public.analytics_deal_metrics;
-  REFRESH MATERIALIZED VIEW public.analytics_client_metrics;
-  REFRESH MATERIALIZED VIEW public.analytics_revenue_metrics;
   REFRESH MATERIALIZED VIEW public.analytics_channel_performance;
+  REFRESH MATERIALIZED VIEW public.analytics_deal_metrics;
+  REFRESH MATERIALIZED VIEW public.analytics_revenue_metrics;
   REFRESH MATERIALIZED VIEW public.analytics_chatbot_effectiveness;
 END;
 $$;
 
--- 8. Analytics: Dashboard Summaries
-CREATE OR REPLACE FUNCTION public.get_crm_dashboard_summary(org_id UUID) RETURNS TABLE (total_clients BIGINT, total_customers BIGINT, total_leads BIGINT, total_deals BIGINT, open_deals_value NUMERIC, closed_won_deals BIGINT, total_revenue NUMERIC, avg_order_value NUMERIC, pending_activities BIGINT) AS $$ BEGIN RETURN QUERY SELECT (SELECT COUNT(*) FROM public.crm_clients WHERE organization_id = org_id), (SELECT COUNT(*) FROM public.crm_clients WHERE organization_id = org_id AND client_type = 'customer'), (SELECT COUNT(*) FROM public.crm_clients WHERE organization_id = org_id AND client_type = 'lead'), (SELECT COUNT(*) FROM public.crm_deals WHERE organization_id = org_id), (SELECT COALESCE(SUM(deal_value), 0) FROM public.crm_deals WHERE organization_id = org_id AND stage NOT IN ('closed_won', 'closed_lost')), (SELECT COUNT(*) FROM public.crm_deals WHERE organization_id = org_id AND stage = 'closed_won'), (SELECT COALESCE(SUM(total), 0) FROM public.crm_orders WHERE organization_id = org_id AND status NOT IN ('cancelled', 'refunded')), (SELECT COALESCE(AVG(total), 0) FROM public.crm_orders WHERE organization_id = org_id AND status NOT IN ('cancelled', 'refunded')), (SELECT COUNT(*) FROM public.crm_activities WHERE organization_id = org_id AND status = 'pending'); END; $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
-CREATE OR REPLACE FUNCTION public.get_conversion_funnel(org_id UUID) RETURNS TABLE (lifecycle_stage TEXT, count BIGINT, percentage NUMERIC) AS $$ BEGIN RETURN QUERY SELECT c.lifecycle_stage, COUNT(*) as count, ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as percentage FROM public.crm_clients c WHERE c.organization_id = org_id GROUP BY c.lifecycle_stage ORDER BY CASE c.lifecycle_stage WHEN 'lead' THEN 1 WHEN 'mql' THEN 2 WHEN 'sql' THEN 3 WHEN 'opportunity' THEN 4 WHEN 'customer' THEN 5 WHEN 'evangelist' THEN 6 WHEN 'churned' THEN 7 END; END; $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
+-- 8. Analytics: Dashboard Summaries & Trends
+-- A. Dashboard Summary
+CREATE OR REPLACE FUNCTION public.get_crm_dashboard_summary(
+    org_id UUID, 
+    p_channel_id UUID DEFAULT NULL,
+    start_date TIMESTAMPTZ DEFAULT NULL,
+    end_date TIMESTAMPTZ DEFAULT NULL
+) 
+RETURNS TABLE (
+    total_clients BIGINT, 
+    total_customers BIGINT, 
+    total_leads BIGINT, 
+    total_deals BIGINT, 
+    open_deals_value NUMERIC, 
+    closed_won_deals BIGINT, 
+    total_revenue NUMERIC, 
+    avg_order_value NUMERIC, 
+    pending_activities BIGINT
+) AS $$ 
+BEGIN 
+    RETURN QUERY 
+    SELECT 
+        (SELECT COUNT(*) FROM public.crm_clients c LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE c.organization_id = org_id AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR c.created_at >= start_date) AND (end_date IS NULL OR c.created_at <= end_date)), 
+        (SELECT COUNT(*) FROM public.crm_clients c LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE c.organization_id = org_id AND c.client_type = 'customer' AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR c.created_at >= start_date) AND (end_date IS NULL OR c.created_at <= end_date)), 
+        (SELECT COUNT(*) FROM public.crm_clients c LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE c.organization_id = org_id AND c.client_type = 'lead' AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR c.created_at >= start_date) AND (end_date IS NULL OR c.created_at <= end_date)), 
+        (SELECT COUNT(*) FROM public.crm_deals d LEFT JOIN public.crm_clients c ON d.client_id = c.id LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE d.organization_id = org_id AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR d.created_at >= start_date) AND (end_date IS NULL OR d.created_at <= end_date)), 
+        (SELECT COALESCE(SUM(d.deal_value), 0) FROM public.crm_deals d LEFT JOIN public.crm_clients c ON d.client_id = c.id LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE d.organization_id = org_id AND d.stage NOT IN ('closed_won', 'closed_lost') AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR d.created_at >= start_date) AND (end_date IS NULL OR d.created_at <= end_date)), 
+        (SELECT COUNT(*) FROM public.crm_deals d LEFT JOIN public.crm_clients c ON d.client_id = c.id LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE d.organization_id = org_id AND d.stage = 'closed_won' AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR d.created_at >= start_date) AND (end_date IS NULL OR d.created_at <= end_date)), 
+        (SELECT COALESCE(SUM(o.total), 0) FROM public.crm_orders o LEFT JOIN public.crm_clients c ON o.client_id = c.id LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE o.organization_id = org_id AND o.status NOT IN ('cancelled', 'refunded') AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR o.order_date >= start_date) AND (end_date IS NULL OR o.order_date <= end_date)), 
+        (SELECT COALESCE(AVG(o.total), 0) FROM public.crm_orders o LEFT JOIN public.crm_clients c ON o.client_id = c.id LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE o.organization_id = org_id AND o.status NOT IN ('cancelled', 'refunded') AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR o.order_date >= start_date) AND (end_date IS NULL OR o.order_date <= end_date)), 
+        (SELECT COUNT(*) FROM public.crm_activities a LEFT JOIN public.crm_clients c ON a.client_id = c.id LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE a.organization_id = org_id AND a.status = 'pending' AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR a.created_at >= start_date) AND (end_date IS NULL OR a.created_at <= end_date)); 
+END; 
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
+
+-- B. Conversion Funnel
+CREATE OR REPLACE FUNCTION public.get_conversion_funnel(
+    org_id UUID, 
+    p_channel_id UUID DEFAULT NULL,
+    start_date TIMESTAMPTZ DEFAULT NULL,
+    end_date TIMESTAMPTZ DEFAULT NULL
+) 
+RETURNS TABLE (lifecycle_stage TEXT, count BIGINT, percentage NUMERIC) AS $$ 
+BEGIN 
+    RETURN QUERY 
+    SELECT 
+        c.lifecycle_stage, 
+        COUNT(*) as count, 
+        ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as percentage 
+    FROM public.crm_clients c 
+    LEFT JOIN public.contacts co ON c.contact_id = co.id
+    WHERE c.organization_id = org_id 
+      AND (p_channel_id IS NULL OR co.channel_id = p_channel_id)
+      AND (start_date IS NULL OR c.created_at >= start_date)
+      AND (end_date IS NULL OR c.created_at <= end_date)
+    GROUP BY c.lifecycle_stage;
+END; 
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
+
+-- C. Revenue Trends
+CREATE OR REPLACE FUNCTION public.get_revenue_trends(
+    org_id UUID, 
+    period_type TEXT, 
+    p_channel_id UUID DEFAULT NULL,
+    start_date TIMESTAMPTZ DEFAULT NULL,
+    end_date TIMESTAMPTZ DEFAULT NULL
+) 
+RETURNS TABLE (
+    date TIMESTAMPTZ, 
+    revenue NUMERIC, 
+    order_count BIGINT, 
+    avg_order_value NUMERIC
+) AS $$ 
+BEGIN 
+    RETURN QUERY 
+    SELECT 
+        DATE_TRUNC(period_type, o.order_date) as date,
+        SUM(o.total) as revenue,
+        COUNT(*) as order_count,
+        CASE WHEN COUNT(*) > 0 THEN SUM(o.total) / COUNT(*) ELSE 0 END as avg_order_value
+    FROM public.crm_orders o
+    LEFT JOIN public.crm_clients c ON o.client_id = c.id
+    LEFT JOIN public.contacts co ON c.contact_id = co.id
+    WHERE o.organization_id = org_id
+      AND o.status NOT IN ('cancelled', 'refunded')
+      AND (p_channel_id IS NULL OR co.channel_id = p_channel_id)
+      AND (start_date IS NULL OR o.order_date >= start_date)
+      AND (end_date IS NULL OR o.order_date <= end_date)
+    GROUP BY 1
+    ORDER BY 1;
+END; 
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
+
+-- D. Deal Trends
+CREATE OR REPLACE FUNCTION public.get_deal_trends(
+    org_id UUID, 
+    period_type TEXT, 
+    p_channel_id UUID DEFAULT NULL,
+    start_date TIMESTAMPTZ DEFAULT NULL,
+    end_date TIMESTAMPTZ DEFAULT NULL
+) 
+RETURNS TABLE (
+    date TIMESTAMPTZ, 
+    new_deals_count BIGINT, 
+    new_deals_value NUMERIC
+) AS $$ 
+BEGIN 
+    RETURN QUERY 
+    SELECT 
+        DATE_TRUNC(period_type, d.created_at) as date,
+        COUNT(*) as new_deals_count,
+        COALESCE(SUM(d.deal_value), 0) as new_deals_value
+    FROM public.crm_deals d
+    LEFT JOIN public.crm_clients c ON d.client_id = c.id
+    LEFT JOIN public.contacts co ON c.contact_id = co.id
+    WHERE d.organization_id = org_id
+      AND (p_channel_id IS NULL OR co.channel_id = p_channel_id)
+      AND (start_date IS NULL OR d.created_at >= start_date)
+      AND (end_date IS NULL OR d.created_at <= end_date)
+    GROUP BY 1
+    ORDER BY 1;
+END; 
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
+
+-- E. Message Volume Trends
+CREATE OR REPLACE FUNCTION public.get_message_volume_trends(
+    org_id UUID, 
+    period_type TEXT, 
+    p_channel_id UUID DEFAULT NULL,
+    start_date TIMESTAMPTZ DEFAULT NULL,
+    end_date TIMESTAMPTZ DEFAULT NULL
+) 
+RETURNS TABLE (
+    date TIMESTAMPTZ, 
+    total_messages BIGINT,
+    ai_responses BIGINT,
+    agent_responses BIGINT
+) AS $$ 
+BEGIN 
+    RETURN QUERY 
+    SELECT 
+        DATE_TRUNC(period_type, m.sent_at) as date,
+        COUNT(*) as total_messages,
+        COUNT(*) FILTER (WHERE m.sender_type = 'ai') as ai_responses,
+        COUNT(*) FILTER (WHERE m.sender_type = 'agent') as agent_responses
+    FROM public.messages m
+    LEFT JOIN public.contacts co ON m.contact_id = co.id
+    WHERE m.organization_id = org_id
+      AND (p_channel_id IS NULL OR m.channel_id = p_channel_id)
+      AND (start_date IS NULL OR m.sent_at >= start_date)
+      AND (end_date IS NULL OR m.sent_at <= end_date)
+    GROUP BY 1
+    ORDER BY 1;
+END; 
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
+
+-- F. Deal Pipeline Snapshot (Filtered)
+CREATE OR REPLACE FUNCTION public.get_deal_pipeline_snapshot(
+    org_id UUID, 
+    p_channel_id UUID DEFAULT NULL,
+    start_date TIMESTAMPTZ DEFAULT NULL,
+    end_date TIMESTAMPTZ DEFAULT NULL
+) 
+RETURNS TABLE (
+    stage TEXT, 
+    count BIGINT, 
+    value NUMERIC
+) AS $$ 
+BEGIN 
+    RETURN QUERY 
+    SELECT 
+        d.stage,
+        COUNT(*) as count,
+        COALESCE(SUM(d.deal_value), 0) as value
+    FROM public.crm_deals d
+    LEFT JOIN public.crm_clients c ON d.client_id = c.id
+    LEFT JOIN public.contacts co ON c.contact_id = co.id
+    WHERE d.organization_id = org_id
+      AND (p_channel_id IS NULL OR co.channel_id = p_channel_id)
+      AND (start_date IS NULL OR d.created_at >= start_date)
+      AND (end_date IS NULL OR d.created_at <= end_date)
+    GROUP BY d.stage;
+END; 
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
+
+-- G. Channel Performance Snapshot (Filtered)
+CREATE OR REPLACE FUNCTION public.get_channel_performance_snapshot(
+    org_id UUID, 
+    start_date TIMESTAMPTZ DEFAULT NULL,
+    end_date TIMESTAMPTZ DEFAULT NULL
+) 
+RETURNS TABLE (
+    channel_id UUID,
+    channel_name TEXT,
+    platform TEXT,
+    total_messages BIGINT,
+    incoming_messages BIGINT,
+    agent_responses BIGINT,
+    ai_responses BIGINT
+) AS $$ 
+BEGIN 
+    RETURN QUERY 
+    SELECT 
+        ch.id as channel_id,
+        ch.name as channel_name,
+        ch.platform,
+        COUNT(m.id) as total_messages,
+        COUNT(m.id) FILTER (WHERE m.sender_type = 'user') as incoming_messages,
+        COUNT(m.id) FILTER (WHERE m.sender_type = 'agent') as agent_responses,
+        COUNT(m.id) FILTER (WHERE m.sender_type = 'ai') as ai_responses
+    FROM public.channels ch
+    LEFT JOIN public.messages m ON m.channel_id = ch.id
+    WHERE ch.organization_id = org_id
+      AND (start_date IS NULL OR m.sent_at >= start_date)
+      AND (end_date IS NULL OR m.sent_at <= end_date)
+    GROUP BY ch.id, ch.name, ch.platform;
+END; 
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
 
 -- ====================================================================
 -- SECTION 6: AUTOMATION & TRIGGERS
@@ -470,25 +683,72 @@ CREATE TRIGGER trigger_update_last_contact AFTER INSERT ON public.crm_activities
 -- SECTION 7: MATERIALIZED VIEWS (ANALYTICS)
 -- ====================================================================
 
--- 1. Deal Metrics
-CREATE MATERIALIZED VIEW public.analytics_deal_metrics AS SELECT d.organization_id, d.stage, d.owner_id, COUNT(*) as deal_count, SUM(d.deal_value) as total_value, AVG(d.deal_value) as avg_deal_size, SUM(CASE WHEN d.stage = 'closed_won' THEN d.deal_value ELSE 0 END) as won_value, SUM(CASE WHEN d.stage = 'closed_lost' THEN d.deal_value ELSE 0 END) as lost_value, AVG(d.probability) as avg_probability, AVG(EXTRACT(EPOCH FROM (COALESCE(d.actual_close_date::timestamptz, NOW()) - d.created_at)) / 86400) as avg_deal_cycle_days, DATE_TRUNC('month', d.created_at) as period_month FROM public.crm_deals d GROUP BY d.organization_id, d.stage, d.owner_id, DATE_TRUNC('month', d.created_at);
-CREATE UNIQUE INDEX idx_analytics_deal_metrics ON public.analytics_deal_metrics(organization_id, stage, COALESCE(owner_id, '00000000-0000-0000-0000-000000000000'::uuid), period_month);
+-- 1. Channel Performance (Snapshot)
+CREATE MATERIALIZED VIEW public.analytics_channel_performance AS 
+SELECT 
+    ch.organization_id, 
+    ch.id as channel_id, 
+    ch.name as channel_name, 
+    ch.platform, 
+    COUNT(DISTINCT c.id) as total_contacts, 
+    COUNT(m.id) as total_messages, 
+    COUNT(m.id) FILTER (WHERE m.sender_type = 'user') as incoming_messages, 
+    COUNT(m.id) FILTER (WHERE m.sender_type = 'agent') as agent_responses, 
+    COUNT(m.id) FILTER (WHERE m.sender_type = 'ai') as ai_responses
+FROM public.channels ch 
+LEFT JOIN public.contacts c ON c.channel_id = ch.id 
+LEFT JOIN public.messages m ON m.channel_id = ch.id 
+GROUP BY ch.organization_id, ch.id, ch.name, ch.platform;
 
--- 2. Client Metrics
-CREATE MATERIALIZED VIEW public.analytics_client_metrics AS SELECT c.organization_id, c.lifecycle_stage, c.client_type, c.source, c.assigned_to, COUNT(*) as client_count, SUM(c.total_revenue) as total_revenue, AVG(c.total_revenue) as avg_revenue_per_client, AVG(c.total_orders) as avg_orders_per_client, AVG(c.average_order_value) as avg_order_value, AVG(c.lead_score) as avg_lead_score, DATE_TRUNC('month', c.created_at) as period_month FROM public.crm_clients c GROUP BY c.organization_id, c.lifecycle_stage, c.client_type, c.source, c.assigned_to, DATE_TRUNC('month', c.created_at);
-CREATE UNIQUE INDEX idx_analytics_client_metrics ON public.analytics_client_metrics(organization_id, COALESCE(lifecycle_stage, 'unknown'), COALESCE(client_type, 'unknown'), COALESCE(source, 'unknown'), COALESCE(assigned_to, '00000000-0000-0000-0000-000000000000'::uuid), period_month);
+CREATE INDEX idx_analytics_channel_perf_org ON public.analytics_channel_performance(organization_id);
 
--- 3. Revenue Metrics
-CREATE MATERIALIZED VIEW public.analytics_revenue_metrics AS SELECT o.organization_id, SUM(o.total) as total_revenue, COUNT(DISTINCT o.client_id) as unique_customers, COUNT(*) as order_count, AVG(o.total) as avg_order_value, SUM(CASE WHEN o.status = 'delivered' THEN o.total ELSE 0 END) as delivered_revenue, SUM(CASE WHEN o.status = 'cancelled' OR o.status = 'refunded' THEN o.total ELSE 0 END) as lost_revenue, DATE_TRUNC('day', o.order_date) as period_day, DATE_TRUNC('week', o.order_date) as period_week, DATE_TRUNC('month', o.order_date) as period_month, DATE_TRUNC('year', o.order_date) as period_year FROM public.crm_orders o GROUP BY o.organization_id, DATE_TRUNC('day', o.order_date), DATE_TRUNC('week', o.order_date), DATE_TRUNC('month', o.order_date), DATE_TRUNC('year', o.order_date);
-CREATE UNIQUE INDEX idx_analytics_revenue_metrics ON public.analytics_revenue_metrics(organization_id, period_day);
+-- 2. Deal Metrics (Snapshot by Stage)
+CREATE MATERIALIZED VIEW public.analytics_deal_metrics AS 
+SELECT 
+    d.organization_id, 
+    co.channel_id,
+    d.stage, 
+    COUNT(*) as deal_count, 
+    SUM(d.deal_value) as total_value, 
+    AVG(d.deal_value) as avg_deal_size
+FROM public.crm_deals d
+LEFT JOIN public.crm_clients c ON d.client_id = c.id
+LEFT JOIN public.contacts co ON c.contact_id = co.id
+GROUP BY d.organization_id, co.channel_id, d.stage;
 
--- 4. Channel Performance
-CREATE MATERIALIZED VIEW public.analytics_channel_performance AS SELECT ch.organization_id, ch.id as channel_id, ch.name as channel_name, ch.platform, COUNT(DISTINCT c.id) as total_contacts, COUNT(m.id) as total_messages, COUNT(m.id) FILTER (WHERE m.sender_type = 'user') as incoming_messages, COUNT(m.id) FILTER (WHERE m.sender_type = 'agent') as agent_responses, COUNT(m.id) FILTER (WHERE m.sender_type = 'ai') as ai_responses, DATE_TRUNC('month', m.sent_at) as period_month FROM public.channels ch LEFT JOIN public.contacts c ON c.channel_id = ch.id LEFT JOIN public.messages m ON m.channel_id = ch.id GROUP BY ch.organization_id, ch.id, ch.name, ch.platform, DATE_TRUNC('month', m.sent_at);
-CREATE UNIQUE INDEX idx_analytics_channel_performance ON public.analytics_channel_performance(organization_id, channel_id, COALESCE(period_month, '1970-01-01'::timestamptz));
+CREATE INDEX idx_analytics_deal_metrics_org ON public.analytics_deal_metrics(organization_id);
 
--- 5. Chatbot Effectiveness (Updated V3)
-CREATE MATERIALIZED VIEW public.analytics_chatbot_effectiveness AS SELECT a.organization_id, m.channel_id, COUNT(DISTINCT a.client_id) as unique_clients_engaged, COUNT(*) as total_chatbot_interactions, COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.client_id END) as successful_interactions, AVG(EXTRACT(EPOCH FROM (a.completed_at - a.created_at)) / 60) as avg_interaction_duration_minutes, DATE_TRUNC('day', a.created_at) as period_day FROM public.crm_activities a LEFT JOIN public.messages m ON a.message_id = m.id WHERE a.activity_type = 'chatbot_interaction' GROUP BY a.organization_id, m.channel_id, DATE_TRUNC('day', a.created_at);
-CREATE UNIQUE INDEX idx_analytics_chatbot_effectiveness ON public.analytics_chatbot_effectiveness(organization_id, channel_id, period_day);
+-- 3. Revenue Metrics (Snapshot by Day)
+CREATE MATERIALIZED VIEW public.analytics_revenue_metrics AS 
+SELECT 
+    o.organization_id, 
+    co.channel_id,
+    SUM(o.total) as total_revenue, 
+    COUNT(*) as order_count, 
+    DATE_TRUNC('day', o.order_date) as period_day
+FROM public.crm_orders o
+LEFT JOIN public.crm_clients c ON o.client_id = c.id
+LEFT JOIN public.contacts co ON c.contact_id = co.id
+GROUP BY o.organization_id, co.channel_id, DATE_TRUNC('day', o.order_date);
+
+CREATE INDEX idx_analytics_revenue_metrics_org ON public.analytics_revenue_metrics(organization_id);
+
+-- 4. Chatbot Effectiveness (Snapshot)
+CREATE MATERIALIZED VIEW public.analytics_chatbot_effectiveness AS 
+SELECT 
+    a.organization_id, 
+    m.channel_id, 
+    COUNT(DISTINCT a.client_id) as unique_clients_engaged, 
+    COUNT(*) as total_chatbot_interactions, 
+    COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.client_id END) as successful_interactions, 
+    AVG(EXTRACT(EPOCH FROM (a.completed_at - a.created_at)) / 60) as avg_interaction_duration_minutes, 
+    DATE_TRUNC('day', a.created_at) as period_day 
+FROM public.crm_activities a 
+LEFT JOIN public.messages m ON a.message_id = m.id 
+WHERE a.activity_type = 'chatbot_interaction' 
+GROUP BY a.organization_id, m.channel_id, DATE_TRUNC('day', a.created_at);
+
+CREATE INDEX idx_analytics_chatbot_effectiveness_org ON public.analytics_chatbot_effectiveness(organization_id);
 
 -- ====================================================================
 -- SECTION 8: ROW-LEVEL SECURITY (RLS) POLICIES
@@ -527,12 +787,17 @@ CREATE POLICY "Users can manage CRM tags" ON public.crm_tags FOR ALL USING (orga
 GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT USAGE ON SCHEMA public TO anon;
 GRANT SELECT ON public.analytics_deal_metrics TO authenticated;
-GRANT SELECT ON public.analytics_client_metrics TO authenticated;
 GRANT SELECT ON public.analytics_revenue_metrics TO authenticated;
 GRANT SELECT ON public.analytics_channel_performance TO authenticated;
 GRANT SELECT ON public.analytics_chatbot_effectiveness TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_crm_dashboard_summary(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_conversion_funnel(UUID) TO authenticated;
+
+GRANT EXECUTE ON FUNCTION public.get_revenue_trends(UUID, TEXT, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_deal_trends(UUID, TEXT, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_message_volume_trends(UUID, TEXT, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_crm_dashboard_summary(UUID, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_conversion_funnel(UUID, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_deal_pipeline_snapshot(UUID, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_channel_performance_snapshot(UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO authenticated;
 
 -- 2. CRM Backfill (Safe for existing data)

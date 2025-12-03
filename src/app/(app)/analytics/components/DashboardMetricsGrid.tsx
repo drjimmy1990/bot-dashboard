@@ -30,9 +30,9 @@ export default function DashboardMetricsGrid({ data, channelPerformance, selecte
 
     // Calculate aggregated metrics
     const commsMetrics = React.useMemo(() => {
-        const totalMessages = filteredChannels.reduce((sum, ch) => sum + ch.total_messages, 0);
-        const totalContacts = filteredChannels.reduce((sum, ch) => sum + ch.total_contacts, 0);
-        const totalAiResponses = filteredChannels.reduce((sum, ch) => sum + ch.ai_responses, 0);
+        const totalMessages = filteredChannels.reduce((sum, ch) => sum + (ch.total_messages || 0), 0);
+        const totalContacts = filteredChannels.reduce((sum, ch) => sum + (ch.total_contacts || 0), 0);
+        const totalAiResponses = filteredChannels.reduce((sum, ch) => sum + (ch.ai_responses || 0), 0);
 
         const engagementScore = totalContacts > 0 ? (totalMessages / totalContacts).toFixed(1) : '0';
         const aiResponseRate = totalMessages > 0 ? ((totalAiResponses / totalMessages) * 100).toFixed(1) : '0';
@@ -48,28 +48,28 @@ export default function DashboardMetricsGrid({ data, channelPerformance, selecte
     const metrics = [
         {
             label: 'Total Revenue',
-            value: data?.total_revenue,
+            value: data?.total_revenue ?? 0,
             format: (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v),
             icon: <MonetizationOnIcon color="primary" />,
             color: 'primary.main',
         },
         {
             label: 'Active Leads',
-            value: data?.total_leads,
+            value: data?.total_leads ?? 0,
             format: (v: number) => v,
             icon: <PeopleIcon color="secondary" />,
             color: 'secondary.main',
         },
         {
             label: 'Open Deals Value',
-            value: data?.open_deals_value,
+            value: data?.open_deals_value ?? 0,
             format: (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v),
             icon: <TrendingUpIcon color="success" />,
             color: 'success.main',
         },
         {
             label: 'Pending Activities',
-            value: data?.pending_activities,
+            value: data?.pending_activities ?? 0,
             format: (v: number) => v,
             icon: <AssignmentIcon color="warning" />,
             color: 'warning.main',
