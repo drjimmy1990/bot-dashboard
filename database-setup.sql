@@ -737,3 +737,171 @@ ALTER TABLE public.messages
 DISABLE TRIGGER trigger_create_activity_from_message;
 
 -- ======================= END OF SCRIPT =======================
+
+
+
+
+
+
+
+
+
+
+
+
+-- Enable pg_trgm extension for text search performance
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Create indexes for text search on frequently searched columns
+CREATE INDEX IF NOT EXISTS idx_contacts_name_trgm ON contacts USING gin(name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_crm_clients_company_name_trgm ON crm_clients USING gin(company_name gin_trgm_ops);
+
+-- Create indexes for common query patterns to improve performance
+CREATE INDEX IF NOT EXISTS idx_messages_sent_at_contact ON messages(contact_id, sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_crm_activities_created_at_client ON crm_activities(client_id, created_at DESC);
+
+
+
+
+
+
+
+
+-- 1. Update refresh_all_analytics to be accessible by frontend (SECURITY DEFINER)
+CREATE OR REPLACE FUNCTION public.refresh_all_analytics()
+RETURNS void AS $$
+BEGIN
+  REFRESH MATERIALIZED VIEW public.analytics_deal_metrics;
+  REFRESH MATERIALIZED VIEW public.analytics_client_metrics;
+  REFRESH MATERIALIZED VIEW public.analytics_revenue_metrics;
+  REFRESH MATERIALIZED VIEW public.analytics_channel_performance;
+  REFRESH MATERIALIZED VIEW public.analytics_chatbot_effectiveness;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
+
+-- 2. Safe Backfill: Insert missing crm_clients for existing contacts
+-- This respects the existing trigger by only inserting where no client exists.
+INSERT INTO public.crm_clients (
+    id,
+    organization_id,
+    contact_id,
+    company_name,
+    email,
+    phone,
+    client_type,
+    lifecycle_stage,
+    total_revenue,
+    last_contact_date,
+    created_at,
+    updated_at
+)
+SELECT
+    gen_random_uuid(),
+    c.organization_id,
+    c.id,
+    c.name,
+    NULL, -- Email not always available in contacts
+    NULL, -- Phone not always available in contacts
+    'lead', -- Default to lead
+    'lead', -- Default lifecycle stage
+    0,
+    c.last_interaction_at,
+    c.created_at,
+    c.updated_at
+FROM
+    public.contacts c
+WHERE
+    NOT EXISTS (
+        SELECT 1 FROM public.crm_clients cc WHERE cc.contact_id = c.id
+    );
+
+-- 3. Run an immediate refresh to populate views with the backfilled data
+SELECT public.refresh_all_analytics();
+
+
+
+
+
+
+
+
+
+
+-- Grant usage on schema
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO anon;
+
+-- Grant SELECT on all Materialized Views to authenticated users
+GRANT SELECT ON public.analytics_deal_metrics TO authenticated;
+GRANT SELECT ON public.analytics_client_metrics TO authenticated;
+GRANT SELECT ON public.analytics_revenue_metrics TO authenticated;
+GRANT SELECT ON public.analytics_channel_performance TO authenticated;
+GRANT SELECT ON public.analytics_chatbot_effectiveness TO authenticated;
+
+-- Grant EXECUTE on RPC functions
+GRANT EXECUTE ON FUNCTION public.get_crm_dashboard_summary(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_conversion_funnel(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO authenticated;
+
+-- Also ensure RLS doesn't block access if enabled (though usually views don't have RLS by default)
+-- If you want to be safe, you can disable RLS on views if it was accidentally enabled, 
+-- OR ensure policies exist. For now, we assume no RLS on views, just missing permissions.
+
+
+
+
+
+
+
+
+
+-- Drop the existing view and index
+DROP MATERIALIZED VIEW IF EXISTS public.analytics_chatbot_effectiveness;
+
+-- Re-create the view with channel_id
+CREATE MATERIALIZED VIEW public.analytics_chatbot_effectiveness AS
+SELECT
+  a.organization_id,
+  m.channel_id, -- Added channel_id
+  COUNT(DISTINCT a.client_id) as unique_clients_engaged,
+  COUNT(*) as total_chatbot_interactions,
+  COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.client_id END) as successful_interactions,
+  AVG(EXTRACT(EPOCH FROM (a.completed_at - a.created_at)) / 60) as avg_interaction_duration_minutes,
+  DATE_TRUNC('day', a.created_at) as period_day
+FROM public.crm_activities a
+LEFT JOIN public.messages m ON a.message_id = m.id -- Join to get channel_id
+WHERE a.activity_type = 'chatbot_interaction'
+GROUP BY a.organization_id, m.channel_id, DATE_TRUNC('day', a.created_at);
+
+-- Re-create the unique index including channel_id
+CREATE UNIQUE INDEX idx_analytics_chatbot_effectiveness ON public.analytics_chatbot_effectiveness(organization_id, channel_id, period_day);
+
+-- Refresh the view to populate data
+REFRESH MATERIALIZED VIEW public.analytics_chatbot_effectiveness;
+
+
+
+
+
+
+
+
+
+-- Refresh all analytics views explicitly
+REFRESH MATERIALIZED VIEW public.analytics_deal_metrics;
+REFRESH MATERIALIZED VIEW public.analytics_client_metrics;
+REFRESH MATERIALIZED VIEW public.analytics_revenue_metrics;
+REFRESH MATERIALIZED VIEW public.analytics_channel_performance;
+REFRESH MATERIALIZED VIEW public.analytics_chatbot_effectiveness;
+
+-- Check counts in the views after refresh
+SELECT 'analytics_deal_metrics' as view_name, count(*) as count FROM public.analytics_deal_metrics
+UNION ALL
+SELECT 'analytics_revenue_metrics', count(*) FROM public.analytics_revenue_metrics
+UNION ALL
+SELECT 'analytics_client_metrics', count(*) FROM public.analytics_client_metrics
+UNION ALL
+SELECT 'analytics_chatbot_effectiveness', count(*) FROM public.analytics_chatbot_effectiveness;
+
+-- Check crm_clients count (for funnel)
+SELECT 'crm_clients' as table_name, count(*) as count FROM public.crm_clients;

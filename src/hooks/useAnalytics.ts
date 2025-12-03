@@ -83,12 +83,12 @@ export const useRevenueMetrics = (orgId: string, period: 'day' | 'week' | 'month
             // For now, we fetch from the materialized view
             const { data, error } = await supabase
                 .from('analytics_revenue_metrics')
-                .select('*')
+                .select('date:period_day, revenue:total_revenue, order_count, avg_order_value')
                 .eq('organization_id', orgId)
-                .order('date', { ascending: true });
+                .order('period_day', { ascending: true });
 
             if (error) throw error;
-            return data as RevenueMetric[];
+            return data as unknown as RevenueMetric[];
         },
         enabled: !!orgId,
     });
@@ -100,7 +100,13 @@ export const useConversionFunnel = (orgId: string) => {
         queryFn: async () => {
             const { data, error } = await supabase.rpc('get_conversion_funnel', { org_id: orgId });
             if (error) throw error;
-            return data as ConversionFunnelStep[];
+
+            // Map RPC result to interface
+            return (data as any[]).map(item => ({
+                stage: item.lifecycle_stage,
+                count: item.count,
+                conversion_rate: item.percentage
+            })) as ConversionFunnelStep[];
         },
         enabled: !!orgId,
     });
@@ -112,11 +118,11 @@ export const useDealMetrics = (orgId: string) => {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('analytics_deal_metrics')
-                .select('*')
+                .select('stage, count:deal_count, value:total_value, avg_deal_size')
                 .eq('organization_id', orgId);
 
             if (error) throw error;
-            return data as DealMetric[];
+            return data as unknown as DealMetric[];
         },
         enabled: !!orgId,
     });
