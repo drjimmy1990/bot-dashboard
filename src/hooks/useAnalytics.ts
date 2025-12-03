@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 export interface DashboardSummary {
     total_clients: number;
     total_customers: number;
-    active_leads: number;
+    total_leads: number;
     total_deals: number;
     open_deals_value: number;
     closed_won_deals: number;
@@ -52,6 +52,7 @@ export interface ChannelPerformance {
 
 export interface ChatbotEffectiveness {
     organization_id: string;
+    channel_id: string; // Added channel_id
     unique_clients_engaged: number;
     total_chatbot_interactions: number;
     successful_interactions: number;
@@ -65,7 +66,7 @@ export const useDashboardSummary = (orgId: string) => {
     return useQuery({
         queryKey: ['analytics', 'summary', orgId],
         queryFn: async () => {
-            const { data, error } = await supabase.rpc('get_crm_dashboard_summary', { p_org_id: orgId });
+            const { data, error } = await supabase.rpc('get_crm_dashboard_summary', { org_id: orgId });
             if (error) throw error;
             // RPC returns an array for TABLE return types
             return (Array.isArray(data) && data.length > 0 ? data[0] : data) as DashboardSummary;
@@ -97,7 +98,7 @@ export const useConversionFunnel = (orgId: string) => {
     return useQuery({
         queryKey: ['analytics', 'funnel', orgId],
         queryFn: async () => {
-            const { data, error } = await supabase.rpc('get_conversion_funnel', { p_org_id: orgId });
+            const { data, error } = await supabase.rpc('get_conversion_funnel', { org_id: orgId });
             if (error) throw error;
             return data as ConversionFunnelStep[];
         },
@@ -139,15 +140,21 @@ export const useChannelPerformance = (orgId: string) => {
 
 
 
-export const useChatbotEffectiveness = (orgId: string) => {
+export const useChatbotEffectiveness = (orgId: string, channelId?: string | null) => {
     return useQuery({
-        queryKey: ['analytics', 'chatbot', orgId],
+        queryKey: ['analytics', 'chatbot', orgId, channelId],
         queryFn: async () => {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('analytics_chatbot_effectiveness')
                 .select('*')
                 .eq('organization_id', orgId)
                 .order('period_day', { ascending: false });
+
+            if (channelId) {
+                query = query.eq('channel_id', channelId);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
             return data as ChatbotEffectiveness[];

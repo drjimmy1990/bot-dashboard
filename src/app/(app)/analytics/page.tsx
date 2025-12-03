@@ -24,6 +24,8 @@ import ChannelPerformanceChart from './components/ChannelPerformance';
 import ChatbotAnalytics from './components/ChatbotAnalytics';
 import ClientMetrics from './components/ClientMetrics';
 import MessageDistributionChart from './components/MessageDistributionChart';
+import DateRangePicker, { DateRangeOption } from './components/DateRangePicker';
+import ExportButton from './components/ExportButton';
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -63,6 +65,7 @@ export default function AnalyticsPage() {
     const { data: orgId } = useOrganization();
     const [tabValue, setTabValue] = useState(0);
     const [selectedChannelId, setSelectedChannelId] = useState<string>('');
+    const [dateRange, setDateRange] = useState<DateRangeOption>('30d');
 
     // Fetch data
     const { data: summary, isLoading: isSummaryLoading, refetch: refetchSummary } = useDashboardSummary(orgId || '');
@@ -105,6 +108,7 @@ export default function AnalyticsPage() {
                     </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 2 }}>
+                    <DateRangePicker value={dateRange} onChange={setDateRange} />
                     <FormControl sx={{ minWidth: 200 }} size="small">
                         <InputLabel id="channel-select-label">Filter by Channel</InputLabel>
                         <Select
@@ -131,12 +135,7 @@ export default function AnalyticsPage() {
                     >
                         Refresh
                     </Button>
-                    <Button
-                        variant="contained"
-                        startIcon={<DownloadIcon />}
-                    >
-                        Export Report
-                    </Button>
+                    <ExportButton summary={summary} channelPerformance={channelPerformance} />
                 </Box>
             </Box>
 
@@ -198,7 +197,7 @@ export default function AnalyticsPage() {
                         <ChannelPerformanceChart data={channelPerformance} isLoading={isChannelLoading} />
                     </Grid>
                     <Grid size={{ xs: 12, md: 6 }}>
-                        <ChatbotAnalytics />
+                        <ChatbotAnalytics selectedChannelId={selectedChannelId || null} />
                     </Grid>
                     <Grid size={{ xs: 12 }}>
                         <MessageDistributionChart

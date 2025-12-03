@@ -55,7 +55,7 @@ export default function DashboardMetricsGrid({ data, channelPerformance, selecte
         },
         {
             label: 'Active Leads',
-            value: data?.active_leads,
+            value: data?.total_leads,
             format: (v: number) => v,
             icon: <PeopleIcon color="secondary" />,
             color: 'secondary.main',

@@ -9,9 +9,13 @@ import PeopleIcon from '@mui/icons-material/People';
 import { useChatbotEffectiveness } from '@/hooks/useAnalytics';
 import { useOrganization } from '@/hooks/useOrganization';
 
-export default function ChatbotAnalytics() {
+interface ChatbotAnalyticsProps {
+    selectedChannelId?: string | null;
+}
+
+export default function ChatbotAnalytics({ selectedChannelId }: ChatbotAnalyticsProps) {
     const { data: orgId } = useOrganization();
-    const { data, isLoading } = useChatbotEffectiveness(orgId || '');
+    const { data, isLoading } = useChatbotEffectiveness(orgId || '', selectedChannelId);
 
     if (isLoading) {
         return (
