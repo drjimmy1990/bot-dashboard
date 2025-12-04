@@ -21,24 +21,12 @@ CREATE TABLE public.organizations (
 );
 ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 
--- 1.5. Teams (New Feature)
-CREATE TABLE public.teams (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    description TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
-
 -- 2. Profiles (Linked to auth.users)
 CREATE TABLE public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
     full_name TEXT,
-    role TEXT NOT NULL DEFAULT 'admin',
-    team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL
+    role TEXT NOT NULL DEFAULT 'admin'
 );
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
@@ -151,11 +139,6 @@ CREATE TABLE public.crm_clients (
   phone TEXT,
   secondary_phone TEXT,
   address JSONB,
-  street TEXT,
-  city TEXT,
-  state TEXT,
-  postal_code TEXT,
-  country TEXT,
   platform_user_id TEXT, -- Added specifically for V3 logic
   ecommerce_customer_id TEXT,
   total_orders INTEGER DEFAULT 0,
@@ -168,7 +151,6 @@ CREATE TABLE public.crm_clients (
   lead_score INTEGER DEFAULT 0,
   lead_quality TEXT CHECK (lead_quality IN ('hot', 'warm', 'cold')),
   assigned_to UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-  assigned_team UUID REFERENCES public.teams(id) ON DELETE SET NULL,
   tags TEXT[],
   custom_fields JSONB,
   first_contact_date TIMESTAMPTZ DEFAULT NOW(),
@@ -195,7 +177,6 @@ CREATE TABLE public.crm_deals (
     actual_close_date DATE,
     products JSONB,
     owner_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-    assigned_team UUID REFERENCES public.teams(id) ON DELETE SET NULL,
     lost_reason TEXT,
     lost_reason_details TEXT,
     won_reason TEXT,
@@ -345,27 +326,6 @@ CREATE INDEX idx_crm_activities_organization ON public.crm_activities(organizati
 CREATE OR REPLACE FUNCTION public.get_my_organization_id() 
 RETURNS UUID LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$ 
     SELECT organization_id FROM public.profiles WHERE id = auth.uid(); 
-$$;
-
--- 1.5. Get Team Members (Helper)
-CREATE OR REPLACE FUNCTION public.get_team_members(p_team_id UUID)
-RETURNS TABLE (
-    user_id UUID,
-    full_name TEXT,
-    email TEXT,
-    role TEXT
-) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        p.id,
-        p.full_name,
-        u.email::TEXT,
-        p.role
-    FROM public.profiles p
-    JOIN auth.users u ON p.id = u.id
-    WHERE p.team_id = p_team_id;
-END;
 $$;
 
 -- 2. Handle New User (Auth Hook)
@@ -718,7 +678,6 @@ CREATE TRIGGER trigger_crm_products_updated_at BEFORE UPDATE ON public.crm_produ
 CREATE TRIGGER trigger_crm_orders_updated_at BEFORE UPDATE ON public.crm_orders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 CREATE TRIGGER trigger_crm_activities_updated_at BEFORE UPDATE ON public.crm_activities FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 CREATE TRIGGER trigger_crm_notes_updated_at BEFORE UPDATE ON public.crm_notes FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
-CREATE TRIGGER trigger_teams_updated_at BEFORE UPDATE ON public.teams FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
 -- 6. CRM Logic Triggers (Revenue, Stage History, Last Contact)
 CREATE OR REPLACE FUNCTION public.update_client_revenue() RETURNS TRIGGER LANGUAGE plpgsql SET search_path = '' AS $$ BEGIN UPDATE public.crm_clients SET total_orders = (SELECT COUNT(*) FROM public.crm_orders WHERE client_id = NEW.client_id AND status NOT IN ('cancelled', 'refunded')), total_revenue = (SELECT COALESCE(SUM(total), 0) FROM public.crm_orders WHERE client_id = NEW.client_id AND status NOT IN ('cancelled', 'refunded')), average_order_value = (SELECT COALESCE(AVG(total), 0) FROM public.crm_orders WHERE client_id = NEW.client_id AND status NOT IN ('cancelled', 'refunded')), last_contact_date = NOW(), updated_at = NOW() WHERE id = NEW.client_id; RETURN NEW; END; $$;
@@ -808,7 +767,6 @@ CREATE INDEX idx_analytics_chatbot_effectiveness_org ON public.analytics_chatbot
 -- Organizations & Profiles
 CREATE POLICY "Users can manage their own profile" ON public.profiles FOR ALL USING (id = auth.uid()) WITH CHECK (id = auth.uid());
 CREATE POLICY "Users can manage their own organization" ON public.organizations FOR ALL USING (id = get_my_organization_id()) WITH CHECK (id = get_my_organization_id());
-CREATE POLICY "Users can manage teams in their organization" ON public.teams FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
 
 -- Core Channels/Contacts/Messages
 CREATE POLICY "Users can manage channels" ON public.channels FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());

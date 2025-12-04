@@ -44,6 +44,11 @@ export interface CrmClient {
   phone: string | null;
   secondary_phone: string | null;
   address: { [key: string]: any } | null;
+  street: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
   ecommerce_customer_id: string | null;
   platform_user_id: string | null; // Added field
   total_orders: number;
@@ -56,11 +61,21 @@ export interface CrmClient {
   lead_score: number;
   lead_quality: 'hot' | 'warm' | 'cold' | null;
   assigned_to: string | null; // This is a profile UUID
+  assigned_team: string | null; // This is a team UUID
   tags: string[] | null;
   custom_fields: { [key: string]: any } | null;
   first_contact_date: string | null;
   last_contact_date: string | null;
   next_follow_up_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Team {
+  id: string;
+  organization_id: string;
+  name: string;
+  description: string | null;
   created_at: string;
   updated_at: string;
 }

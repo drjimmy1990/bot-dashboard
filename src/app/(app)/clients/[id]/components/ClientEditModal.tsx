@@ -30,25 +30,35 @@ export default function ClientEditModal({ open, onClose, client }: ClientEditMod
         company_name: '',
         email: '',
         phone: '',
-        address_city: '',
-        address_country: '',
+        street: '',
+        city: '',
+        state: '',
+        postal_code: '',
+        country: '',
         lifecycle_stage: '',
         client_type: '',
-        tags: [] as string[]
+        tags: [] as string[],
+        assigned_team: ''
     });
 
     useEffect(() => {
         if (client) {
-            const address = client.address as { city?: string; country?: string } | null;
+            // Fallback to JSONB address if explicit columns are empty
+            const addressJson = client.address as { street?: string; city?: string; state?: string; postal_code?: string; country?: string } | null;
+
             setFormData({
                 company_name: client.company_name || '',
                 email: client.email || '',
                 phone: client.phone || '',
-                address_city: address?.city || '',
-                address_country: address?.country || '',
+                street: client.street || addressJson?.street || '',
+                city: client.city || addressJson?.city || '',
+                state: client.state || addressJson?.state || '',
+                postal_code: client.postal_code || addressJson?.postal_code || '',
+                country: client.country || addressJson?.country || '',
                 lifecycle_stage: client.lifecycle_stage || 'lead',
                 client_type: client.client_type || 'lead',
-                tags: client.tags || []
+                tags: client.tags || [],
+                assigned_team: client.assigned_team || ''
             });
         }
     }, [client, open]);
@@ -63,22 +73,30 @@ export default function ClientEditModal({ open, onClose, client }: ClientEditMod
     };
 
     const handleSubmit = () => {
+        console.log("Submitting form data:", formData);
         updateClient({
             company_name: formData.company_name,
             email: formData.email,
             phone: formData.phone,
-            address: {
-                city: formData.address_city,
-                country: formData.address_country
-            },
+            street: formData.street,
+            city: formData.city,
+            state: formData.state,
+            postal_code: formData.postal_code,
+            country: formData.country,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             lifecycle_stage: formData.lifecycle_stage as any,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             client_type: formData.client_type as any,
-            tags: formData.tags
+            tags: formData.tags,
+            assigned_team: formData.assigned_team || null
         }, {
             onSuccess: () => {
+                console.log("Update successful");
                 onClose();
+            },
+            onError: (error) => {
+                console.error("Update failed:", error);
+                alert(`Failed to update client: ${error.message}`);
             }
         });
     };
@@ -172,12 +190,41 @@ export default function ClientEditModal({ open, onClose, client }: ClientEditMod
                             ))}
                         </TextField>
                     </Grid>
+
+                    {/* Address Fields */}
+                    <Grid size={{ xs: 12 }}>
+                        <TextField
+                            fullWidth
+                            label="Street Address"
+                            name="street"
+                            value={formData.street}
+                            onChange={handleChange}
+                        />
+                    </Grid>
                     <Grid size={{ xs: 12, md: 6 }}>
                         <TextField
                             fullWidth
                             label="City"
-                            name="address_city"
-                            value={formData.address_city}
+                            name="city"
+                            value={formData.city}
+                            onChange={handleChange}
+                        />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                        <TextField
+                            fullWidth
+                            label="State / Province"
+                            name="state"
+                            value={formData.state}
+                            onChange={handleChange}
+                        />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                        <TextField
+                            fullWidth
+                            label="Postal Code"
+                            name="postal_code"
+                            value={formData.postal_code}
                             onChange={handleChange}
                         />
                     </Grid>
@@ -185,9 +232,21 @@ export default function ClientEditModal({ open, onClose, client }: ClientEditMod
                         <TextField
                             fullWidth
                             label="Country"
-                            name="address_country"
-                            value={formData.address_country}
+                            name="country"
+                            value={formData.country}
                             onChange={handleChange}
+                        />
+                    </Grid>
+
+                    {/* Team Assignment (Placeholder for now, needs team fetching) */}
+                    <Grid size={{ xs: 12, md: 6 }}>
+                        <TextField
+                            fullWidth
+                            label="Assigned Team ID"
+                            name="assigned_team"
+                            value={formData.assigned_team}
+                            onChange={handleChange}
+                            helperText="Enter Team UUID (UI for selecting teams coming soon)"
                         />
                     </Grid>
                 </Grid>
