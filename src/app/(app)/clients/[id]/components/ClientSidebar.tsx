@@ -94,7 +94,7 @@ export default function ClientSidebar({ client, contact }: ClientSidebarProps) {
                 TAGS
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {client?.tags?.map((tag: string) => (
+                {Array.from(new Set(client?.tags || [])).map((tag: string) => (
                     <Chip key={tag} label={tag} size="small" />
                 ))}
                 {(!client?.tags || client.tags.length === 0) && (

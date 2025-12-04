@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Typography, Button, Avatar, Chip, IconButton, Tooltip } from '@mui/material';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
 import ChatIcon from '@mui/icons-material/Chat';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import EditIcon from '@mui/icons-material/Edit';
 import { useRouter } from 'next/navigation';
 import { CrmClient, Contact } from '@/lib/api';
+import ClientEditModal from './ClientEditModal';
 
 interface ClientHeaderProps {
     client: CrmClient;
@@ -15,6 +17,7 @@ interface ClientHeaderProps {
 
 export default function ClientHeader({ client, contact }: ClientHeaderProps) {
     const router = useRouter();
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     return (
         <Box sx={{
@@ -54,6 +57,13 @@ export default function ClientHeader({ client, contact }: ClientHeaderProps) {
             </Box>
 
             <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                    variant="outlined"
+                    startIcon={<EditIcon />}
+                    onClick={() => setIsEditModalOpen(true)}
+                >
+                    Edit
+                </Button>
                 {client?.phone && (
                     <Button
                         variant="contained"
@@ -84,6 +94,12 @@ export default function ClientHeader({ client, contact }: ClientHeaderProps) {
                     </IconButton>
                 </Tooltip>
             </Box>
+
+            <ClientEditModal
+                open={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                client={client}
+            />
         </Box>
     );
 }
