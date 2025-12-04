@@ -60,6 +60,14 @@ export interface ChatbotEffectiveness {
     period_day: string;
 }
 
+export interface MessageVolumeTrend {
+    date: string;
+    total_messages: number;
+    incoming_messages: number;
+    agent_responses: number;
+    ai_responses: number;
+}
+
 // --- Hooks ---
 
 export const useDashboardSummary = (orgId: string, channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
@@ -114,6 +122,7 @@ export const useConversionFunnel = (orgId: string, channelId?: string | null, st
             if (error) throw error;
 
             // Map RPC result to interface
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (data as any[]).map(item => ({
                 stage: item.lifecycle_stage,
                 count: item.count,
@@ -175,7 +184,7 @@ export const useMessageVolumeTrends = (orgId: string, period: 'day' | 'week' | '
                 end_date: endDate ? endDate.toISOString() : null
             });
             if (error) throw error;
-            return data;
+            return data as MessageVolumeTrend[];
         },
         enabled: !!orgId,
         staleTime: 5 * 60 * 1000,

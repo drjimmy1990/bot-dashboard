@@ -3,14 +3,15 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { Paper, Typography, Box, useTheme, Divider } from '@mui/material';
-import { ChannelPerformance } from '@/hooks/useAnalytics';
+import { ChannelPerformance, MessageVolumeTrend } from '@/hooks/useAnalytics';
 
 interface MessageDistributionChartProps {
     data?: ChannelPerformance[];
-    trendData?: any[];
+    trendData?: MessageVolumeTrend[];
     selectedChannelId?: string | null;
     showDistribution?: boolean;
     showTrend?: boolean;
+    height?: number | string;
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
@@ -20,7 +21,8 @@ export default function MessageDistributionChart({
     trendData,
     selectedChannelId,
     showDistribution = true,
-    showTrend = true
+    showTrend = true,
+    height = 300
 }: MessageDistributionChartProps) {
     const theme = useTheme();
 
@@ -44,7 +46,7 @@ export default function MessageDistributionChart({
 
     if (!data || data.length === 0) {
         return (
-            <Paper sx={{ p: 3, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Paper sx={{ p: 3, height: height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Typography color="textSecondary">No message data available</Typography>
             </Paper>
         );
@@ -70,7 +72,7 @@ export default function MessageDistributionChart({
         >
             {/* Distribution (Pie Chart) */}
             {showDistribution && (
-                <Box sx={{ height: 300, minHeight: 300, width: '100%' }}>
+                <Box sx={{ height: height, minHeight: height, width: '100%' }}>
                     <Typography variant="h6" gutterBottom>
                         Message Distribution
                     </Typography>
@@ -100,7 +102,7 @@ export default function MessageDistributionChart({
 
             {/* Message Volume Trends (Line Chart) */}
             {showTrend && trendData && trendData.length > 0 && (
-                <Box sx={{ height: 300, minHeight: 300, width: '100%' }}>
+                <Box sx={{ height: height, minHeight: height, width: '100%' }}>
                     <Typography variant="h6" gutterBottom>
                         Message Volume Trend
                     </Typography>

@@ -22,6 +22,7 @@ interface DealAnalyticsProps {
     isLoading: boolean;
     showPipeline?: boolean;
     showTrend?: boolean;
+    height?: number | string;
 }
 
 export default function DealAnalytics({
@@ -29,13 +30,14 @@ export default function DealAnalytics({
     trendData,
     isLoading,
     showPipeline = true,
-    showTrend = true
+    showTrend = true,
+    height = 300
 }: DealAnalyticsProps) {
     const theme = useTheme();
 
     if (isLoading) {
         return (
-            <Paper sx={{ p: 3, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Paper sx={{ p: 3, height: height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <CircularProgress />
             </Paper>
         );
@@ -43,7 +45,7 @@ export default function DealAnalytics({
 
     if ((!data || data.length === 0) && (!trendData || trendData.length === 0)) {
         return (
-            <Paper sx={{ p: 3, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Paper sx={{ p: 3, height: height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Typography color="textSecondary">No deal data available.</Typography>
             </Paper>
         );
@@ -69,7 +71,7 @@ export default function DealAnalytics({
         >
             {/* Pipeline Snapshot (Bar Chart) */}
             {showPipeline && (
-                <Box sx={{ height: 300, minHeight: 300, width: '100%' }}>
+                <Box sx={{ height: height, minHeight: height, width: '100%' }}>
                     <Typography variant="h6" gutterBottom>
                         Deal Pipeline (Current Snapshot)
                     </Typography>
@@ -106,7 +108,7 @@ export default function DealAnalytics({
 
             {/* New Deals Trend (Line Chart) */}
             {showTrend && trendData && trendData.length > 0 && (
-                <Box sx={{ height: 300, minHeight: 300, width: '100%' }}>
+                <Box sx={{ height: height, minHeight: height, width: '100%' }}>
                     <Typography variant="h6" gutterBottom>
                         New Deals Trend
                     </Typography>

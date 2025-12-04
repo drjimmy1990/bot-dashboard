@@ -17,14 +17,15 @@ import { RevenueMetric } from '@/hooks/useAnalytics';
 interface RevenueAnalyticsProps {
     data?: RevenueMetric[];
     isLoading: boolean;
+    height?: number | string;
 }
 
-export default function RevenueAnalytics({ data, isLoading }: RevenueAnalyticsProps) {
+export default function RevenueAnalytics({ data, isLoading, height = 350 }: RevenueAnalyticsProps) {
     const theme = useTheme();
 
     if (isLoading) {
         return (
-            <Paper sx={{ p: 3, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Paper sx={{ p: 3, height: height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Typography color="textSecondary">Loading chart data...</Typography>
             </Paper>
         );
@@ -32,7 +33,7 @@ export default function RevenueAnalytics({ data, isLoading }: RevenueAnalyticsPr
 
     if (!data || data.length === 0) {
         return (
-            <Paper sx={{ p: 3, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Paper sx={{ p: 3, height: height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Typography color="textSecondary">No revenue data available for this period.</Typography>
             </Paper>
         );
@@ -56,7 +57,7 @@ export default function RevenueAnalytics({ data, isLoading }: RevenueAnalyticsPr
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
                 Revenue Trends
             </Typography>
-            <Box sx={{ height: 350, minHeight: 350, width: '100%' }}>
+            <Box sx={{ height: height, minHeight: height, width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                         data={data}

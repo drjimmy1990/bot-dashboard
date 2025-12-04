@@ -17,9 +17,10 @@ import { ConversionFunnelStep } from '@/hooks/useAnalytics';
 interface ConversionFunnelProps {
     data?: ConversionFunnelStep[];
     isLoading: boolean;
+    height?: number | string;
 }
 
-export default function ConversionFunnel({ data, isLoading }: ConversionFunnelProps) {
+export default function ConversionFunnel({ data, isLoading, height = 350 }: ConversionFunnelProps) {
     const theme = useTheme();
 
     // Colors for funnel stages
@@ -34,7 +35,7 @@ export default function ConversionFunnel({ data, isLoading }: ConversionFunnelPr
 
     if (isLoading) {
         return (
-            <Paper sx={{ p: 3, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Paper sx={{ p: 3, height: height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Typography color="textSecondary">Loading funnel data...</Typography>
             </Paper>
         );
@@ -42,7 +43,7 @@ export default function ConversionFunnel({ data, isLoading }: ConversionFunnelPr
 
     if (!data || data.length === 0) {
         return (
-            <Paper sx={{ p: 3, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Paper sx={{ p: 3, height: height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Typography color="textSecondary">No funnel data available.</Typography>
             </Paper>
         );
@@ -66,7 +67,7 @@ export default function ConversionFunnel({ data, isLoading }: ConversionFunnelPr
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
                 Conversion Funnel
             </Typography>
-            <Box sx={{ height: 350, minHeight: 350, width: '100%' }}>
+            <Box sx={{ height: height, minHeight: height, width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                         data={data}

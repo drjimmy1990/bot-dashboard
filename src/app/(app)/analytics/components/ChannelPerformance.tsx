@@ -16,22 +16,24 @@ import { ChannelPerformance } from '@/hooks/useAnalytics';
 interface ChannelPerformanceProps {
     data?: ChannelPerformance[];
     isLoading: boolean;
+    height?: number | string;
 }
 
-export default function ChannelPerformanceChart({ data, isLoading }: ChannelPerformanceProps) {
+export default function ChannelPerformanceChart({ data, isLoading, height = 350 }: ChannelPerformanceProps) {
     const theme = useTheme();
 
     const COLORS = [
-        theme.palette.primary.main,
-        theme.palette.secondary.main,
-        theme.palette.error.main,
-        theme.palette.warning.main,
-        theme.palette.info.main,
+        '#6366f1', // Indigo
+        '#8b5cf6', // Violet
+        '#ec4899', // Pink
+        '#10b981', // Emerald
+        '#f59e0b', // Amber
+        '#3b82f6', // Blue
     ];
 
     if (isLoading) {
         return (
-            <Paper sx={{ p: 3, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Paper sx={{ p: 3, height: height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Typography color="textSecondary">Loading channel data...</Typography>
             </Paper>
         );
@@ -39,7 +41,7 @@ export default function ChannelPerformanceChart({ data, isLoading }: ChannelPerf
 
     if (!data || data.length === 0) {
         return (
-            <Paper sx={{ p: 3, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Paper sx={{ p: 3, height: height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Typography color="textSecondary">No channel data available.</Typography>
             </Paper>
         );
@@ -63,16 +65,16 @@ export default function ChannelPerformanceChart({ data, isLoading }: ChannelPerf
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
                 Channel Volume
             </Typography>
-            <Box sx={{ height: 350, width: '100%' }}>
+            <Box sx={{ height: height, width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart margin={{ top: 0, right: 0, bottom: 25, left: 0 }}>
                         <Pie
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             data={data as any[]}
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                            outerRadius={120}
+                            outerRadius="80%"
                             fill="#8884d8"
                             dataKey="total_messages"
                             nameKey="channel_name"
