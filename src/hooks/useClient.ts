@@ -3,7 +3,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
-import { CrmClient, CrmActivity, CrmNote, Contact } from '@/lib/api';
+import { CrmClient, CrmActivity, CrmNote, Contact, CrmDeal } from '@/lib/api';
 
 // --- Type Definitions ---
 
@@ -13,6 +13,8 @@ export interface Client360Data {
   contact: Contact | null;
   activities: CrmActivity[];
   notes: CrmNote[];
+  deals: CrmDeal[];
+  messageCount: number;
 }
 
 // Define the payload for updating a client's core details
@@ -32,27 +34,53 @@ export type AddActivityPayload = Omit<CrmActivity, 'id' | 'organization_id' | 'c
  */
 async function fetchClient360Data(clientId: string): Promise<Client360Data> {
   // Fetch all required data in parallel for maximum efficiency
-  const [clientRes, activitiesRes, notesRes] = await Promise.all([
+  const [clientRes, activitiesRes, notesRes, dealsRes] = await Promise.all([
     supabase.from('crm_clients').select('*').eq('id', clientId).single(),
     supabase.from('crm_activities').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
     supabase.from('crm_notes').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
+    supabase.from('crm_deals').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
   ]);
 
   // Handle potential errors for each query
   if (clientRes.error) throw new Error(`Failed to fetch client: ${clientRes.error.message}`);
   if (activitiesRes.error) throw new Error(`Failed to fetch activities: ${activitiesRes.error.message}`);
   if (notesRes.error) throw new Error(`Failed to fetch notes: ${notesRes.error.message}`);
+  if (dealsRes.error) throw new Error(`Failed to fetch deals: ${dealsRes.error.message}`);
 
   // If the client has an associated contact_id, fetch that contact record as well
   let contact: Contact | null = null;
+  let messageCount = 0;
+
   if (clientRes.data.contact_id) {
     const { data: contactData, error: contactError } = await supabase
       .from('contacts')
-      .select('*')
+      .select(`
+        *,
+        channels (
+          name,
+          platform
+        )
+      `)
       .eq('id', clientRes.data.contact_id)
       .single();
-    if (contactError) console.warn(`Could not fetch associated contact: ${contactError.message}`);
-    else contact = contactData;
+
+    if (contactError) {
+      console.warn(`Could not fetch associated contact: ${contactError.message}`);
+    } else {
+      // Flatten channel info into contact object for easier access if needed, 
+      // or just keep it nested. For now, we'll keep it as is but ensure types match.
+      contact = contactData as unknown as Contact;
+
+      // Fetch message count
+      const { count, error: countError } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('contact_id', clientRes.data.contact_id);
+
+      if (!countError) {
+        messageCount = count || 0;
+      }
+    }
   }
 
   return {
@@ -60,6 +88,8 @@ async function fetchClient360Data(clientId: string): Promise<Client360Data> {
     contact,
     activities: activitiesRes.data || [],
     notes: notesRes.data || [],
+    deals: dealsRes.data || [],
+    messageCount,
   };
 }
 

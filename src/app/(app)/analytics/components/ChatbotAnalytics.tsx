@@ -108,6 +108,7 @@ export default function ChatbotAnalytics({ selectedChannelId }: ChatbotAnalytics
                         >
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
                                 <Box sx={{ color: 'text.secondary', display: 'flex' }}>
+                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                                     {React.isValidElement(metric.icon) ? React.cloneElement(metric.icon as React.ReactElement<any>, { fontSize: 'small' }) : metric.icon}
                                 </Box>
                                 <Typography variant="subtitle2" sx={{ ml: 1, fontWeight: 600, fontSize: '0.85rem' }}>

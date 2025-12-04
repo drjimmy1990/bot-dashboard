@@ -15,7 +15,7 @@ import {
   IconButton,
   Tooltip
 } from '@mui/material';
-import { DataGrid, GridColDef, GridPaginationModel, GridRowParams, GridRowSelectionModel, GridRowId } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridPaginationModel, GridRowParams, GridRowSelectionModel } from '@mui/x-data-grid';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -103,7 +103,8 @@ export default function ClientsListPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Selection State
-  const [rowSelectionModel, setRowSelectionModel] = useState<any>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [rowSelectionModel, setRowSelectionModel] = useState<GridRowSelectionModel>([] as any);
 
   const { data, isLoading, isFetching } = useClientList({
     page: paginationModel.page,
@@ -167,10 +168,12 @@ export default function ClientsListPage() {
           />
 
           {/* Bulk Actions */}
-          {rowSelectionModel.length > 0 && (
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {(rowSelectionModel as any).length > 0 && (
             <Stack direction="row" spacing={1} sx={{ ml: 'auto', alignItems: 'center' }}>
               <Typography variant="body2" color="text.secondary">
-                {rowSelectionModel.length} selected
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {(rowSelectionModel as any).length} selected
               </Typography>
               <Tooltip title="Assign Agent">
                 <IconButton size="small"><PersonAddIcon /></IconButton>
@@ -192,6 +195,7 @@ export default function ClientsListPage() {
           loading={isLoading || isFetching}
           paginationMode="server"
           paginationModel={paginationModel}
+          onRowSelectionModelChange={setRowSelectionModel}
           onPaginationModelChange={setPaginationModel}
           pageSizeOptions={[10, 25, 50]}
           onRowClick={handleRowClick}

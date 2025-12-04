@@ -17,9 +17,8 @@ export interface Contact {
   last_interaction_at: string;
   last_message_preview: string;
   unread_count: number;
-  // --- THIS IS THE MODIFICATION ---
-  // We will need this field from the join in `useChatContacts` later.
   crm_clients: { id: string }[] | null;
+  channels?: { name: string; platform: string } | { name: string; platform: string }[];
 }
 
 export interface Message {
@@ -108,6 +107,19 @@ export interface CrmTag {
   color: string | null;
   category: string | null;
   created_at: string;
+}
+
+export interface CrmDeal {
+  id: string;
+  organization_id: string;
+  client_id: string;
+  name: string;
+  value: number;
+  stage: string;
+  status: 'won' | 'lost' | 'open' | 'negotiation';
+  close_date: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 

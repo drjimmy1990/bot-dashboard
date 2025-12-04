@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import { Paper, Typography, Box, useTheme } from '@mui/material';
+import { Paper, Typography, Box } from '@mui/material';
 import {
     PieChart,
     Pie,
@@ -20,7 +20,6 @@ interface ChannelPerformanceProps {
 }
 
 export default function ChannelPerformanceChart({ data, isLoading, height = 350 }: ChannelPerformanceProps) {
-    const theme = useTheme();
 
     const COLORS = [
         '#6366f1', // Indigo
@@ -69,7 +68,6 @@ export default function ChannelPerformanceChart({ data, isLoading, height = 350 
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart margin={{ top: 0, right: 0, bottom: 25, left: 0 }}>
                         <Pie
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             data={data as any[]}
                             cx="50%"
                             cy="50%"
@@ -84,7 +82,7 @@ export default function ChannelPerformanceChart({ data, isLoading, height = 350 
                             ))}
                         </Pie>
                         <Tooltip
-                            content={({ active, payload }: any) => {
+                            content={({ active, payload }: { active?: boolean; payload?: readonly any[] }) => {
                                 if (active && payload && payload.length) {
                                     const d = payload[0].payload;
                                     return (

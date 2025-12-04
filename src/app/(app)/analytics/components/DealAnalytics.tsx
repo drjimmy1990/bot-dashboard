@@ -18,6 +18,7 @@ import { DealMetric } from '@/hooks/useAnalytics';
 
 interface DealAnalyticsProps {
     data?: DealMetric[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     trendData?: any[];
     isLoading: boolean;
     showPipeline?: boolean;

@@ -46,6 +46,7 @@ export default function ExportButton({ summary, channelPerformance }: ExportButt
 
         // Channel Performance Section
         if (channelPerformance && channelPerformance.length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const finalY = (doc as any).lastAutoTable.finalY || 50;
             doc.text('Channel Performance', 14, finalY + 15);
 

@@ -2,9 +2,8 @@
 
 import React, { useState } from 'react';
 import { Box, Typography, Button, Grid, Tab, Tabs, Select, MenuItem, FormControl, InputLabel, SelectChangeEvent } from '@mui/material';
-import DownloadIcon from '@mui/icons-material/Download';
+
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { useAuth } from '../../../providers/AuthProvider';
 import {
     useDashboardSummary,
     useRevenueMetrics,
@@ -63,7 +62,6 @@ function a11yProps(index: number) {
 }
 
 export default function AnalyticsPage() {
-    const { user } = useAuth();
     const { data: orgId } = useOrganization();
     const [tabValue, setTabValue] = useState(0);
     const [selectedChannelId, setSelectedChannelId] = useState<string>('');
@@ -105,7 +103,7 @@ export default function AnalyticsPage() {
     const { data: deals, isLoading: isDealsLoading } = useDealMetrics(orgId || '', selectedChannelId || null, startDate, endDate);
     const { data: dealsTrend, isLoading: isDealsTrendLoading } = useDealTrends(orgId || '', period, selectedChannelId || null, startDate, endDate);
     const { data: channelPerformance, isLoading: isChannelLoading } = useChannelPerformance(orgId || '', startDate, endDate);
-    const { data: messageTrends, isLoading: isMessageTrendsLoading } = useMessageVolumeTrends(orgId || '', period, selectedChannelId || null, startDate, endDate);
+    const { data: messageTrends } = useMessageVolumeTrends(orgId || '', period, selectedChannelId || null, startDate, endDate);
     const { channels } = useChannels();
     const { refreshAnalytics } = useAnalyticsControl();
 

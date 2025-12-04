@@ -54,6 +54,7 @@ export default function ClientFilters({
         });
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleTextChange = (field: keyof FilterType, value: any) => {
         onFilterChange({
             ...filters,

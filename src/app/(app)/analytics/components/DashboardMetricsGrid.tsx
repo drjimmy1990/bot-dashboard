@@ -159,6 +159,7 @@ export default function DashboardMetricsGrid({ data, channelPerformance, selecte
                                         color: metric.color,
                                     }}
                                 >
+                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                                     {React.isValidElement(metric.icon) ? React.cloneElement(metric.icon as React.ReactElement<any>, { fontSize: 'small' }) : metric.icon}
                                 </Box>
                             </Box>
@@ -208,6 +209,7 @@ export default function DashboardMetricsGrid({ data, channelPerformance, selecte
                                         color: metric.color,
                                     }}
                                 >
+                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                                     {React.isValidElement(metric.icon) ? React.cloneElement(metric.icon as React.ReactElement<any>, { fontSize: 'small' }) : metric.icon}
                                 </Box>
                             </Box>
