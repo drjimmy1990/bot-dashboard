@@ -94,8 +94,9 @@ export default function ConversionFunnel({ data, isLoading, height = 350 }: Conv
                                 border: `1px solid ${theme.palette.divider}`,
                                 borderRadius: 8
                             }}
-                            formatter={(value: number, name: string, props: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-                                const rate = props.payload.conversion_rate;
+                            formatter={(value, name, props) => {
+                                if (value === undefined) return ['N/A', 'Clients'];
+                                const rate = props.payload?.conversion_rate || 0;
                                 return [`${value} (${rate}%)`, 'Clients'];
                             }}
                         />
