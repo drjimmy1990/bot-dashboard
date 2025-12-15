@@ -21,6 +21,7 @@ To deploy your Next.js app (a dashboard using Supabase for backend) to a VPS usi
    - **Root Directory**: Select the uploaded folder (e.g., `/www/wwwroot/your-app`).
    - **Node.js Version**: Select 18 or 20 (match your local setup).
    - **Run Command**: Set to `npm start` (this runs `next start` after build).
+   - **Port**: If aaPanel has a "Port" or "Listen Port" field in the form, set it to 3001 (or your chosen port). If not, the app will use 3000.
    - **Environment Variables**: Add your Supabase keys here (NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY). Do not hardcode them in files.
    - Save the project. aaPanel will auto-run `npm install`.
    - If `npm` is not available in the project's environment or aaPanel's terminal:
@@ -34,7 +35,7 @@ To deploy your Next.js app (a dashboard using Supabase for backend) to a VPS usi
    - If aaPanel supports a "Build Command" field, set it to `npm run build`.
 
 3. **Configure the App**:
-   - **Port**: Next.js defaults to port 3000. If port 3000 is in use, choose another (e.g., 3001). If aaPanel's Node.js form has a "Port" field, set it there. If not, add `PORT=3001` to Environment Variables or modify Run Command to `PORT=3001 npm start`. Update the reverse proxy accordingly (e.g., localhost:3001).
+   - **Port**: Next.js defaults to port 3000. If port 3000 is in use, choose another (e.g., 3001). If aaPanel's Node.js form has a "Port" field, set it there. If not, add `PORT=3001` to Environment Variables or modify Run Command to `PORT=3001 npm start`. Update the reverse proxy accordingly (e.g., localhost:3001). Restart the project after changes.
    - **Domain Binding**: In **Website** > **Sites**, bind your domain to the Node.js project (reverse proxy to localhost:port).
    - **Firewall/Security**: Ensure ports 80/443 are open. Use aaPanel's firewall to restrict access if needed.
    - **SSL**: Enable in the site settings for HTTPS.

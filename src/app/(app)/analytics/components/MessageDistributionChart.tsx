@@ -91,7 +91,7 @@ export default function MessageDistributionChart({
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(value: number) => new Intl.NumberFormat('en-US').format(value)} />
+                            <Tooltip formatter={(value) => value !== undefined ? new Intl.NumberFormat('en-US').format(Number(value)) : 'N/A'} />
                             <Legend verticalAlign="bottom" height={36} />
                         </PieChart>
                     </ResponsiveContainer>

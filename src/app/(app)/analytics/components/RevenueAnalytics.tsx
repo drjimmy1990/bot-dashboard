@@ -86,7 +86,7 @@ export default function RevenueAnalytics({ data, isLoading, height = 350 }: Reve
                                 border: `1px solid ${theme.palette.divider}`,
                                 borderRadius: 8
                             }}
-                            formatter={(value: number) => [`$${value}`, 'Revenue']}
+                            formatter={(value) => value !== undefined ? [`$${value}`, 'Revenue'] : ['N/A', 'Revenue']}
                             labelFormatter={(label) => new Date(label).toLocaleDateString()}
                         />
                         <Legend />
