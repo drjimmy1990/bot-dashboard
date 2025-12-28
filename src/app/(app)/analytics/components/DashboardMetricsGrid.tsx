@@ -8,7 +8,6 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { DashboardSummary, ChannelPerformance } from '@/hooks/useAnalytics';
 import ChatIcon from '@mui/icons-material/Chat';
-import RateReviewIcon from '@mui/icons-material/RateReview';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 
 interface DashboardMetricsGridProps {
@@ -17,6 +16,16 @@ interface DashboardMetricsGridProps {
     selectedChannelId?: string | null;
     isLoading: boolean;
 }
+
+// Gradient definitions for icon backgrounds
+const gradients = {
+    primary: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    success: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+    warning: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    info: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    secondary: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    purple: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+};
 
 export default function DashboardMetricsGrid({ data, channelPerformance, selectedChannelId, isLoading }: DashboardMetricsGridProps) {
     // Filter channel performance data
@@ -34,193 +43,156 @@ export default function DashboardMetricsGrid({ data, channelPerformance, selecte
         const totalContacts = filteredChannels.reduce((sum, ch) => sum + (ch.total_contacts || 0), 0);
         const totalAiResponses = filteredChannels.reduce((sum, ch) => sum + (ch.ai_responses || 0), 0);
 
-        const engagementScore = totalContacts > 0 ? (totalMessages / totalContacts).toFixed(1) : '0';
-        const aiResponseRate = totalMessages > 0 ? ((totalAiResponses / totalMessages) * 100).toFixed(1) : '0';
+        const aiResponseRate = totalMessages > 0 ? ((totalAiResponses / totalMessages) * 100).toFixed(0) : '0';
 
-        return {
-            totalMessages,
-            totalContacts,
-            engagementScore,
-            aiResponseRate
-        };
+        return { totalMessages, totalContacts, aiResponseRate };
     }, [filteredChannels]);
 
-    const metrics = [
-        {
-            label: 'Total Revenue',
-            value: data?.total_revenue ?? 0,
-            format: (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v),
-            icon: <MonetizationOnIcon color="primary" />,
-            color: 'primary.main',
-        },
-        {
-            label: 'Active Leads',
-            value: data?.total_leads ?? 0,
-            format: (v: number) => v,
-            icon: <PeopleIcon color="secondary" />,
-            color: 'secondary.main',
-        },
-        {
-            label: 'Open Deals Value',
-            value: data?.open_deals_value ?? 0,
-            format: (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v),
-            icon: <TrendingUpIcon color="success" />,
-            color: 'success.main',
-        },
-        {
-            label: 'Pending Activities',
-            value: data?.pending_activities ?? 0,
-            format: (v: number) => v,
-            icon: <AssignmentIcon color="warning" />,
-            color: 'warning.main',
-        },
-    ];
-
-    const communicationMetrics = [
-        {
-            label: selectedChannelId ? 'Channel Clients' : 'Total Clients',
-            value: commsMetrics.totalContacts,
-            format: (v: number) => v,
-            icon: <PeopleIcon color="info" />,
-            color: 'info.main',
-        },
-        {
-            label: 'Total Messages',
-            value: commsMetrics.totalMessages,
-            format: (v: number) => v,
-            icon: <ChatIcon color="primary" />,
-            color: 'primary.main',
-        },
-        {
-            label: 'Avg. Msgs / Client',
-            value: commsMetrics.engagementScore,
-            format: (v: string) => v,
-            icon: <RateReviewIcon color="secondary" />,
-            color: 'secondary.main',
-        },
-        {
-            label: 'AI Response Rate',
-            value: commsMetrics.aiResponseRate,
-            format: (v: string) => `${v}%`,
-            icon: <SmartToyIcon color="success" />,
-            color: 'success.main',
-        },
-    ];
+    // Compact metric card component
+    const MetricCard = ({
+        label,
+        value,
+        gradient,
+        icon
+    }: {
+        label: string;
+        value: string | number;
+        gradient: string;
+        icon: React.ReactNode;
+    }) => (
+        <Paper
+            elevation={0}
+            sx={{
+                p: 2,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                height: '100%',
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 3,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 8px 25px rgba(0,0,0,0.08)',
+                }
+            }}
+        >
+            <Box
+                sx={{
+                    p: 1.5,
+                    borderRadius: 2.5,
+                    background: gradient,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.15)',
+                }}
+            >
+                {icon}
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                        fontWeight: 500,
+                        fontSize: '0.75rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        mb: 0.25
+                    }}
+                >
+                    {label}
+                </Typography>
+                <Typography
+                    variant="h5"
+                    sx={{
+                        fontWeight: 700,
+                        fontSize: '1.5rem',
+                        lineHeight: 1.2,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                    }}
+                >
+                    {value}
+                </Typography>
+            </Box>
+        </Paper>
+    );
 
     if (isLoading) {
         return (
-            <Grid container spacing={3} mb={4}>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
-                    <Grid size={{ xs: 12, sm: 6, md: 3 }} key={item}>
-                        <Skeleton variant="rectangular" height={120} sx={{ borderRadius: 2 }} />
+            <Grid container spacing={2} mb={3}>
+                {[1, 2, 3, 4, 5, 6].map((item) => (
+                    <Grid size={{ xs: 6, sm: 4, md: 4 }} key={item}>
+                        <Skeleton variant="rectangular" height={90} sx={{ borderRadius: 3 }} />
                     </Grid>
                 ))}
             </Grid>
         );
     }
 
-    return (
-        <Box>
-            <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 2 }}>
-                Business Overview
-            </Typography>
-            <Grid container spacing={2} mb={4}>
-                {metrics.map((metric, index) => (
-                    <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
-                        <Paper
-                            elevation={0}
-                            sx={{
-                                p: 2.5,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                height: '100%',
-                                position: 'relative',
-                                overflow: 'hidden',
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                borderRadius: 3,
-                                transition: 'transform 0.2s, box-shadow 0.2s',
-                                '&:hover': {
-                                    transform: 'translateY(-2px)',
-                                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                                }
-                            }}
-                        >
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
-                                <Typography color="textSecondary" variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                                    {metric.label}
-                                </Typography>
-                                <Box
-                                    sx={{
-                                        p: 0.8,
-                                        borderRadius: 2,
-                                        bgcolor: `${metric.color}15`, // 15% opacity
-                                        display: 'flex',
-                                        color: metric.color,
-                                    }}
-                                >
-                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                    {React.isValidElement(metric.icon) ? React.cloneElement(metric.icon as React.ReactElement<any>, { fontSize: 'small' }) : metric.icon}
-                                </Box>
-                            </Box>
-                            <Typography variant="h4" component="div" sx={{ fontWeight: 700, fontSize: '1.75rem' }}>
-                                {metric.value !== undefined ? metric.format(metric.value) : '-'}
-                            </Typography>
-                        </Paper>
-                    </Grid>
-                ))}
-            </Grid>
+    const formatCurrency = (v: number) => new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 0
+    }).format(v);
 
-            <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 2 }}>
-                Communication & Engagement {selectedChannelId && '(Filtered)'}
-            </Typography>
-            <Grid container spacing={2} mb={4}>
-                {communicationMetrics.map((metric, index) => (
-                    <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
-                        <Paper
-                            elevation={0}
-                            sx={{
-                                p: 2.5,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                height: '100%',
-                                position: 'relative',
-                                overflow: 'hidden',
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                borderRadius: 3,
-                                transition: 'transform 0.2s, box-shadow 0.2s',
-                                '&:hover': {
-                                    transform: 'translateY(-2px)',
-                                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                                }
-                            }}
-                        >
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
-                                <Typography color="textSecondary" variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                                    {metric.label}
-                                </Typography>
-                                <Box
-                                    sx={{
-                                        p: 0.8,
-                                        borderRadius: 2,
-                                        bgcolor: `${metric.color}15`, // 15% opacity
-                                        display: 'flex',
-                                        color: metric.color,
-                                    }}
-                                >
-                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                    {React.isValidElement(metric.icon) ? React.cloneElement(metric.icon as React.ReactElement<any>, { fontSize: 'small' }) : metric.icon}
-                                </Box>
-                            </Box>
-                            <Typography variant="h4" component="div" sx={{ fontWeight: 700, fontSize: '1.75rem' }}>
-                                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                {(metric as any).value !== undefined ? (metric as any).format((metric as any).value) : '-'}
-                            </Typography>
-                        </Paper>
-                    </Grid>
-                ))}
+    const formatNumber = (v: number) => new Intl.NumberFormat('en-US').format(v);
+
+    return (
+        <Grid container spacing={2} mb={3}>
+            <Grid size={{ xs: 6, sm: 4, md: 4 }}>
+                <MetricCard
+                    label="Revenue"
+                    value={formatCurrency(data?.total_revenue ?? 0)}
+                    gradient={gradients.primary}
+                    icon={<MonetizationOnIcon fontSize="small" />}
+                />
             </Grid>
-        </Box>
+            <Grid size={{ xs: 6, sm: 4, md: 4 }}>
+                <MetricCard
+                    label="Leads"
+                    value={formatNumber(data?.total_leads ?? 0)}
+                    gradient={gradients.success}
+                    icon={<PeopleIcon fontSize="small" />}
+                />
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4, md: 4 }}>
+                <MetricCard
+                    label="Open Deals"
+                    value={formatCurrency(data?.open_deals_value ?? 0)}
+                    gradient={gradients.info}
+                    icon={<TrendingUpIcon fontSize="small" />}
+                />
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4, md: 4 }}>
+                <MetricCard
+                    label="Tasks"
+                    value={formatNumber(data?.pending_activities ?? 0)}
+                    gradient={gradients.warning}
+                    icon={<AssignmentIcon fontSize="small" />}
+                />
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4, md: 4 }}>
+                <MetricCard
+                    label="Messages"
+                    value={formatNumber(commsMetrics.totalMessages)}
+                    gradient={gradients.secondary}
+                    icon={<ChatIcon fontSize="small" />}
+                />
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4, md: 4 }}>
+                <MetricCard
+                    label="AI Rate"
+                    value={`${commsMetrics.aiResponseRate}%`}
+                    gradient={gradients.purple}
+                    icon={<SmartToyIcon fontSize="small" />}
+                />
+            </Grid>
+        </Grid>
     );
 }

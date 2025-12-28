@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Paper, Typography, Box, useTheme } from '@mui/material';
+import { Paper, Typography, Box, useTheme, Skeleton } from '@mui/material';
 import {
     BarChart,
     Bar,
@@ -13,6 +13,7 @@ import {
     Cell,
 } from 'recharts';
 import { ConversionFunnelStep } from '@/hooks/useAnalytics';
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
 
 interface ConversionFunnelProps {
     data?: ConversionFunnelStep[];
@@ -35,16 +36,39 @@ export default function ConversionFunnel({ data, isLoading, height = 350 }: Conv
 
     if (isLoading) {
         return (
-            <Paper sx={{ p: 3, height: height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Typography color="textSecondary">Loading funnel data...</Typography>
+            <Paper elevation={0} sx={{ p: 3, height: height, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+                <Skeleton variant="text" width="40%" height={32} sx={{ mb: 2 }} />
+                <Skeleton variant="rectangular" height="80%" sx={{ borderRadius: 2 }} />
             </Paper>
         );
     }
 
     if (!data || data.length === 0) {
         return (
-            <Paper sx={{ p: 3, height: height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Typography color="textSecondary">No funnel data available.</Typography>
+            <Paper
+                elevation={0}
+                sx={{
+                    p: 3,
+                    height: height,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 3,
+                    bgcolor: 'background.default'
+                }}
+            >
+                <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'secondary.main', opacity: 0.1, mb: 2 }}>
+                    <FilterAltIcon sx={{ fontSize: 48, color: 'secondary.main', opacity: 1 }} />
+                </Box>
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                    No Funnel Data Yet
+                </Typography>
+                <Typography variant="body2" color="text.disabled" textAlign="center">
+                    Track your lead conversion pipeline here.
+                </Typography>
             </Paper>
         );
     }

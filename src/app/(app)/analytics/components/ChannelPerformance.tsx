@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import { Paper, Typography, Box } from '@mui/material';
+import { Paper, Typography, Box, Skeleton } from '@mui/material';
 import {
     PieChart,
     Pie,
@@ -12,6 +12,7 @@ import {
     Legend,
 } from 'recharts';
 import { ChannelPerformance } from '@/hooks/useAnalytics';
+import CellTowerIcon from '@mui/icons-material/CellTower';
 
 interface ChannelPerformanceProps {
     data?: ChannelPerformance[];
@@ -32,16 +33,41 @@ export default function ChannelPerformanceChart({ data, isLoading, height = 350 
 
     if (isLoading) {
         return (
-            <Paper sx={{ p: 3, height: height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Typography color="textSecondary">Loading channel data...</Typography>
+            <Paper elevation={0} sx={{ p: 3, height: height, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+                <Skeleton variant="text" width="40%" height={32} sx={{ mb: 2 }} />
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80%' }}>
+                    <Skeleton variant="circular" width={180} height={180} />
+                </Box>
             </Paper>
         );
     }
 
     if (!data || data.length === 0) {
         return (
-            <Paper sx={{ p: 3, height: height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Typography color="textSecondary">No channel data available.</Typography>
+            <Paper
+                elevation={0}
+                sx={{
+                    p: 3,
+                    height: height,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 3,
+                    bgcolor: 'background.default'
+                }}
+            >
+                <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'info.main', opacity: 0.1, mb: 2 }}>
+                    <CellTowerIcon sx={{ fontSize: 48, color: 'info.main', opacity: 1 }} />
+                </Box>
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                    No Channel Data Yet
+                </Typography>
+                <Typography variant="body2" color="text.disabled" textAlign="center">
+                    Connect channels to see performance metrics.
+                </Typography>
             </Paper>
         );
     }

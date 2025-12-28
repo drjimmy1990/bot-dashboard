@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Typography, Button, Grid, Tab, Tabs, Select, MenuItem, FormControl, InputLabel, SelectChangeEvent } from '@mui/material';
+import { Box, Typography, Button, Grid, Tab, Tabs, Select, MenuItem, FormControl, InputLabel, SelectChangeEvent, Paper } from '@mui/material';
 
 import RefreshIcon from '@mui/icons-material/Refresh';
 import {
@@ -158,17 +158,34 @@ export default function AnalyticsPage() {
 
     return (
         <Box sx={{ p: 3, maxWidth: '100%', mx: 'auto', width: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-                <Box>
-                    <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
-                        Analytics Dashboard
-                    </Typography>
-                    <Typography variant="body1" color="textSecondary">
-                        Track your business performance and customer insights
-                    </Typography>
-                </Box>
+            {/* Header Section */}
+            <Box sx={{ mb: 3 }}>
+                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
+                    Analytics Dashboard
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                    Track your business performance and customer insights
+                </Typography>
+            </Box>
 
-                {/* Controls Bar */}
+            {/* Filter Bar - Styled as a cohesive control panel */}
+            <Paper
+                elevation={0}
+                sx={{
+                    p: 2,
+                    mb: 3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 3,
+                    bgcolor: 'background.default'
+                }}
+            >
+                {/* Left: Filters */}
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
                     <FormControl sx={{ minWidth: 100 }} size="small">
                         <InputLabel id="period-select-label">Period</InputLabel>
@@ -178,6 +195,7 @@ export default function AnalyticsPage() {
                             value={period}
                             label="Period"
                             onChange={(e) => setPeriod(e.target.value as 'day' | 'week' | 'month')}
+                            sx={{ bgcolor: 'background.paper', borderRadius: 2 }}
                         >
                             <MenuItem value="day">Daily</MenuItem>
                             <MenuItem value="week">Weekly</MenuItem>
@@ -185,7 +203,6 @@ export default function AnalyticsPage() {
                         </Select>
                     </FormControl>
 
-                    {/* Updated Date Picker */}
                     <DateRangePicker
                         value={dateRange}
                         onChange={setDateRange}
@@ -196,13 +213,14 @@ export default function AnalyticsPage() {
                     />
 
                     <FormControl sx={{ minWidth: 160 }} size="small">
-                        <InputLabel id="channel-select-label">Filter by Channel</InputLabel>
+                        <InputLabel id="channel-select-label">Channel</InputLabel>
                         <Select
                             labelId="channel-select-label"
                             id="channel-select"
                             value={selectedChannelId}
-                            label="Filter by Channel"
+                            label="Channel"
                             onChange={handleChannelChange}
+                            sx={{ bgcolor: 'background.paper', borderRadius: 2 }}
                         >
                             <MenuItem value="">
                                 <em>All Channels</em>
@@ -214,56 +232,77 @@ export default function AnalyticsPage() {
                             ))}
                         </Select>
                     </FormControl>
+                </Box>
+
+                {/* Right: Action Buttons */}
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
                     <Button
                         variant="outlined"
                         startIcon={<RefreshIcon />}
                         onClick={handleRefresh}
+                        sx={{ borderRadius: 2 }}
                     >
                         Refresh
                     </Button>
                     <ExportButton summary={summary} channelPerformance={channelPerformance} />
                 </Box>
-            </Box>
+            </Paper>
 
-            <DashboardMetricsGrid
-                data={summary}
-                channelPerformance={channelPerformance}
-                selectedChannelId={selectedChannelId || null}
-                isLoading={isSummaryLoading || isChannelLoading}
-            />
-
-            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                <Tabs value={tabValue} onChange={handleTabChange} aria-label="analytics tabs">
+            {/* Tabs moved above content for immediate discoverability */}
+            <Paper
+                elevation={0}
+                sx={{
+                    borderRadius: 3,
+                    mb: 3,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    overflow: 'hidden'
+                }}
+            >
+                <Tabs
+                    value={tabValue}
+                    onChange={handleTabChange}
+                    aria-label="analytics tabs"
+                    sx={{
+                        bgcolor: 'background.default',
+                        '& .MuiTab-root': {
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            minHeight: 56,
+                            fontSize: '0.95rem',
+                        },
+                        '& .Mui-selected': {
+                            bgcolor: 'background.paper',
+                        }
+                    }}
+                >
                     <Tab label="Overview" {...a11yProps(0)} />
                     <Tab label="Sales & Revenue" {...a11yProps(1)} />
                     <Tab label="Channels & AI" {...a11yProps(2)} />
                     <Tab label="Clients" {...a11yProps(3)} />
                 </Tabs>
-            </Box>
+            </Paper>
 
-            {/* ... Rest of the Tab Panels remain identical ... */}
+            {/* Overview Tab - includes metrics + charts */}
             <CustomTabPanel value={tabValue} index={0}>
+                <DashboardMetricsGrid
+                    data={summary}
+                    channelPerformance={channelPerformance}
+                    selectedChannelId={selectedChannelId || null}
+                    isLoading={isSummaryLoading || isChannelLoading}
+                />
                 <Grid container spacing={3}>
                     <Grid size={{ xs: 12, md: 6 }}>
-                        <RevenueAnalytics data={revenue} isLoading={isRevenueLoading} height={250} />
+                        <RevenueAnalytics data={revenue} isLoading={isRevenueLoading} height={280} />
                     </Grid>
                     <Grid size={{ xs: 12, md: 6 }}>
-                        <DealAnalytics data={deals} trendData={dealsTrend} isLoading={isDealsLoading || isDealsTrendLoading} showTrend={false} showPipeline={true} height={250} />
+                        <DealAnalytics data={deals} trendData={dealsTrend} isLoading={isDealsLoading || isDealsTrendLoading} showTrend={false} showPipeline={true} height={280} />
                     </Grid>
                     <Grid size={{ xs: 12, md: 6 }}>
-                        <DealAnalytics data={deals} trendData={dealsTrend} isLoading={isDealsLoading || isDealsTrendLoading} showTrend={true} showPipeline={false} height={250} />
+                        <ConversionFunnel data={funnel} isLoading={isFunnelLoading} height={280} />
                     </Grid>
                     <Grid size={{ xs: 12, md: 6 }}>
-                        <ConversionFunnel data={funnel} isLoading={isFunnelLoading} height={250} />
-                    </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <ChannelPerformanceChart data={channelPerformance} isLoading={isChannelLoading} height={250} />
-                    </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <MessageDistributionChart data={channelPerformance} trendData={messageTrends} selectedChannelId={selectedChannelId || null} showTrend={false} showDistribution={true} height={250} />
-                    </Grid>
-                    <Grid size={{ xs: 12 }}>
-                        <MessageDistributionChart data={channelPerformance} trendData={messageTrends} selectedChannelId={selectedChannelId || null} showDistribution={false} showTrend={true} height={250} />
+                        <ChannelPerformanceChart data={channelPerformance} isLoading={isChannelLoading} height={280} />
                     </Grid>
                 </Grid>
             </CustomTabPanel>
