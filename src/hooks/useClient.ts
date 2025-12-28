@@ -3,7 +3,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
-import { CrmClient, CrmActivity, CrmNote, Contact, CrmDeal } from '@/lib/api';
+import { CrmClient, CrmActivity, CrmNote, Contact, CrmDeal, CrmOrder, CrmOrderItem, CrmShippingAddress } from '@/lib/api';
 
 // --- Type Definitions ---
 
@@ -14,6 +14,7 @@ export interface Client360Data {
   activities: CrmActivity[];
   notes: CrmNote[];
   deals: CrmDeal[];
+  orders: CrmOrder[];
   messageCount: number;
 }
 
@@ -26,6 +27,22 @@ export type AddNotePayload = Omit<CrmNote, 'id' | 'organization_id' | 'client_id
 // Define the payload for logging a new activity
 export type AddActivityPayload = Omit<CrmActivity, 'id' | 'organization_id' | 'created_at' | 'updated_at' | 'created_by'>;
 
+// Define the payload for creating a new order
+export interface AddOrderPayload {
+  order_number: string;
+  subtotal: number;
+  tax: number;
+  shipping: number;
+  discount: number;
+  total: number;
+  currency: string;
+  status: string;
+  fulfillment_status: string;
+  items: CrmOrderItem[];
+  shipping_address?: CrmShippingAddress | null;
+  order_date: string;
+}
+
 // --- API Fetcher Function ---
 
 /**
@@ -34,11 +51,12 @@ export type AddActivityPayload = Omit<CrmActivity, 'id' | 'organization_id' | 'c
  */
 async function fetchClient360Data(clientId: string): Promise<Client360Data> {
   // Fetch all required data in parallel for maximum efficiency
-  const [clientRes, activitiesRes, notesRes, dealsRes] = await Promise.all([
+  const [clientRes, activitiesRes, notesRes, dealsRes, ordersRes] = await Promise.all([
     supabase.from('crm_clients').select('*').eq('id', clientId).single(),
     supabase.from('crm_activities').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
     supabase.from('crm_notes').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
     supabase.from('crm_deals').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
+    supabase.from('crm_orders').select('*').eq('client_id', clientId).order('order_date', { ascending: false }),
   ]);
 
   // Handle potential errors for each query
@@ -46,6 +64,7 @@ async function fetchClient360Data(clientId: string): Promise<Client360Data> {
   if (activitiesRes.error) throw new Error(`Failed to fetch activities: ${activitiesRes.error.message}`);
   if (notesRes.error) throw new Error(`Failed to fetch notes: ${notesRes.error.message}`);
   if (dealsRes.error) throw new Error(`Failed to fetch deals: ${dealsRes.error.message}`);
+  if (ordersRes.error) throw new Error(`Failed to fetch orders: ${ordersRes.error.message}`);
 
   // If the client has an associated contact_id, fetch that contact record as well
   let contact: Contact | null = null;
@@ -89,6 +108,7 @@ async function fetchClient360Data(clientId: string): Promise<Client360Data> {
     activities: activitiesRes.data || [],
     notes: notesRes.data || [],
     deals: dealsRes.data || [],
+    orders: ordersRes.data || [],
     messageCount,
   };
 }
@@ -164,6 +184,26 @@ export const useClient = (clientId: string | null) => {
     },
   });
 
+  // Mutation to add a new order
+  const { mutate: addOrder, isPending: isAddingOrder } = useMutation({
+    mutationFn: async (payload: AddOrderPayload) => {
+      if (!data?.client) throw new Error("Client data not available.");
+
+      const { error } = await supabase
+        .from('crm_orders')
+        .insert({
+          ...payload,
+          client_id: clientId!,
+          organization_id: data.client.organization_id,
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
   return {
     clientData: data,
     isLoading,
@@ -175,5 +215,7 @@ export const useClient = (clientId: string | null) => {
     isAddingNote,
     logActivity,
     isLoggingActivity,
+    addOrder,
+    isAddingOrder,
   };
 };

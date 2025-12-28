@@ -137,6 +137,49 @@ export interface CrmDeal {
   updated_at: string;
 }
 
+// Order Item (JSONB structure)
+export interface CrmOrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+// Shipping Address (JSONB structure)
+export interface CrmShippingAddress {
+  street?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  notes?: string;
+}
+
+// CRM Order - matches crm_orders table
+export interface CrmOrder {
+  id: string;
+  organization_id: string;
+  client_id: string;
+  deal_id: string | null;
+  order_number: string;
+  ecommerce_order_id: string | null;
+  subtotal: number;
+  tax: number;
+  shipping: number;
+  discount: number;
+  total: number;
+  currency: string;
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+  fulfillment_status: 'unfulfilled' | 'preparing' | 'ready' | 'fulfilled';
+  items: CrmOrderItem[] | null;
+  shipping_address: CrmShippingAddress | null;
+  tracking_number: string | null;
+  order_date: string;
+  shipped_date: string | null;
+  delivered_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 
 // --- API Functions (Existing) ---
 // All functions now use direct Supabase SDK calls, relying on RLS for security.

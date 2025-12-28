@@ -9,6 +9,7 @@ import ClientOverview from './components/ClientOverview';
 import ClientTimeline from './components/ClientTimeline';
 import ClientNotes from './components/ClientNotes';
 import ClientDeals from './components/ClientDeals';
+import ClientOrders from './components/ClientOrders';
 import { useClient } from '@/hooks/useClient';
 
 interface TabPanelProps {
@@ -65,7 +66,7 @@ export default function ClientProfilePage() {
         );
     }
 
-    const { client, contact, deals, messageCount } = clientData;
+    const { client, contact, deals, orders, messageCount } = clientData;
 
     return (
         <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -83,6 +84,7 @@ export default function ClientProfilePage() {
                     <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper', px: 3 }}>
                         <Tabs value={tabValue} onChange={handleTabChange}>
                             <Tab label="Overview" />
+                            <Tab label="Orders" />
                             <Tab label="Timeline" />
                             <Tab label="Notes" />
                             <Tab label="Deals" />
@@ -94,12 +96,15 @@ export default function ClientProfilePage() {
                             <ClientOverview client={client} deals={deals} messageCount={messageCount} />
                         </CustomTabPanel>
                         <CustomTabPanel value={tabValue} index={1}>
-                            <ClientTimeline />
+                            <ClientOrders clientId={client.id} orders={orders} />
                         </CustomTabPanel>
                         <CustomTabPanel value={tabValue} index={2}>
-                            <ClientNotes />
+                            <ClientTimeline />
                         </CustomTabPanel>
                         <CustomTabPanel value={tabValue} index={3}>
+                            <ClientNotes />
+                        </CustomTabPanel>
+                        <CustomTabPanel value={tabValue} index={4}>
                             <ClientDeals />
                         </CustomTabPanel>
                     </Box>
