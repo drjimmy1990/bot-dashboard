@@ -2,28 +2,56 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-// --- THIS IS THE FIX ---
-// Import IconButton, Tooltip, and the necessary icons
-import { Box, IconButton, Tooltip } from '@mui/material';
+// 1. Import useSearchParams
+import { useSearchParams } from 'next/navigation';
+import { Box, IconButton, Tooltip, CircularProgress } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
-
 import ContactList from "@/components/chat/ContactList";
 import ChatArea from "@/components/chat/ChatArea";
 import { useChannel } from '@/providers/ChannelProvider';
 import { useChatMessages } from '@/hooks/useChatMessages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '@/lib/api';
+import { supabase } from '@/lib/supabaseClient'; // Import supabase directly
 
 export default function ChatPage() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
-  // --- THIS IS THE FIX ---
-  // Add state to manage the visibility of the contact list
   const [isContactListOpen, setContactListOpen] = useState(true);
-  const toggleContactList = () => setContactListOpen(prev => !prev);
+  // 2. Get Search Params
+  const searchParams = useSearchParams();
+  const linkedClientId = searchParams.get('clientId');
+  const [isResolvingLink, setIsResolvingLink] = useState(!!linkedClientId);
 
+  const toggleContactList = () => setContactListOpen(prev => !prev);
   const { activeChannel } = useChannel();
   const queryClient = useQueryClient();
+
+  // 3. EFFECT: Resolve Client ID to Contact ID
+  useEffect(() => {
+    async function resolveContact() {
+      if (!linkedClientId) return;
+
+      try {
+        // Query the DB to find which contact belongs to this client
+        const { data, error } = await supabase
+          .from('crm_clients')
+          .select('contact_id')
+          .eq('id', linkedClientId)
+          .single();
+
+        if (data && data.contact_id) {
+          setSelectedContactId(data.contact_id);
+        }
+      } catch (error) {
+        console.error("Error resolving client link:", error);
+      } finally {
+        setIsResolvingLink(false);
+      }
+    }
+
+    resolveContact();
+  }, [linkedClientId]);
 
   const { mutate: deleteContact } = useMutation({
     mutationFn: api.deleteContact,
@@ -41,8 +69,11 @@ export default function ChatPage() {
   );
 
   useEffect(() => {
-    setSelectedContactId(null);
-  }, [activeChannel?.id]);
+    // Only reset if we aren't currently trying to link a client from the URL
+    if (!linkedClientId) {
+      setSelectedContactId(null);
+    }
+  }, [activeChannel?.id, linkedClientId]);
 
   const handleSendMessage = (text: string, platform: string) => {
     if (!selectedContactId) return;
@@ -54,10 +85,17 @@ export default function ChatPage() {
     sendMessage({ contact_id: selectedContactId, content_type: 'image', attachment_url: url, platform: platform });
   }
 
+  // 4. Show loading state while resolving the link
+  if (isResolvingLink) {
+    return (
+      <Box sx={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
   return (
     <Box sx={{ display: 'flex', height: '100%', width: '100%' }}>
-      {/* --- THIS IS THE FIX --- */}
-      {/* This Box now controls the width of the contact list based on state */}
       <Box
         sx={{
           width: isContactListOpen ? 320 : 0,
@@ -74,8 +112,6 @@ export default function ChatPage() {
       </Box>
 
       <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {/* --- THIS IS THE FIX --- */}
-        {/* A small header bar is added to contain the toggle button */}
         <Box sx={{ p: 0.5, backgroundColor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0, height: '49px' }}>
           <Tooltip title={isContactListOpen ? "Hide Contacts" : "Show Contacts"}>
             <IconButton onClick={toggleContactList}>

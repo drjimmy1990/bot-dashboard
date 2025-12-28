@@ -28,6 +28,7 @@ import MessageDistributionChart from './components/MessageDistributionChart';
 import DateRangePicker, { DateRangeOption } from './components/DateRangePicker';
 import ExportButton from './components/ExportButton';
 
+// ... (Keep TabPanel and helper functions as they are) ...
 interface TabPanelProps {
     children?: React.ReactNode;
     index: number;
@@ -65,38 +66,64 @@ export default function AnalyticsPage() {
     const { data: orgId } = useOrganization();
     const [tabValue, setTabValue] = useState(0);
     const [selectedChannelId, setSelectedChannelId] = useState<string>('');
-    const [dateRange, setDateRange] = useState<DateRangeOption>('30d');
     const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day');
 
-    // Calculate start and end dates based on dateRange
+    // --- DATE STATE ---
+    const [dateRange, setDateRange] = useState<DateRangeOption>('30d');
+    const [customStart, setCustomStart] = useState<Date | null>(null);
+    const [customEnd, setCustomEnd] = useState<Date | null>(null);
+
+    // --- DATE LOGIC ---
     const { startDate, endDate } = React.useMemo(() => {
         const now = new Date();
-        // Normalize to end of day to avoid millisecond mismatches causing refetches
+        // Base setup: End of today
         now.setHours(23, 59, 59, 999);
 
         let start: Date | null = null;
         let end: Date | null = now;
 
-        if (dateRange === '7d') {
+        if (dateRange === 'yesterday') {
+            // Yesterday Start
+            start = new Date(now);
+            start.setDate(now.getDate() - 1);
+            start.setHours(0, 0, 0, 0);
+
+            // Yesterday End
+            end = new Date(now);
+            end.setDate(now.getDate() - 1);
+            end.setHours(23, 59, 59, 999);
+
+        } else if (dateRange === '7d') {
             start = new Date(now);
             start.setDate(now.getDate() - 7);
-            start.setHours(0, 0, 0, 0); // Start of day
+            start.setHours(0, 0, 0, 0);
+
         } else if (dateRange === '30d') {
             start = new Date(now);
             start.setDate(now.getDate() - 30);
             start.setHours(0, 0, 0, 0);
+
         } else if (dateRange === '90d') {
             start = new Date(now);
             start.setDate(now.getDate() - 90);
             start.setHours(0, 0, 0, 0);
+
+        } else if (dateRange === 'custom') {
+            // Use the specific custom pickers
+            start = customStart ? new Date(customStart) : null;
+            if (start) start.setHours(0, 0, 0, 0);
+
+            end = customEnd ? new Date(customEnd) : null;
+            if (end) end.setHours(23, 59, 59, 999);
         } else {
+            // 'all' or 'year' (Year logic can be added, currently treating as null/null for API)
             start = null;
             end = null;
         }
         return { startDate: start, endDate: end };
-    }, [dateRange]);
+    }, [dateRange, customStart, customEnd]);
 
-    // Fetch data
+    // Fetch data (This remains exactly the same, it just uses the new start/end dates)
     const { data: summary, isLoading: isSummaryLoading, refetch: refetchSummary } = useDashboardSummary(orgId || '', selectedChannelId || null, startDate, endDate);
     const { data: revenue, isLoading: isRevenueLoading } = useRevenueMetrics(orgId || '', period, selectedChannelId || null, startDate, endDate);
     const { data: funnel, isLoading: isFunnelLoading } = useConversionFunnel(orgId || '', selectedChannelId || null, startDate, endDate);
@@ -114,10 +141,8 @@ export default function AnalyticsPage() {
     const handleRefresh = async () => {
         try {
             await refreshAnalytics();
-            // Refetch all data
             refetchSummary();
-            // In a real app, we would refetch all queries, but React Query's invalidation would be better
-            window.location.reload(); // Simple reload to ensure all data is fresh
+            window.location.reload();
         } catch (error) {
             console.error('Failed to refresh analytics:', error);
         }
@@ -129,7 +154,7 @@ export default function AnalyticsPage() {
 
     return (
         <Box sx={{ p: 3, maxWidth: '100%', mx: 'auto', width: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
                 <Box>
                     <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
                         Analytics Dashboard
@@ -138,8 +163,10 @@ export default function AnalyticsPage() {
                         Track your business performance and customer insights
                     </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                    <FormControl sx={{ minWidth: 120 }} size="small">
+
+                {/* Controls Bar */}
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <FormControl sx={{ minWidth: 100 }} size="small">
                         <InputLabel id="period-select-label">Period</InputLabel>
                         <Select
                             labelId="period-select-label"
@@ -153,8 +180,18 @@ export default function AnalyticsPage() {
                             <MenuItem value="month">Monthly</MenuItem>
                         </Select>
                     </FormControl>
-                    <DateRangePicker value={dateRange} onChange={setDateRange} />
-                    <FormControl sx={{ minWidth: 200 }} size="small">
+
+                    {/* Updated Date Picker */}
+                    <DateRangePicker
+                        value={dateRange}
+                        onChange={setDateRange}
+                        customStart={customStart}
+                        onCustomStartChange={setCustomStart}
+                        customEnd={customEnd}
+                        onCustomEndChange={setCustomEnd}
+                    />
+
+                    <FormControl sx={{ minWidth: 160 }} size="small">
                         <InputLabel id="channel-select-label">Filter by Channel</InputLabel>
                         <Select
                             labelId="channel-select-label"
@@ -184,8 +221,6 @@ export default function AnalyticsPage() {
                 </Box>
             </Box>
 
-
-
             <DashboardMetricsGrid
                 data={summary}
                 channelPerformance={channelPerformance}
@@ -202,84 +237,40 @@ export default function AnalyticsPage() {
                 </Tabs>
             </Box>
 
+            {/* ... Rest of the Tab Panels remain identical ... */}
             <CustomTabPanel value={tabValue} index={0}>
                 <Grid container spacing={3}>
-                    {/* Row 1: Revenue & Deal Pipeline */}
                     <Grid size={{ xs: 12, md: 6 }}>
                         <RevenueAnalytics data={revenue} isLoading={isRevenueLoading} height={250} />
                     </Grid>
-
                     <Grid size={{ xs: 12, md: 6 }}>
-                        <DealAnalytics
-                            data={deals}
-                            trendData={dealsTrend}
-                            isLoading={isDealsLoading || isDealsTrendLoading}
-                            showTrend={false}
-                            showPipeline={true}
-                            height={250}
-                        />
+                        <DealAnalytics data={deals} trendData={dealsTrend} isLoading={isDealsLoading || isDealsTrendLoading} showTrend={false} showPipeline={true} height={250} />
                     </Grid>
-
-                    {/* Row 2: Deal Trend & Funnel */}
                     <Grid size={{ xs: 12, md: 6 }}>
-                        <DealAnalytics
-                            data={deals}
-                            trendData={dealsTrend}
-                            isLoading={isDealsLoading || isDealsTrendLoading}
-                            showTrend={true}
-                            showPipeline={false}
-                            height={250}
-                        />
+                        <DealAnalytics data={deals} trendData={dealsTrend} isLoading={isDealsLoading || isDealsTrendLoading} showTrend={true} showPipeline={false} height={250} />
                     </Grid>
-
                     <Grid size={{ xs: 12, md: 6 }}>
                         <ConversionFunnel data={funnel} isLoading={isFunnelLoading} height={250} />
                     </Grid>
-
-                    {/* Row 3: Channel Volume & Message Distribution */}
                     <Grid size={{ xs: 12, md: 6 }}>
                         <ChannelPerformanceChart data={channelPerformance} isLoading={isChannelLoading} height={250} />
                     </Grid>
-
                     <Grid size={{ xs: 12, md: 6 }}>
-                        <MessageDistributionChart
-                            data={channelPerformance}
-                            trendData={messageTrends}
-                            selectedChannelId={selectedChannelId || null}
-                            showTrend={false}
-                            showDistribution={true}
-                            height={250}
-                        />
+                        <MessageDistributionChart data={channelPerformance} trendData={messageTrends} selectedChannelId={selectedChannelId || null} showTrend={false} showDistribution={true} height={250} />
                     </Grid>
-
-                    {/* Row 4: Message Volume Trend */}
                     <Grid size={{ xs: 12 }}>
-                        <MessageDistributionChart
-                            data={channelPerformance}
-                            trendData={messageTrends}
-                            selectedChannelId={selectedChannelId || null}
-                            showDistribution={false}
-                            showTrend={true}
-                            height={250}
-                        />
+                        <MessageDistributionChart data={channelPerformance} trendData={messageTrends} selectedChannelId={selectedChannelId || null} showDistribution={false} showTrend={true} height={250} />
                     </Grid>
                 </Grid>
             </CustomTabPanel>
 
             <CustomTabPanel value={tabValue} index={1}>
                 <Grid container spacing={3}>
-                    {/* Sales & Revenue: Big, detailed charts, full width */}
                     <Grid size={{ xs: 12 }}>
                         <RevenueAnalytics data={revenue} isLoading={isRevenueLoading} height={500} />
                     </Grid>
                     <Grid size={{ xs: 12 }}>
-                        <DealAnalytics
-                            data={deals}
-                            trendData={dealsTrend}
-                            isLoading={isDealsLoading || isDealsTrendLoading}
-                            showTrend={true}
-                            height={500}
-                        />
+                        <DealAnalytics data={deals} trendData={dealsTrend} isLoading={isDealsLoading || isDealsTrendLoading} showTrend={true} height={500} />
                     </Grid>
                     <Grid size={{ xs: 12 }}>
                         <ConversionFunnel data={funnel} isLoading={isFunnelLoading} height={500} />
@@ -296,11 +287,7 @@ export default function AnalyticsPage() {
                         <ChatbotAnalytics selectedChannelId={selectedChannelId || null} />
                     </Grid>
                     <Grid size={{ xs: 12 }}>
-                        <MessageDistributionChart
-                            data={channelPerformance}
-                            trendData={messageTrends}
-                            selectedChannelId={selectedChannelId || null}
-                        />
+                        <MessageDistributionChart data={channelPerformance} trendData={messageTrends} selectedChannelId={selectedChannelId || null} />
                     </Grid>
                 </Grid>
             </CustomTabPanel>
