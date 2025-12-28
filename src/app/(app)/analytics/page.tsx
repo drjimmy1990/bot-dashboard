@@ -143,8 +143,12 @@ export default function AnalyticsPage() {
             await refreshAnalytics();
             refetchSummary();
             window.location.reload();
-        } catch (error) {
-            console.error('Failed to refresh analytics:', error);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (error: any) {
+            // Log the full error message and details to the console
+            console.error('Failed to refresh analytics:', error.message || error);
+            // Optionally alert the user
+            alert(`Failed to refresh: ${error.message || 'Unknown error'}`);
         }
     };
 
