@@ -64,6 +64,12 @@ GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO service_role;
 ALTER FUNCTION public.refresh_all_analytics() OWNER TO postgres;
 
+
+
+
+
+
+
 -- ====================================================================
 -- NOTIFICATION SYSTEM
 -- Realtime notification table for handoffs, alerts, etc.
