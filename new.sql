@@ -104,3 +104,22 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.system_notifications;
 -- 6. Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_notifications_org_read ON public.system_notifications(organization_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.system_notifications(created_at DESC);
+
+
+
+
+
+
+
+-- Grant refresh permissions to the function owner
+ALTER MATERIALIZED VIEW public.analytics_channel_performance OWNER TO postgres;
+ALTER MATERIALIZED VIEW public.analytics_deal_metrics OWNER TO postgres;
+ALTER MATERIALIZED VIEW public.analytics_revenue_metrics OWNER TO postgres;
+ALTER MATERIALIZED VIEW public.analytics_chatbot_effectiveness OWNER TO postgres;
+
+-- Make sure the refresh function runs as postgres (owner)
+ALTER FUNCTION public.refresh_all_analytics() OWNER TO postgres;
+
+-- Grant execute to authenticated users
+GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO service_role;
