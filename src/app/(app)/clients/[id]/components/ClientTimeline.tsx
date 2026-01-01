@@ -8,6 +8,7 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import NoteIcon from '@mui/icons-material/Note';
 import TaskIcon from '@mui/icons-material/Assignment';
+import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import ChatIcon from '@mui/icons-material/Chat';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
@@ -39,7 +40,8 @@ export default function ClientTimeline() {
         return false;
     });
 
-    const getActivityIcon = (type: string) => {
+    const getActivityIcon = (type: string, priority?: string) => {
+        if (priority === 'urgent') return <PriorityHighIcon color="error" />;
         switch (type) {
             case 'call': return <PhoneIcon color="primary" />;
             case 'email': return <EmailIcon color="action" />;
@@ -71,10 +73,22 @@ export default function ClientTimeline() {
                     {filteredItems?.map((item, index) => (
                         <React.Fragment key={`${item.type}-${item.type === 'activity' ? item.data.id : item.data.id}`}>
                             {index > 0 && <Divider component="li" />}
-                            <ListItem alignItems="flex-start">
+                            <ListItem
+                                alignItems="flex-start"
+                                sx={
+                                    (item.type === 'activity' && item.data.priority === 'urgent')
+                                        ? {
+                                            bgcolor: 'error.lighter',
+                                            borderLeft: '4px solid',
+                                            borderColor: 'error.main',
+                                            pl: 2
+                                        }
+                                        : {}
+                                }
+                            >
                                 <ListItemIcon>
                                     {item.type === 'activity' ? (
-                                        getActivityIcon(item.data.activity_type)
+                                        getActivityIcon(item.data.activity_type, item.data.priority ?? undefined)
                                     ) : (
                                         item.data.sender_type === 'ai' ? <SmartToyIcon color="secondary" /> : <ChatIcon color="info" />
                                     )}

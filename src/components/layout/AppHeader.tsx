@@ -7,9 +7,11 @@ import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
+import Box from '@mui/material/Box';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useUI } from '@/providers/UIProvider';
-import { useChannel } from '@/providers/ChannelProvider'; // Still needed to display the name
+import { useChannel } from '@/providers/ChannelProvider';
+import NotificationBell from './NotificationBell';
 
 const drawerWidth = 240;
 
@@ -37,7 +39,7 @@ const AppBar = styled(MuiAppBar, {
 
 export default function AppHeader() {
   const { isSidebarOpen, toggleSidebar } = useUI();
-  const { activeChannel } = useChannel(); // Get the active channel to display its name
+  const { activeChannel } = useChannel();
 
   return (
     <AppBar position="fixed" open={isSidebarOpen}>
@@ -54,9 +56,14 @@ export default function AppHeader() {
         >
           <MenuIcon />
         </IconButton>
-        <Typography variant="h6" noWrap component="div">
+        <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
           {activeChannel ? activeChannel.name : 'Dashboard'}
         </Typography>
+
+        {/* Notification Bell */}
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <NotificationBell />
+        </Box>
       </Toolbar>
     </AppBar>
   );

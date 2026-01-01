@@ -41,13 +41,66 @@ ON public.crm_clients (email, phone, company_name);
 -- SAFE UPDATE: ANALYTICS
 -- This script adds functionality. It deletes NOTHING.
 -- ====================================================================
+-- Increase timeout specifically for this function to 60 seconds
 
--- 1. Grant permission to the logged-in user role
+CREATE OR REPLACE FUNCTION public.refresh_all_analytics()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+SET statement_timeout = '60s' -- <-- THIS IS THE FIX (Allow 60 seconds)
+AS $$
+BEGIN
+  -- We refresh the views one by one
+  REFRESH MATERIALIZED VIEW public.analytics_channel_performance;
+  REFRESH MATERIALIZED VIEW public.analytics_deal_metrics;
+  REFRESH MATERIALIZED VIEW public.analytics_revenue_metrics;
+  REFRESH MATERIALIZED VIEW public.analytics_chatbot_effectiveness;
+END;
+$$;
+
+-- Re-apply permissions to be safe
 GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO authenticated;
-
--- 2. Grant permission to the service role (just in case)
 GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO service_role;
-
--- 3. Ensure the function runs as the database owner (Superuser)
--- This is critical because refreshing views requires high-level privileges.
 ALTER FUNCTION public.refresh_all_analytics() OWNER TO postgres;
+
+-- ====================================================================
+-- NOTIFICATION SYSTEM
+-- Realtime notification table for handoffs, alerts, etc.
+-- ====================================================================
+
+-- 1. Create the notifications table
+CREATE TABLE IF NOT EXISTS public.system_notifications (
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    client_id UUID REFERENCES public.crm_clients(id) ON DELETE SET NULL,
+    type TEXT NOT NULL, -- e.g., 'handoff', 'alert', 'info'
+    title TEXT NOT NULL,
+    message TEXT,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Enable RLS (Security)
+ALTER TABLE public.system_notifications ENABLE ROW LEVEL SECURITY;
+
+-- 3. Policy: Users can only see notifications for their organization
+DROP POLICY IF EXISTS "Users can view org notifications" ON public.system_notifications;
+CREATE POLICY "Users can view org notifications"
+ON public.system_notifications
+FOR SELECT
+USING (organization_id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid()));
+
+-- 4. Policy: Users can update (mark as read) notifications
+DROP POLICY IF EXISTS "Users can update org notifications" ON public.system_notifications;
+CREATE POLICY "Users can update org notifications"
+ON public.system_notifications
+FOR UPDATE
+USING (organization_id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid()));
+
+-- 5. Enable Realtime (Crucial for the popup to work instantly)
+ALTER PUBLICATION supabase_realtime ADD TABLE public.system_notifications;
+
+-- 6. Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_notifications_org_read ON public.system_notifications(organization_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.system_notifications(created_at DESC);

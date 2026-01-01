@@ -20,8 +20,8 @@ function useAuth() {
 }
 
 // Type definitions for the channel and its creation payload.
-export interface Channel { id: string; organization_id: string; name: string; platform: 'whatsapp' | 'facebook' | 'instagram'; platform_channel_id: string; is_active: boolean; }
-export type NewChannelPayload = { name: string; platform: 'whatsapp' | 'facebook' | 'instagram'; platform_channel_id: string; };
+export interface Channel { id: string; organization_id: string; name: string; platform: 'whatsapp' | 'facebook' | 'instagram' | 'telegram' | 'web'; platform_channel_id: string; is_active: boolean; }
+export type NewChannelPayload = { name: string; platform: 'whatsapp' | 'facebook' | 'instagram' | 'telegram' | 'web'; platform_channel_id: string; };
 
 // Async function to fetch all channels for the logged-in user.
 async function fetchChannels(): Promise<Channel[]> {

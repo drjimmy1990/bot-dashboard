@@ -39,21 +39,21 @@ export default function ChannelForm({ open, onClose, onSubmit, isSubmitting }: C
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name as string]: value }));
   };
-  
+
   const handleSelectChange = (e: SelectChangeEvent) => {
-      const { name, value } = e.target;
-      setFormData(prev => ({...prev, [name]: value as 'whatsapp' | 'facebook' | 'instagram' }));
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value as 'whatsapp' | 'facebook' | 'instagram' | 'telegram' | 'web' }));
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
   };
-  
+
   // Clear form state after the closing animation finishes
   const handleClose = () => {
-      onClose();
-      setTimeout(() => setFormData(initialState), 300);
+    onClose();
+    setTimeout(() => setFormData(initialState), 300);
   }
 
   return (
@@ -84,8 +84,10 @@ export default function ChannelForm({ open, onClose, onSubmit, isSubmitting }: C
                 onChange={handleSelectChange}
               >
                 <MenuItem value="whatsapp">WhatsApp</MenuItem>
-                <MenuItem value="facebook">Facebook</MenuItem>
+                <MenuItem value="facebook">Facebook Messenger</MenuItem>
                 <MenuItem value="instagram">Instagram</MenuItem>
+                <MenuItem value="telegram">Telegram</MenuItem>
+                <MenuItem value="web">Web Chat</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -101,7 +103,7 @@ export default function ChannelForm({ open, onClose, onSubmit, isSubmitting }: C
             />
           </Grid>
         </Grid>
-        
+
       </DialogContent>
       <DialogActions sx={{ p: '0 24px 16px' }}>
         <Button onClick={handleClose} disabled={isSubmitting}>Cancel</Button>
