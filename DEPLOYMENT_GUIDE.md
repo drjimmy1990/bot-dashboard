@@ -1,55 +1,188 @@
 # Deployment Guide for Next.js App to VPS using aaPanel
 
-To deploy your Next.js app (a dashboard using Supabase for backend) to a VPS using aaPanel, follow these steps. This assumes your VPS is running Linux (aaPanel supports CentOS, Ubuntu, etc.) and you have aaPanel installed and configured. If not, install aaPanel first via their official installer script.
+This guide covers deploying your Next.js dashboard (with Supabase backend) to a VPS using **aaPanel's Node.js Project Manager**.
+
+---
 
 ## Prerequisites
-- **VPS Setup**: Ensure aaPanel is installed. If not, SSH into your VPS and run: `curl -sSO http://www.aapanel.com/script/install_7.0_en.sh && bash install_7.0_en.sh`. Follow the prompts to set up (creates admin account).
-- **Node.js Version**: Your app uses Next.js 15.5.6, which requires Node.js 18+. Install via aaPanel's Software Store if not already.
-- **Domain/SSL**: If exposing publicly, configure a domain in aaPanel (Website > Sites > Add Site). Use Let's Encrypt for SSL.
-- **Environment Variables**: Your app needs `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (from your Supabase project settings). Set these securely on the server.
-- **Build Locally First**: Test `npm run build` locally to ensure no errors.
 
-## Step-by-Step Deployment
-1. **Upload Your Code to the VPS**:
-   - In aaPanel, go to **Files** (file manager).
-   - Create a directory for your app, e.g., `/www/wwwroot/your-app`.
-   - Upload all project files (excluding `node_modules`, `.next`, and `.env.local` for security) via FTP/SFTP or aaPanel's upload tool. Alternatively, use Git if aaPanel has Git manager installed.
+- **VPS Setup**: aaPanel installed. If not:
+  ```bash
+  curl -sSO http://www.aapanel.com/script/install_7.0_en.sh && bash install_7.0_en.sh
+  ```
+- **Node.js 18+**: Install via aaPanel **Software Store** → Search "Node.js" → Install
+- **Domain**: Configure in aaPanel (Website > Sites > Add Site)
+- **Environment Variables**: `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-2. **Install Dependencies and Build**:
-   - In aaPanel, go to **Website** > **Node.js Project** > **Add Project**.
-   - **Project Name**: e.g., "chat-dashboard".
-   - **Root Directory**: Select the uploaded folder (e.g., `/www/wwwroot/your-app`).
-   - **Node.js Version**: Select 18 or 20 (match your local setup).
-   - **Run Command**: Set to `npm start` (this runs `next start` after build).
-   - **Port**: If aaPanel has a "Port" or "Listen Port" field in the form, set it to 3001 (or your chosen port). If not, the app will use 3000.
-   - **Environment Variables**: Add your Supabase keys here (NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY). Do not hardcode them in files.
-   - Save the project. aaPanel will auto-run `npm install`.
-   - If `npm` is not available in the project's environment or aaPanel's terminal:
-     - Use aaPanel's web-based terminal (top-right "Terminal" button) or SSH into your VPS.
-     - Install npm: Run `curl -L https://www.npmjs.com/install.sh | sh` (this installs npm globally).
-     - Alternatively, if on Ubuntu: `sudo apt update && sudo apt install npm`
-     - Or on CentOS: `sudo yum install npm` (adjust for your OS).
-     - Then, navigate to your project directory (e.g., `cd /www/wwwroot/your-app`) and run:
-       - `npm install` (to install dependencies).
-       - `npm run build` (to build the app).
-   - If aaPanel supports a "Build Command" field, set it to `npm run build`.
+---
 
-3. **Configure the App**:
-   - **Port**: Next.js defaults to port 3000. If port 3000 is in use, choose another (e.g., 3001). If aaPanel's Node.js form has a "Port" field, set it there. If not, add `PORT=3001` to Environment Variables or modify Run Command to `PORT=3001 npm start`. Update the reverse proxy accordingly (e.g., localhost:3001). Restart the project after changes.
-   - **Domain Binding**: In **Website** > **Sites**, bind your domain to the Node.js project (reverse proxy to localhost:port).
-   - **Firewall/Security**: Ensure ports 80/443 are open. Use aaPanel's firewall to restrict access if needed.
-   - **SSL**: Enable in the site settings for HTTPS.
+## Step 1: Upload Your Code
 
-4. **Start and Test**:
-   - In **Node.js Project**, click **Start** for your project.
-   - Check logs in aaPanel for errors (e.g., missing env vars or build failures).
-   - Access via your domain/IP. If issues, verify env vars and rebuild.
+### Option A: Using Git (Recommended)
 
-## Additional Notes
-- **Performance**: For production, consider PM2 (install via aaPanel Software Store) to manage the process, or use aaPanel's built-in process manager.
-- **Database**: Since you're using Supabase, no server-side DB setup needed—just ensure env vars point to your Supabase project.
-- **Updates**: To redeploy, upload new files, rebuild (`npm run build`), and restart the project.
-- **Troubleshooting**: If build fails, check aaPanel logs or run commands manually in the terminal. Ensure Node.js version matches.
-- **Costs/Resources**: VPS should have at least 1GB RAM for Next.js.
+1. SSH into your server or use aaPanel's Terminal
+2. Navigate to www directory and clone:
+   ```bash
+   cd /www/wwwroot
+   git clone https://github.com/drjimmy1990/bot-dashboard.git dashboard
+   ```
 
-If you encounter specific errors, share aaPanel logs or more details about your VPS setup.
+### Option B: Manual Upload
+
+1. In aaPanel, go to **Files** (file manager)
+2. Create directory: `/www/wwwroot/dashboard`
+3. Upload all files **except**: `node_modules`, `.next`, `.env.local`
+
+---
+
+## Step 2: Create Environment File
+
+1. In aaPanel **Files**, navigate to `/www/wwwroot/dashboard`
+2. Create a new file: `.env.local`
+3. Add your Supabase credentials:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+---
+
+## Step 3: Install Dependencies
+
+1. In aaPanel, go to **Terminal** (or SSH)
+2. Run:
+   ```bash
+   cd /www/wwwroot/dashboard
+   npm install
+   ```
+
+---
+
+## Step 4: Build the Application
+
+```bash
+cd /www/wwwroot/dashboard
+npm run build
+```
+
+> **Note**: This creates the `.next` folder required for production.
+
+---
+
+## Step 5: Configure aaPanel Node.js Project Manager
+
+1. Go to **Website** → **Node.js Project** → **Add Project**
+
+2. Fill in the form:
+
+   | Field | Value |
+   |-------|-------|
+   | Project Name | `dashboard` |
+   | Root Directory | `/www/wwwroot/dashboard` |
+   | Node.js Version | `18` or `20` |
+   | Package Manager | `npm` |
+   | Run Command | `next start -p 3099` |
+
+3. **Environment Variables** (Add these):
+   - `NEXT_PUBLIC_SUPABASE_URL` = `https://your-project.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `your-anon-key-here`
+
+4. Click **Submit** to save
+
+5. Click **Start** to run the project
+
+---
+
+## Step 6: Configure Reverse Proxy
+
+1. Go to **Website** → **Sites** → **Add Site**
+2. Enter your domain name
+3. Select the site → Click **Reverse Proxy** tab
+4. Click **Add Reverse Proxy**:
+
+   | Field | Value |
+   |-------|-------|
+   | Name | `dashboard` |
+   | Target URL | `http://127.0.0.1:3099` |
+
+5. Save
+
+---
+
+## Step 7: Enable SSL (HTTPS)
+
+1. Go to **Website** → **Sites** → Select your domain
+2. Click **SSL** tab
+3. Click **Let's Encrypt** → Apply
+4. Enable **Force HTTPS**
+
+---
+
+## Port Configuration
+
+| Service | Port | Description |
+|---------|------|-------------|
+| Next.js App | **3099** | Internal application port |
+| Nginx HTTP | 80 | Public HTTP (redirects to 443) |
+| Nginx HTTPS | 443 | Public HTTPS access |
+
+> **Changing the port**: Edit the Run Command in Node.js Project Manager:
+> `next start -p YOUR_PORT`
+
+---
+
+## Managing the Application
+
+### In aaPanel Node.js Project Manager:
+
+| Action | How |
+|--------|-----|
+| Start | Click **Start** button |
+| Stop | Click **Stop** button |
+| Restart | Click **Restart** button |
+| View Logs | Click **Logs** button |
+
+### Updating the Application:
+
+1. SSH into server or use aaPanel Terminal
+2. Run:
+   ```bash
+   cd /www/wwwroot/dashboard
+   git pull origin main
+   npm install
+   npm run build
+   ```
+3. In **Node.js Project Manager**, click **Restart**
+
+---
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Port already in use | Change port in Run Command (e.g., `next start -p 3100`) |
+| Build fails | Check Node.js version: needs 18+ |
+| App not accessible | Verify Reverse Proxy points to correct port (3099) |
+| 502 Bad Gateway | App not running - click Start in Node.js Project Manager |
+| Environment vars not working | Add them in Node.js Project Manager settings |
+| `.next` folder missing | Run `npm run build` first |
+
+---
+
+## System Requirements
+
+- **RAM**: Minimum 1GB (2GB recommended)
+- **Disk**: 2GB free space
+- **Node.js**: Version 18 or higher
+- **aaPanel**: Latest version with Node.js Project Manager plugin
+
+---
+
+## Quick Reference: Run Command
+
+```
+next start -p 3099
+```
+
+This is the exact command used in aaPanel's Node.js Project Manager to start the production server on port 3099.
