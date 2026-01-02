@@ -45,6 +45,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         if (typeof window !== 'undefined') {
             const storedMute = localStorage.getItem('notification_mute');
             if (storedMute) setIsMuted(JSON.parse(storedMute));
+
+            // Request browser notification permission on load
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
         }
     }, []);
 
@@ -55,6 +60,29 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             localStorage.setItem('notification_mute', JSON.stringify(newState));
         }
     }, [isMuted]);
+
+    // Browser Native Notification
+    const showBrowserNotification = useCallback((notification: SystemNotification) => {
+        if (isMuted) return;
+        if (typeof window === 'undefined') return;
+        if (!('Notification' in window)) return;
+        if (Notification.permission !== 'granted') return;
+
+        const browserNotif = new Notification(notification.title, {
+            body: notification.message || 'New notification',
+            icon: '/favicon.ico',
+            tag: notification.id, // Prevents duplicate notifications
+            requireInteraction: true, // Keep visible until user interacts
+        });
+
+        browserNotif.onclick = () => {
+            window.focus();
+            if (notification.client_id) {
+                router.push(`/clients/${notification.client_id}`);
+            }
+            browserNotif.close();
+        };
+    }, [isMuted, router]);
 
     // Sound Effect
     const playSound = useCallback(() => {
@@ -113,6 +141,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                         setCurrentToast(newNotif);
                         setToastOpen(true);
                         playSound();
+                        showBrowserNotification(newNotif); // Native browser notification
                     }
                 }
             )
@@ -121,7 +150,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [orgId, isMuted, playSound]);
+    }, [orgId, isMuted, playSound, showBrowserNotification]);
 
     // Actions
     const markAsRead = useCallback(async (id: string) => {
