@@ -36,7 +36,7 @@ export type UpdatePromptPayload = { promptId: string; system_prompt: string };
 export type AddKeywordPayload = Omit<KeywordAction, 'id' | 'channel_id' | 'organization_id'>;
 export type UpdateKeywordPayload = Omit<KeywordAction, 'channel_id' | 'organization_id'>;
 export type AddPromptPayload = Omit<AgentPrompt, 'id' | 'channel_id' | 'organization_id'>;
-export type AddCollectionPayload = { name: string };
+export type AddCollectionPayload = { name: string; collectionId?: string };
 export type UpdateCollectionPayload = { id: string; items: string[] };
 
 // --- API HELPER FUNCTIONS ---
@@ -94,7 +94,7 @@ export const useChannelConfig = (channelId: string | null) => {
           if (!activeChannel) throw new Error("No active channel selected");
           const { error } = await supabase.from('content_collections').insert({
               name: payload.name,
-              collection_id: payload.name.toLowerCase().replace(/\s+/g, '_'), // simple id generation
+              collection_id: payload.collectionId || payload.name.toLowerCase().replace(/\s+/g, '_'),
               channel_id: channelId!,
               organization_id: activeChannel.organization_id, // Pass the organization_id
               items: []

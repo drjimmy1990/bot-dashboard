@@ -7,6 +7,7 @@ import {
   Typography,
   Paper,
   List,
+  ListItem,
   ListItemButton,
   ListItemText,
   Dialog,
@@ -19,28 +20,39 @@ import {
   Snackbar,
   Alert,
   IconButton,
-  Tooltip
+  Tooltip,
+  Chip,
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import { useChannelConfig, ContentCollection } from '@/hooks/useChannelConfig'; // Import the hook
-// REMOVED: No longer need useSearchParams or supabase client directly
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import { useChannelConfig, ContentCollection } from '@/hooks/useChannelConfig';
 
-// --- THIS IS A FIX ---
-// The component now expects a channelId to be passed in as a prop.
 interface ContentCollectionsManagerProps {
   collections: ContentCollection[];
   channelId: string;
 }
 
-// Dialog for adding a new collection (No changes needed here)
-function AddCollectionDialog({ open, onClose, onSubmit, isAdding }: { open: boolean, onClose: () => void, onSubmit: (name: string) => void, isAdding: boolean }) {
+// Dialog for adding a new collection
+function AddCollectionDialog({ open, onClose, onSubmit, isAdding }: { open: boolean, onClose: () => void, onSubmit: (name: string, collectionId: string) => void, isAdding: boolean }) {
   const [name, setName] = useState('');
+  const [collectionId, setCollectionId] = useState('');
+
+  // Auto-generate collection_id from name
+  const handleNameChange = (val: string) => {
+    setName(val);
+    // Only auto-set if user hasn't manually edited the ID
+    if (!collectionId || collectionId === name.toLowerCase().replace(/\s+/g, '_')) {
+      setCollectionId(val.toLowerCase().replace(/\s+/g, '_'));
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(name);
-    setName(''); // Reset form
-  }
+    onSubmit(name, collectionId);
+    setName('');
+    setCollectionId('');
+  };
 
   return (
     <Dialog open={open} onClose={onClose} PaperProps={{ component: 'form', onSubmit: handleSubmit }} fullWidth maxWidth="xs">
@@ -49,18 +61,26 @@ function AddCollectionDialog({ open, onClose, onSubmit, isAdding }: { open: bool
         <TextField
           autoFocus
           margin="dense"
-          name="name"
           label="Collection Name"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => handleNameChange(e.target.value)}
           fullWidth
           required
-          helperText="e.g., 'Testimonials' or 'Product Images'"
+          helperText="Display name, e.g. 'Testimonials'"
+        />
+        <TextField
+          margin="dense"
+          label="Collection ID"
+          value={collectionId}
+          onChange={(e) => setCollectionId(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+          fullWidth
+          required
+          helperText="Used by n8n to pick this collection, e.g. 'testimonials_1'"
         />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={isAdding}>Cancel</Button>
-        <Button type="submit" variant="contained" disabled={isAdding || !name.trim()}>
+        <Button type="submit" variant="contained" disabled={isAdding || !name.trim() || !collectionId.trim()}>
           {isAdding ? <CircularProgress size={24} /> : "Create"}
         </Button>
       </DialogActions>
@@ -68,17 +88,33 @@ function AddCollectionDialog({ open, onClose, onSubmit, isAdding }: { open: bool
   );
 }
 
+// Confirm delete dialog
+function ConfirmDeleteDialog({ open, name, onClose, onConfirm, isDeleting }: { open: boolean; name: string; onClose: () => void; onConfirm: () => void; isDeleting: boolean }) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs">
+      <DialogTitle>Delete Collection</DialogTitle>
+      <DialogContent>
+        <Typography>
+          Are you sure you want to delete <strong>&quot;{name}&quot;</strong>? This cannot be undone.
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={isDeleting}>Cancel</Button>
+        <Button onClick={onConfirm} color="error" variant="contained" disabled={isDeleting}>
+          {isDeleting ? <CircularProgress size={24} /> : 'Delete'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
 
-// --- THIS IS THE MAIN FIX ---
-// The component now receives and uses the channelId from its props.
+
 export default function ContentCollectionsManager({ collections, channelId }: ContentCollectionsManagerProps) {
-  // REMOVED: The broken useSearchParams logic is gone.
-
-  // The hook now receives the correct channelId, and we get all mutation functions from it.
-  const { addCollection, isAddingCollection, updateCollection, isUpdatingCollection } = useChannelConfig(channelId);
+  const { addCollection, isAddingCollection, updateCollection, isUpdatingCollection, deleteCollection, isDeletingCollection } = useChannelConfig(channelId);
 
   const [selectedCollection, setSelectedCollection] = useState<ContentCollection | null>(null);
   const [editText, setEditText] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<ContentCollection | null>(null);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -110,13 +146,27 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
     });
   };
 
-  const handleAddCollection = async (name: string) => {
-    addCollection({ name }, {
+  const handleAddCollection = async (name: string, collectionId: string) => {
+    addCollection({ name, collectionId }, {
       onSuccess: () => {
         setSnackbar({ open: true, message: 'Collection created!', severity: 'success' });
         setIsAddDialogOpen(false);
       },
       onError: (err) => setSnackbar({ open: true, message: `Error: ${err.message}`, severity: 'error' }),
+    });
+  };
+
+  const handleDeleteCollection = () => {
+    if (!deleteTarget) return;
+    deleteCollection(deleteTarget.id, {
+      onSuccess: () => {
+        setSnackbar({ open: true, message: 'Collection deleted!', severity: 'success' });
+        setDeleteTarget(null);
+      },
+      onError: (err) => {
+        setSnackbar({ open: true, message: `Error: ${err.message}`, severity: 'error' });
+        setDeleteTarget(null);
+      },
     });
   };
 
@@ -132,13 +182,40 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
           </Tooltip>
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Manage lists of content, like image URLs, used by your AI agents.
+          Manage lists of content, like image URLs, used by your AI agents. The <strong>Collection ID</strong> is what n8n uses to pick the right collection.
         </Typography>
         <List dense>
           {collections.map(collection => (
-            <ListItemButton key={collection.id} onClick={() => handleOpenEditDialog(collection)}>
-              <ListItemText primary={collection.name} secondary={`ID: ${collection.collection_id}`} />
-            </ListItemButton>
+            <ListItem
+              key={collection.id}
+              disablePadding
+              secondaryAction={
+                <Box>
+                  <Tooltip title="Edit Items">
+                    <IconButton edge="end" size="small" onClick={() => handleOpenEditDialog(collection)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete Collection">
+                    <IconButton edge="end" size="small" color="error" onClick={() => setDeleteTarget(collection)} sx={{ ml: 0.5 }}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              }
+            >
+              <ListItemButton onClick={() => handleOpenEditDialog(collection)}>
+                <ListItemText
+                  primary={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {collection.name}
+                      <Chip label={collection.collection_id} size="small" variant="outlined" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }} />
+                    </Box>
+                  }
+                  secondary={`${collection.items.length} items`}
+                />
+              </ListItemButton>
+            </ListItem>
           ))}
           {collections.length === 0 && (
             <Typography color="text.secondary" textAlign="center" sx={{ py: 2 }}>No collections found. Click the &apos;+&apos; to add one.</Typography>
@@ -148,7 +225,14 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onClose={handleCloseEditDialog} fullWidth maxWidth="md">
-        <DialogTitle>Edit &quot;{selectedCollection?.name}&quot;</DialogTitle>
+        <DialogTitle>
+          Edit &quot;{selectedCollection?.name}&quot;
+          {selectedCollection && (
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+              ID: <code>{selectedCollection.collection_id}</code>
+            </Typography>
+          )}
+        </DialogTitle>
         <DialogContent>
           <TextField autoFocus margin="dense" label="Content Items (one per line)" value={editText} onChange={(e) => setEditText(e.target.value)} multiline rows={15} fullWidth variant="outlined" helperText="Enter URLs or text snippets, each on a new line." />
         </DialogContent>
@@ -160,6 +244,15 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
 
       {/* Add Dialog */}
       <AddCollectionDialog open={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} onSubmit={handleAddCollection} isAdding={isAddingCollection} />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        name={deleteTarget?.name || ''}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteCollection}
+        isDeleting={isDeletingCollection}
+      />
 
       {snackbar && (
         <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar(null)}>
