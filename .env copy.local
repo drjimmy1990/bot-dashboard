@@ -1,0 +1,30 @@
+# =============================================================================
+# Bot Dashboard — Environment Variables
+# =============================================================================
+# Copy this file as .env.local and fill in your values.
+# NEVER commit .env.local to git — it contains secrets.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SUPABASE (Required)
+# ─────────────────────────────────────────────────────────────────────────────
+# Your Supabase project URL (from Project Settings → API)
+NEXT_PUBLIC_SUPABASE_URL=https://xvjpwzyaxeijyisgfund.supabase.co
+
+# Your Supabase anon (public) key — NOT the service_role key
+# Found in Project Settings → API → anon/public
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2anB3enlheGVpanlpc2dmdW5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTc1NjEsImV4cCI6MjA5NDg5MzU2MX0.YLoR6-brXf4Ke7tB-jQI_dvzWZgACB1tmSJGgN05iDk
+
+# ─────────────────────────────────────────────────────────────────────────────
+# N8N WEBHOOK (Optional — fallback if not set per-channel in Settings)
+# ─────────────────────────────────────────────────────────────────────────────
+# Global n8n webhook for sending agent messages.
+# Per-channel URLs in Channel Settings → Webhook Integration take priority.
+NEXT_PUBLIC_N8N_AGENT_WEBHOOK_URL=
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SUPABASE SERVICE ROLE KEY (Server-side only — NEVER expose to client)
+# ─────────────────────────────────────────────────────────────────────────────
+# Required for admin operations (creating users without email verification).
+# Found in Project Settings → API → service_role (secret)
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2anB3enlheGVpanlpc2dmdW5kIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTMxNzU2MSwiZXhwIjoyMDk0ODkzNTYxfQ.HVnIWbRk9YYDg0TeqEa3_9hNDMrQioT70bBpsOAM88s
+

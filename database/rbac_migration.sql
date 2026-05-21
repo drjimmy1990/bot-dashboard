@@ -183,3 +183,7 @@ CREATE POLICY "Admins can update org profiles" ON public.profiles
         organization_id = public.get_my_organization_id()
         AND public.get_my_role() = 'admin'
     );
+
+
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS team_id UUID;

@@ -24,6 +24,12 @@ import DnsIcon from '@mui/icons-material/Dns';
 import PeopleIcon from '@mui/icons-material/People';
 import GroupsIcon from '@mui/icons-material/Groups';
 
+import LogoutIcon from '@mui/icons-material/Logout';
+import Box from '@mui/material/Box';
+import Tooltip from '@mui/material/Tooltip';
+import { supabase } from '@/lib/supabaseClient';
+import { useRouter } from 'next/navigation';
+
 const drawerWidth = 240;
 
 const menuItems = [
@@ -86,9 +92,15 @@ export default function AppSidebar() {
   const { isSidebarOpen, toggleSidebar } = useUI();
   const pathname = usePathname();
   const { permissions } = usePermissions();
+  const router = useRouter();
 
   // Filter menu items based on the user's page permissions
   const visibleItems = menuItems.filter(item => permissions.canAccessPage(item.page));
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   return (
     <Drawer variant="permanent" open={isSidebarOpen}>
@@ -116,6 +128,25 @@ export default function AppSidebar() {
             </ListItemButton>
           </ListItem>
         ))}
+      </List>
+
+      {/* Push logout to bottom */}
+      <Box sx={{ flexGrow: 1 }} />
+      <Divider />
+      <List>
+        <ListItem disablePadding sx={{ display: 'block' }}>
+          <Tooltip title="Logout" placement="right" disableHoverListener={isSidebarOpen}>
+            <ListItemButton
+              onClick={handleLogout}
+              sx={{ minHeight: 48, justifyContent: isSidebarOpen ? 'initial' : 'center', px: 2.5 }}
+            >
+              <ListItemIcon sx={{ minWidth: 0, mr: isSidebarOpen ? 3 : 'auto', justifyContent: 'center', color: 'error.main' }}>
+                <LogoutIcon />
+              </ListItemIcon>
+              <ListItemText primary="Logout" sx={{ opacity: isSidebarOpen ? 1 : 0, color: 'error.main' }} />
+            </ListItemButton>
+          </Tooltip>
+        </ListItem>
       </List>
     </Drawer>
   );
