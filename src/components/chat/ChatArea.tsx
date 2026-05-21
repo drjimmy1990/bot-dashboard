@@ -1,9 +1,7 @@
 // src/components/chat/ChatArea.tsx
 import React, { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-// --- THIS IS THE FIX ---
-// Import Alert from MUI
-import { Box, Typography, Paper, CircularProgress, IconButton, Tooltip, Alert } from '@mui/material';
+import { Box, Typography, Paper, CircularProgress, IconButton, Tooltip, Alert, Snackbar } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ChatIcon from '@mui/icons-material/Chat';
 import PersonIcon from '@mui/icons-material/Person';
@@ -12,6 +10,8 @@ import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
+import { useMediaUpload, getContentTypeFromMime } from '@/hooks/useMediaUpload';
+import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
 type ContactWithClient = Contact & {
   crm_clients: { id: string } | null; // Adjusted to match the direct query result
@@ -21,8 +21,21 @@ interface ChatAreaProps {
   contactId: string | null;
   messages: Message[];
   isLoadingMessages: boolean;
-  onSendMessage: (text: string, platform: string) => void;
-  onSendImageByUrl: (url: string, platform: string) => void;
+  onSendMessage: (text: string, platform: string, platformUserId: string, platformChannelId: string) => void;
+  onSendImageByUrl: (url: string, platform: string, platformUserId: string, platformChannelId: string) => void;
+  onSendMedia: (params: {
+    platform: string;
+    platform_user_id: string;
+    platform_channel_id: string;
+    content_type: 'image' | 'audio' | 'video' | 'document';
+    attachment_url: string;
+    attachment_metadata?: {
+      mime_type?: string;
+      file_size?: number;
+      duration_seconds?: number;
+      file_name?: string;
+    };
+  }) => void;
   isSendingMessage: boolean;
   onDeleteContact: (id: string) => void;
 }
@@ -33,12 +46,26 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   isLoadingMessages,
   onSendMessage,
   onSendImageByUrl,
+  onSendMedia,
   isSendingMessage,
   onDeleteContact,
 }) => {
   const router = useRouter();
   const [messageText, setMessageText] = useState('');
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false, message: '', severity: 'success',
+  });
   const scrollableContainerRef = useRef<null | HTMLDivElement>(null);
+
+  // Media upload hook
+  const { uploadFile, isUploading, uploadProgress, error: uploadError } = useMediaUpload();
+
+  // Voice recorder hook
+  const {
+    isRecording, duration: recordingDuration,
+    startRecording, stopRecording, cancelRecording,
+    error: recorderError,
+  } = useVoiceRecorder();
 
   const { data: contact, isLoading: isLoadingContact } = useQuery<ContactWithClient>({
     queryKey: ['contact-details', contactId],
@@ -68,12 +95,96 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   useEffect(() => { scrollToBottom(); }, [messages]);
   useEffect(() => { setMessageText(''); }, [contactId]);
 
-  const handleSend = () => { if (messageText.trim() && contact) { onSendMessage(messageText, contact.platform); setMessageText(''); } };
-  const handleDelete = () => { if (contactId && window.confirm("Are you sure you want to delete this contact and all their messages? This action cannot be undone.")) { onDeleteContact(contactId); } };
+  // Show errors as snackbar
+  useEffect(() => {
+    if (uploadError) {
+      setSnackbar({ open: true, message: uploadError, severity: 'error' });
+    }
+  }, [uploadError]);
+  useEffect(() => {
+    if (recorderError) {
+      setSnackbar({ open: true, message: recorderError, severity: 'error' });
+    }
+  }, [recorderError]);
+
+  const handleSend = () => {
+    if (messageText.trim() && contact) {
+      onSendMessage(messageText, contact.platform, contact.platform_user_id, contact.channel_id);
+      setMessageText('');
+    }
+  };
+
+  const handleDelete = () => {
+    if (contactId && window.confirm("Are you sure you want to delete this contact and all their messages? This action cannot be undone.")) {
+      onDeleteContact(contactId);
+    }
+  };
 
   const handleViewProfile = () => {
     if (contact && contact.crm_clients?.id) {
       router.push(`/clients/${contact.crm_clients.id}`);
+    }
+  };
+
+  // File upload handler
+  const handleFileUpload = async (file: File) => {
+    if (!contact) return;
+
+    try {
+      const result = await uploadFile(file, contact.channel_id);
+      const contentType = getContentTypeFromMime(file.type);
+
+      onSendMedia({
+        platform: contact.platform,
+        platform_user_id: contact.platform_user_id,
+        platform_channel_id: contact.channel_id,
+        content_type: contentType,
+        attachment_url: result.url,
+        attachment_metadata: {
+          mime_type: result.mimeType,
+          file_size: result.fileSize,
+          file_name: result.fileName,
+        },
+      });
+
+      setSnackbar({ open: true, message: 'File sent successfully!', severity: 'success' });
+    } catch {
+      // Error is already set via the hook's error state
+    }
+  };
+
+  // Voice recording handler
+  const handleStopRecording = async () => {
+    if (!contact) return;
+
+    const blob = await stopRecording();
+    if (!blob) return;
+
+    try {
+      // Create a File from the Blob
+      const extension = blob.type.includes('webm') ? 'webm' : blob.type.includes('mp4') ? 'm4a' : 'ogg';
+      const fileName = `voice_${Date.now()}.${extension}`;
+      const file = new File([blob], fileName, { type: blob.type });
+
+      const result = await uploadFile(file, contact.channel_id);
+
+      onSendMedia({
+        platform: contact.platform,
+        platform_user_id: contact.platform_user_id,
+        platform_channel_id: contact.channel_id,
+        content_type: 'audio',
+        attachment_url: result.url,
+        attachment_metadata: {
+          mime_type: result.mimeType,
+          file_size: result.fileSize,
+          duration_seconds: recordingDuration,
+          file_name: result.fileName,
+        },
+      });
+
+      setSnackbar({ open: true, message: 'Voice message sent!', severity: 'success' });
+    } catch {
+      // Error handled by hook
     }
   };
 
@@ -90,7 +201,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   }
 
   if (isLoadingContact) {
-    return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><CircularProgress /></Box>
+    return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><CircularProgress /></Box>;
   }
 
   if (!contact) return <Alert severity="error">Could not load contact details.</Alert>;
@@ -125,8 +236,41 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       </Box>
 
       <Box sx={{ flexShrink: 0 }}>
-        <MessageInput value={messageText} onChange={(e) => setMessageText(e.target.value)} onSendText={handleSend} onSendImageByUrl={(url) => onSendImageByUrl(url, contact.platform)} disabled={isLoadingMessages} isSending={isSendingMessage} />
+        <MessageInput
+          value={messageText}
+          onChange={(e) => setMessageText(e.target.value)}
+          onSendText={handleSend}
+          onSendImageByUrl={(url) => onSendImageByUrl(url, contact.platform, contact.platform_user_id, contact.channel_id)}
+          onSendFileUpload={handleFileUpload}
+          onSendVoice={() => { /* Handled via onStopRecording */ }}
+          disabled={isLoadingMessages}
+          isSending={isSendingMessage}
+          isUploading={isUploading}
+          uploadProgress={uploadProgress}
+          isRecording={isRecording}
+          recordingDuration={recordingDuration}
+          onStartRecording={startRecording}
+          onStopRecording={handleStopRecording}
+          onCancelRecording={cancelRecording}
+        />
       </Box>
+
+      {/* Error/Success Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

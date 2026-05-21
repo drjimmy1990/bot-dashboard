@@ -5,7 +5,26 @@ import { supabase } from '@/lib/supabaseClient';
 import { useChannel } from '@/providers/ChannelProvider'; // Import useChannel to get org_id
 
 // --- TYPESCRIPT INTERFACES ---
-export interface ChannelConfig { channel_id: string; organization_id: string; ai_model: string; ai_temperature: number; is_bot_active: boolean; }
+export interface EcommerceConfig {
+  api_url?: string;
+  api_key?: string;
+  login_email?: string;
+  login_password?: string;
+}
+export interface NotificationConfig {
+  telegram_complaints_group_id?: string;
+  telegram_cancellations_group_id?: string;
+}
+export interface ChannelConfig {
+  channel_id: string;
+  organization_id: string;
+  ai_model: string;
+  ai_temperature: number;
+  is_bot_active: boolean;
+  agent_webhook_url?: string;
+  ecommerce_config?: EcommerceConfig;
+  notification_config?: NotificationConfig;
+}
 export interface AgentPrompt { id: string; organization_id: string; channel_id: string; agent_id: string; name: string; description: string; system_prompt: string; }
 export interface KeywordAction { id: string; organization_id: string; channel_id: string; keyword: string; action_type: string; }
 export interface ContentCollection { id: string; organization_id: string; channel_id: string; name: string; collection_id: string; items: string[]; }

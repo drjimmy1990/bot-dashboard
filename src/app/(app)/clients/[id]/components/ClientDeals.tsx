@@ -15,10 +15,12 @@ export default function ClientDeals() {
 
     const { deals } = clientData;
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'won': return 'success';
-            case 'lost': return 'error';
+    const getStageColor = (stage: string): 'success' | 'error' | 'warning' | 'info' | 'primary' | 'default' => {
+        switch (stage) {
+            case 'closed_won': return 'success';
+            case 'closed_lost': return 'error';
+            case 'negotiation': return 'warning';
+            case 'proposal': return 'info';
             default: return 'primary';
         }
     };
@@ -41,9 +43,9 @@ export default function ClientDeals() {
                                             {deal.name || 'Untitled Deal'}
                                         </Typography>
                                         <Chip
-                                            label={deal.stage || 'New'}
+                                            label={deal.stage?.replace('_', ' ') || 'New'}
                                             size="small"
-                                            color={getStatusColor(deal.status)}
+                                            color={getStageColor(deal.stage)}
                                             variant="outlined"
                                         />
                                     </Box>
@@ -53,11 +55,11 @@ export default function ClientDeals() {
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                             <MonetizationOnIcon fontSize="small" color="action" />
                                             <Typography variant="body2">
-                                                ${deal.value?.toLocaleString() || '0'}
+                                                ${deal.deal_value?.toLocaleString() || '0'}
                                             </Typography>
                                         </Box>
                                         <Typography variant="body2" color="text.secondary">
-                                            Close Date: {deal.close_date ? new Date(deal.close_date).toLocaleDateString() : 'TBD'}
+                                            Close Date: {deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString() : 'TBD'}
                                         </Typography>
                                     </Box>
                                 }

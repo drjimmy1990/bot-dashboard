@@ -20,7 +20,10 @@ import GeneralSettings from '@/components/settings/GeneralSettings';
 import KeywordActionsManager from '@/components/settings/KeywordActionsManager';
 import ChannelDetails from '@/components/settings/ChannelDetails';
 import ContentCollectionsManager from '@/components/settings/ContentCollectionsManager';
-import ChannelCredentialsManager from '@/components/settings/ChannelCredentialsManager'; // <-- IMPORT THE NEW COMPONENT
+import ChannelCredentialsManager from '@/components/settings/ChannelCredentialsManager';
+import WebhookSettings from '@/components/settings/WebhookSettings';
+import EcommerceSettings from '@/components/settings/EcommerceSettings';
+import NotificationSettings from '@/components/settings/NotificationSettings';
 
 // This component displays the settings when a valid channelId is present
 function ChannelSettingsDisplay({ channelId }: { channelId: string }) {
@@ -46,17 +49,21 @@ function ChannelSettingsDisplay({ channelId }: { channelId: string }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, mt: 2 }}>
       
+      {/* --- Channel Identity --- */}
       <ChannelDetails channelId={channelId} />
-
-      {/* --- THIS IS THE NEW COMPONENT --- */}
       <ChannelCredentialsManager channelId={channelId} />
       
+      {/* --- Integration & Webhooks --- */}
+      <WebhookSettings config={data.config} channelId={channelId} />
+      <EcommerceSettings config={data.config} channelId={channelId} />
+      <NotificationSettings config={data.config} channelId={channelId} />
+
+      {/* --- AI Configuration --- */}
       <GeneralSettings config={data.config} channelId={channelId} />
-      
       <AgentPromptsManager prompts={data.prompts} channelId={channelId} />
       
+      {/* --- Automation --- */}
       <KeywordActionsManager keywords={data.keywords} channelId={channelId} />
-
       <ContentCollectionsManager collections={data.collections} channelId={channelId} />
 
     </Box>

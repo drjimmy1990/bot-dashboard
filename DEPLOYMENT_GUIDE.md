@@ -186,3 +186,241 @@ next start -p 3099
 ```
 
 This is the exact command used in aaPanel's Node.js Project Manager to start the production server on port 3099.
+
+---
+---
+
+# Alternative: Terminal-Only Deployment (No aaPanel)
+
+If you prefer deploying directly via SSH without aaPanel, follow this guide.
+
+---
+
+## Step 1: Server Setup
+
+```bash
+# SSH into your VPS
+ssh root@your-server-ip
+
+# Update system
+apt update && apt upgrade -y
+
+# Install Node.js 20 (via NodeSource)
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+
+# Verify
+node -v   # Should show v20.x
+npm -v    # Should show 10.x
+
+# Install PM2 (process manager — keeps your app alive)
+npm install -g pm2
+
+# Install Nginx (reverse proxy)
+apt install -y nginx
+```
+
+---
+
+## Step 2: Clone & Configure
+
+```bash
+# Create app directory
+mkdir -p /var/www
+cd /var/www
+
+# Clone the repo
+git clone https://github.com/drjimmy1990/bot-dashboard.git dashboard
+cd dashboard
+
+# Create environment file
+nano .env.local
+```
+
+Paste your environment variables:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://supabase.bestlifeeg.store
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+NEXT_PUBLIC_N8N_AGENT_WEBHOOK_URL=https://n8n.bestlifeeg.store/webhook/agent-send-message
+```
+
+Save: `Ctrl+O` → `Enter` → `Ctrl+X`
+
+---
+
+## Step 3: Build
+
+```bash
+cd /var/www/dashboard
+npm install
+npm run build
+```
+
+> This creates the `.next` folder required for production.
+
+---
+
+## Step 4: Start with PM2
+
+```bash
+# Start the app on port 3099
+pm2 start npm --name "dashboard" -- start -- -p 3099
+
+# Verify it's running
+pm2 status
+
+# Save PM2 process list (survives server reboot)
+pm2 save
+
+# Enable PM2 to start on boot
+pm2 startup
+```
+
+### PM2 Quick Reference
+
+| Command | Action |
+|---------|--------|
+| `pm2 status` | See all running processes |
+| `pm2 logs dashboard` | View live logs |
+| `pm2 restart dashboard` | Restart the app |
+| `pm2 stop dashboard` | Stop the app |
+| `pm2 delete dashboard` | Remove from PM2 |
+
+---
+
+## Step 5: Configure Nginx Reverse Proxy
+
+```bash
+# Create Nginx config
+nano /etc/nginx/sites-available/dashboard
+```
+
+Paste this config (replace `yourdomain.com`):
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3099;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+Enable the site:
+
+```bash
+# Create symlink to enable the site
+ln -s /etc/nginx/sites-available/dashboard /etc/nginx/sites-enabled/
+
+# Test config
+nginx -t
+
+# Reload Nginx
+systemctl reload nginx
+```
+
+---
+
+## Step 6: Enable SSL (HTTPS)
+
+```bash
+# Install Certbot
+apt install -y certbot python3-certbot-nginx
+
+# Get certificate (auto-configures Nginx)
+certbot --nginx -d yourdomain.com
+
+# Verify auto-renewal
+certbot renew --dry-run
+```
+
+---
+
+## Updating the App (Terminal)
+
+```bash
+cd /var/www/dashboard
+git pull origin main
+npm install
+npm run build
+pm2 restart dashboard
+```
+
+### One-Liner Update
+
+```bash
+cd /var/www/dashboard && git pull origin main && npm install && npm run build && pm2 restart dashboard
+```
+
+---
+
+## Database Migrations (Terminal)
+
+Run SQL migrations against your Supabase project using `psql`:
+
+```bash
+# Connect to your Supabase DB (get connection string from Supabase Dashboard → Settings → Database)
+psql "postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres"
+
+# Once connected, run migration files:
+\i /var/www/dashboard/database/settings_upgrade_v2.sql
+\i /var/www/dashboard/database/schema_upgrade_v2.sql
+\i /var/www/dashboard/database/rbac_migration.sql
+```
+
+Or run them directly from the command line:
+
+```bash
+# Run a single migration
+psql "postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres" \
+  -f /var/www/dashboard/database/settings_upgrade_v2.sql
+
+# Run all migrations in order
+for f in settings_upgrade_v2.sql schema_upgrade_v2.sql rbac_migration.sql; do
+  echo "Running $f..."
+  psql "postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres" \
+    -f /var/www/dashboard/database/$f
+done
+```
+
+> **Tip:** You can also paste the SQL directly into the **Supabase Dashboard → SQL Editor** if you prefer a GUI.
+
+---
+
+## Troubleshooting (Terminal)
+
+| Issue | Command |
+|-------|---------|
+| Check if app is running | `pm2 status` |
+| View app logs | `pm2 logs dashboard --lines 50` |
+| Check port 3099 | `ss -tlnp | grep 3099` |
+| Check Nginx status | `systemctl status nginx` |
+| Check Nginx error log | `tail -50 /var/log/nginx/error.log` |
+| Restart everything | `pm2 restart dashboard && systemctl reload nginx` |
+| Check disk space | `df -h` |
+| Check memory | `free -h` |
+
+---
+
+## Quick Update — Copy & Paste
+
+```bash
+cd /www/wwwroot/dashboard
+git pull origin main
+pm2 stop dashboard
+npm install
+npm run build
+pm2 start dashboard
+rm -rf /www/server/nginx/proxy_cache_dir/*
+```

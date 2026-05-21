@@ -11,8 +11,8 @@ interface ClientOverviewProps {
 export default function ClientOverview({ client, deals, messageCount }: ClientOverviewProps) {
     // Calculate open deals value
     const openDealsValue = deals
-        .filter(deal => deal.status !== 'won' && deal.status !== 'lost')
-        .reduce((sum, deal) => sum + (deal.value || 0), 0);
+        .filter(deal => deal.stage !== 'closed_won' && deal.stage !== 'closed_lost')
+        .reduce((sum, deal) => sum + (deal.deal_value || 0), 0);
 
     return (
         <Box sx={{ p: 3 }}>

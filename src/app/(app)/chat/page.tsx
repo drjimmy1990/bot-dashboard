@@ -75,14 +75,38 @@ export default function ChatPage() {
     }
   }, [activeChannel?.id, linkedClientId]);
 
-  const handleSendMessage = (text: string, platform: string) => {
+  const handleSendMessage = (text: string, platform: string, platformUserId: string, platformChannelId: string) => {
     if (!selectedContactId) return;
-    sendMessage({ contact_id: selectedContactId, content_type: 'text', text_content: text, platform: platform });
+    sendMessage({ contact_id: selectedContactId, content_type: 'text', text_content: text, platform, platform_user_id: platformUserId, platform_channel_id: platformChannelId });
   }
 
-  const handleSendImageByUrl = (url: string, platform: string) => {
+  const handleSendImageByUrl = (url: string, platform: string, platformUserId: string, platformChannelId: string) => {
     if (!selectedContactId) return;
-    sendMessage({ contact_id: selectedContactId, content_type: 'image', attachment_url: url, platform: platform });
+    sendMessage({ contact_id: selectedContactId, content_type: 'image', attachment_url: url, platform, platform_user_id: platformUserId, platform_channel_id: platformChannelId });
+  }
+
+  const handleSendMedia = (params: {
+    platform: string;
+    platform_user_id: string;
+    platform_channel_id: string;
+    content_type: 'image' | 'audio' | 'video' | 'document';
+    attachment_url: string;
+    attachment_metadata?: {
+      mime_type?: string;
+      file_size?: number;
+      duration_seconds?: number;
+      file_name?: string;
+    };
+  }) => {
+    if (!selectedContactId) return;
+    sendMessage({
+      contact_id: selectedContactId,
+      content_type: params.content_type,
+      attachment_url: params.attachment_url,
+      platform: params.platform,
+      platform_user_id: params.platform_user_id,
+      platform_channel_id: params.platform_channel_id,
+    });
   }
 
   // 4. Show loading state while resolving the link
@@ -126,6 +150,7 @@ export default function ChatPage() {
             isLoadingMessages={isLoadingMessages}
             onSendMessage={handleSendMessage}
             onSendImageByUrl={handleSendImageByUrl}
+            onSendMedia={handleSendMedia}
             isSendingMessage={isSendingMessage}
             onDeleteContact={deleteContact}
           />

@@ -24,10 +24,19 @@ export interface Contact {
 export interface Message {
   id: string;
   contact_id: string;
-  sender_type: 'user' | 'agent' | 'ai';
-  content_type: 'text' | 'image' | 'audio';
+  sender_type: 'user' | 'agent' | 'ai' | 'system';
+  content_type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'sticker' | 'location';
   text_content: string | null;
   attachment_url: string | null;
+  attachment_metadata: {
+    mime_type?: string;
+    file_size?: number;
+    duration_seconds?: number;
+    width?: number;
+    height?: number;
+    file_name?: string;
+  } | null;
+  delivery_status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
   sent_at: string;
 }
 
@@ -129,12 +138,24 @@ export interface CrmDeal {
   organization_id: string;
   client_id: string;
   name: string;
-  value: number;
-  stage: string;
-  status: 'won' | 'lost' | 'open' | 'negotiation';
-  close_date: string | null;
+  description: string | null;
+  deal_value: number;
+  currency: string;
+  stage: 'prospecting' | 'qualification' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost';
+  probability: number;
+  expected_close_date: string | null;
+  actual_close_date: string | null;
+  products: { [key: string]: any } | null;
+  owner_id: string | null;
+  assigned_team: string | null;
+  lost_reason: string | null;
+  won_reason: string | null;
+  competitor: string | null;
+  tags: string[] | null;
+  custom_fields: { [key: string]: any } | null;
   created_at: string;
   updated_at: string;
+  stage_changed_at: string | null;
 }
 
 // Order Item (JSONB structure)
@@ -292,44 +313,87 @@ export const deleteContact = async (contactId: string) => {
 }
 
 /**
- * Sends a message from an agent by invoking a Supabase Edge Function.
- * This function determines which n8n workflow to trigger based on the platform.
- * @param payload - The message payload.
+ * Sends a message from an agent by calling an n8n webhook.
+ * n8n handles: sending via Graph API + saving to DB.
+ * The webhook URL is resolved from channel_configurations (per-channel),
+ * with a fallback to the NEXT_PUBLIC_N8N_AGENT_WEBHOOK_URL env var.
+ * @param payload - The complete message payload including platform identifiers.
  */
 export const sendMessage = async (payload: {
+  // --- IDs for DB storage ---
   contact_id: string;
   channel_id: string;
   organization_id: string;
-  content_type: 'text' | 'image';
+  // --- Message content ---
+  content_type: 'text' | 'image' | 'audio' | 'video' | 'document';
   text_content?: string;
   attachment_url?: string;
+  attachment_metadata?: {
+    mime_type?: string;
+    file_size?: number;
+    duration_seconds?: number;
+    width?: number;
+    height?: number;
+    file_name?: string;
+  };
+  // --- Platform identifiers (for Graph API targeting) ---
   platform: string;
+  platform_user_id: string;       // Recipient's Facebook/IG/WA ID
+  platform_channel_id: string;    // Page ID / WA Business Account ID
 }) => {
-  // Determine the correct Edge Function to call based on the contact's platform.
-  let edgeFunctionName = '';
-  switch (payload.platform) {
-    case 'whatsapp':
-      edgeFunctionName = 'send-agent-whatsapp-message';
-      break;
-    case 'facebook':
-      edgeFunctionName = 'send-facebook-agent-message';
-      break;
-    // Add other platforms like 'instagram' here in the future
-    default:
-      throw new Error(`Unsupported platform for sending agent message: ${payload.platform}`);
+  // 1. Try to get per-channel webhook URL from channel_configurations
+  let webhookUrl: string | undefined;
+
+  const { data: configData } = await supabase
+    .from('channel_configurations')
+    .select('agent_webhook_url')
+    .eq('channel_id', payload.channel_id)
+    .single();
+
+  webhookUrl = configData?.agent_webhook_url || undefined;
+
+  // 2. Fallback to environment variable
+  if (!webhookUrl) {
+    webhookUrl = process.env.NEXT_PUBLIC_N8N_AGENT_WEBHOOK_URL;
   }
 
-  // The Edge Function is responsible for inserting the message into the DB
-  // and triggering the corresponding n8n webhook.
-  const { data, error } = await supabase.functions.invoke(edgeFunctionName, {
-    body: payload // Send the entire payload to the function
+  if (!webhookUrl) {
+    throw new Error(
+      'N8N agent webhook URL is not configured. Set it in Channel Settings → Webhook Integration, or set NEXT_PUBLIC_N8N_AGENT_WEBHOOK_URL in your .env.local file.'
+    );
+  }
+
+  const response = await fetch(webhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      // IDs
+      contact_id: payload.contact_id,
+      channel_id: payload.channel_id,
+      organization_id: payload.organization_id,
+      // Platform targeting
+      platform: payload.platform,
+      platform_user_id: payload.platform_user_id,
+      platform_channel_id: payload.platform_channel_id,
+      // Message content
+      content_type: payload.content_type,
+      text_content: payload.text_content || null,
+      attachment_url: payload.attachment_url || null,
+      attachment_metadata: payload.attachment_metadata || null,
+      // Metadata
+      sender_type: 'agent',
+      timestamp: new Date().toISOString(),
+    }),
   });
 
-  if (error) {
-    console.error(`Error invoking ${edgeFunctionName}:`, error);
-    throw new Error(error.message);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('n8n webhook error:', errorText);
+    throw new Error(`Failed to send message: ${response.status} ${response.statusText}`);
   }
 
-  // The edge function should return the newly created message record.
-  return data.message;
+  const data = await response.json();
+
+  // n8n should return the saved message record
+  return data.message || data;
 }

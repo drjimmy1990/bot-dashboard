@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import Box from '@mui/material/Box';
 import AppSidebar from '@/components/layout/AppSidebar';
 import AppHeader from '@/components/layout/AppHeader';
+import PageGuard from '@/components/auth/PageGuard';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -33,14 +34,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <Box 
           sx={{ 
             flexGrow: 1,
-            // THIS IS THE FIX. 'auto' is the correct value.
             overflow: 'auto', 
             p: isChatPage ? 0 : 3,
           }}
         >
-          {children}
+          <PageGuard>
+            {children}
+          </PageGuard>
         </Box>
       </Box>
     </Box>
   );
-}
+}

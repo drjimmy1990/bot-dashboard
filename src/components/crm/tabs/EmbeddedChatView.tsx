@@ -35,21 +35,48 @@ export default function EmbeddedChatView({ contact, organizationId }: EmbeddedCh
     }
   });
 
-  const handleSendMessage = (text: string, platform: string) => {
+  const handleSendMessage = (text: string, platform: string, platformUserId: string, platformChannelId: string) => {
     sendMessage({
         contact_id: contact.id,
         content_type: 'text',
         text_content: text,
-        platform: platform,
+        platform,
+        platform_user_id: platformUserId,
+        platform_channel_id: platformChannelId,
     });
   };
 
-  const handleSendImageByUrl = (url: string, platform: string) => {
+  const handleSendImageByUrl = (url: string, platform: string, platformUserId: string, platformChannelId: string) => {
     sendMessage({
         contact_id: contact.id,
         content_type: 'image',
         attachment_url: url,
-        platform: platform,
+        platform,
+        platform_user_id: platformUserId,
+        platform_channel_id: platformChannelId,
+    });
+  };
+
+  const handleSendMedia = (params: {
+    platform: string;
+    platform_user_id: string;
+    platform_channel_id: string;
+    content_type: 'image' | 'audio' | 'video' | 'document';
+    attachment_url: string;
+    attachment_metadata?: {
+      mime_type?: string;
+      file_size?: number;
+      duration_seconds?: number;
+      file_name?: string;
+    };
+  }) => {
+    sendMessage({
+      contact_id: contact.id,
+      content_type: params.content_type,
+      attachment_url: params.attachment_url,
+      platform: params.platform,
+      platform_user_id: params.platform_user_id,
+      platform_channel_id: params.platform_channel_id,
     });
   };
 
@@ -61,6 +88,7 @@ export default function EmbeddedChatView({ contact, organizationId }: EmbeddedCh
         isLoadingMessages={isLoadingMessages}
         onSendMessage={handleSendMessage}
         onSendImageByUrl={handleSendImageByUrl}
+        onSendMedia={handleSendMedia}
         isSendingMessage={isSendingMessage}
         onDeleteContact={deleteContact}
       />

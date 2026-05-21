@@ -37,14 +37,21 @@ export const useChatMessages = (contactId: string | null, channelId: string | nu
     // The mutation function's variables are defined by what we pass to `mutate()`
     mutationFn: (vars: {
       contact_id: string;
-      content_type: 'text' | 'image';
+      content_type: 'text' | 'image' | 'audio' | 'video' | 'document';
       text_content?: string;
       attachment_url?: string;
+      attachment_metadata?: {
+        mime_type?: string;
+        file_size?: number;
+        duration_seconds?: number;
+        file_name?: string;
+      };
       platform: string;
+      platform_user_id: string;
+      platform_channel_id: string;
     }) => {
-      // 4. Critical: Ensure channelId and organizationId are passed to the API call
+      // Critical: Ensure channelId and organizationId are passed to the API call
       if (!channelId || !organizationId) {
-        // This should ideally not happen if the UI disables the send button, but it's a good safeguard.
         return Promise.reject(new Error("Cannot send message: channel or organization ID is missing."));
       }
       return api.sendMessage({

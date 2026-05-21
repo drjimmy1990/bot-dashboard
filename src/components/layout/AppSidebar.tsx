@@ -15,25 +15,25 @@ import ListItemText from '@mui/material/ListItemText';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUI } from '@/providers/UIProvider';
+import { usePermissions } from '@/hooks/usePermissions';
 import HomeIcon from '@mui/icons-material/Home';
 import ChatIcon from '@mui/icons-material/Chat';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import DnsIcon from '@mui/icons-material/Dns';
-// --- THIS IS THE MODIFICATION ---
-import PeopleIcon from '@mui/icons-material/People'; // Import the new icon
+import PeopleIcon from '@mui/icons-material/People';
+import GroupsIcon from '@mui/icons-material/Groups';
 
 const drawerWidth = 240;
 
 const menuItems = [
-  { text: 'Home', href: '/', icon: <HomeIcon /> },
-  { text: 'Chat', href: '/chat', icon: <ChatIcon /> },
-  // --- THIS IS THE MODIFICATION ---
-  // Add the new "Clients" link to navigate to our CRM dashboard.
-  { text: 'Clients', href: '/clients', icon: <PeopleIcon /> },
-  { text: 'Channels', href: '/channels', icon: <DnsIcon /> },
-  { text: 'Settings', href: '/settings', icon: <SettingsIcon /> },
-  { text: 'Analytics', href: '/analytics', icon: <AnalyticsIcon /> },
+  { text: 'Home', href: '/', icon: <HomeIcon />, page: 'home' },
+  { text: 'Chat', href: '/chat', icon: <ChatIcon />, page: 'chat' },
+  { text: 'Clients', href: '/clients', icon: <PeopleIcon />, page: 'clients' },
+  { text: 'Channels', href: '/channels', icon: <DnsIcon />, page: 'channels' },
+  { text: 'Settings', href: '/settings', icon: <SettingsIcon />, page: 'settings' },
+  { text: 'Analytics', href: '/analytics', icon: <AnalyticsIcon />, page: 'analytics' },
+  { text: 'Team', href: '/team', icon: <GroupsIcon />, page: 'team' },
 ];
 
 const openedMixin = (theme: Theme): CSSObject => ({
@@ -85,6 +85,10 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' 
 export default function AppSidebar() {
   const { isSidebarOpen, toggleSidebar } = useUI();
   const pathname = usePathname();
+  const { permissions } = usePermissions();
+
+  // Filter menu items based on the user's page permissions
+  const visibleItems = menuItems.filter(item => permissions.canAccessPage(item.page));
 
   return (
     <Drawer variant="permanent" open={isSidebarOpen}>
@@ -95,7 +99,7 @@ export default function AppSidebar() {
       </DrawerHeader>
       <Divider />
       <List>
-        {menuItems.map((item) => (
+        {visibleItems.map((item) => (
           <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
             <ListItemButton
               component={Link}
@@ -115,4 +119,4 @@ export default function AppSidebar() {
       </List>
     </Drawer>
   );
-}
+}
