@@ -114,6 +114,8 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
 
   const [selectedCollection, setSelectedCollection] = useState<ContentCollection | null>(null);
   const [editText, setEditText] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editCollectionId, setEditCollectionId] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<ContentCollection | null>(null);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -124,6 +126,8 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
   const handleOpenEditDialog = (collection: ContentCollection) => {
     setSelectedCollection(collection);
     setEditText(collection.items.join('\n'));
+    setEditName(collection.name);
+    setEditCollectionId(collection.collection_id);
     setIsEditDialogOpen(true);
   };
 
@@ -131,13 +135,15 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
     setIsEditDialogOpen(false);
     setSelectedCollection(null);
     setEditText('');
+    setEditName('');
+    setEditCollectionId('');
   };
 
   const handleSaveChanges = async () => {
     if (!selectedCollection) return;
     const updatedItems = editText.split('\n').map(line => line.trim()).filter(line => line);
 
-    updateCollection({ id: selectedCollection.id, items: updatedItems }, {
+    updateCollection({ id: selectedCollection.id, items: updatedItems, name: editName, collection_id: editCollectionId }, {
       onSuccess: () => {
         setSnackbar({ open: true, message: 'Collection saved!', severity: 'success' });
         handleCloseEditDialog();
@@ -225,16 +231,29 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onClose={handleCloseEditDialog} fullWidth maxWidth="md">
-        <DialogTitle>
-          Edit &quot;{selectedCollection?.name}&quot;
-          {selectedCollection && (
-            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-              ID: <code>{selectedCollection.collection_id}</code>
-            </Typography>
-          )}
-        </DialogTitle>
+        <DialogTitle>Edit Collection</DialogTitle>
         <DialogContent>
-          <TextField autoFocus margin="dense" label="Content Items (one per line)" value={editText} onChange={(e) => setEditText(e.target.value)} multiline rows={15} fullWidth variant="outlined" helperText="Enter URLs or text snippets, each on a new line." />
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <TextField
+              margin="dense"
+              label="Collection Name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              fullWidth
+              size="small"
+            />
+            <TextField
+              margin="dense"
+              label="Collection ID (used by n8n)"
+              value={editCollectionId}
+              onChange={(e) => setEditCollectionId(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+              fullWidth
+              size="small"
+              sx={{ '& input': { fontFamily: 'monospace' } }}
+              helperText="Change carefully — n8n references this ID"
+            />
+          </Box>
+          <TextField margin="dense" label="Content Items (one per line)" value={editText} onChange={(e) => setEditText(e.target.value)} multiline rows={12} fullWidth variant="outlined" helperText="Enter URLs or text snippets, each on a new line." />
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseEditDialog} disabled={isUpdatingCollection}>Cancel</Button>

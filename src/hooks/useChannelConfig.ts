@@ -37,7 +37,7 @@ export type AddKeywordPayload = Omit<KeywordAction, 'id' | 'channel_id' | 'organ
 export type UpdateKeywordPayload = Omit<KeywordAction, 'channel_id' | 'organization_id'>;
 export type AddPromptPayload = Omit<AgentPrompt, 'id' | 'channel_id' | 'organization_id'>;
 export type AddCollectionPayload = { name: string; collectionId?: string };
-export type UpdateCollectionPayload = { id: string; items: string[] };
+export type UpdateCollectionPayload = { id: string; items: string[]; name?: string; collection_id?: string };
 
 // --- API HELPER FUNCTIONS ---
 async function fetchAllConfig(channelId: string): Promise<FullChannelConfig> {
@@ -110,8 +110,8 @@ export const useChannelConfig = (channelId: string | null) => {
   const { mutate: updatePrompt, isPending: isUpdatingPrompt } = useMutation({ mutationFn: async (payload: UpdatePromptPayload) => { const { error } = await supabase.from('agent_prompts').update({ system_prompt: payload.system_prompt }).eq('id', payload.promptId); if (error) throw error; }, onSuccess: () => queryClient.invalidateQueries({ queryKey }), });
   const { mutate: deleteKeyword, isPending: isDeletingKeyword } = useMutation({ mutationFn: async (id: string) => { const { error } = await supabase.from('keyword_actions').delete().eq('id', id); if (error) throw error; }, onSuccess: () => queryClient.invalidateQueries({ queryKey }), });
   const { mutate: updateKeyword, isPending: isUpdatingKeyword } = useMutation({ mutationFn: async (payload: UpdateKeywordPayload) => { const { error } = await supabase.from('keyword_actions').update({ keyword: payload.keyword, action_type: payload.action_type }).eq('id', payload.id); if (error) throw error; }, onSuccess: () => queryClient.invalidateQueries({ queryKey }), });
-  const { mutate: updateCollection, isPending: isUpdatingCollection } = useMutation({ mutationFn: async (payload: UpdateCollectionPayload) => { const { error } = await supabase.from('content_collections').update({ items: payload.items }).eq('id', payload.id); if (error) throw error; }, onSuccess: () => queryClient.invalidateQueries({ queryKey }), });
+  const { mutate: updateCollection, isPending: isUpdatingCollection } = useMutation({ mutationFn: async (payload: UpdateCollectionPayload) => { const updateData: Record<string, unknown> = { items: payload.items }; if (payload.name) updateData.name = payload.name; if (payload.collection_id) updateData.collection_id = payload.collection_id; const { error } = await supabase.from('content_collections').update(updateData).eq('id', payload.id); if (error) throw error; }, onSuccess: () => queryClient.invalidateQueries({ queryKey }), });
   const { mutate: deleteCollection, isPending: isDeletingCollection } = useMutation({ mutationFn: async (id: string) => { const { error } = await supabase.from('content_collections').delete().eq('id', id); if (error) throw error; }, onSuccess: () => queryClient.invalidateQueries({ queryKey }), });
 
   return { data, isLoading, isError, error, updateConfig, isUpdatingConfig, updatePrompt, isUpdatingPrompt, addPrompt, isAddingPrompt, addKeyword, isAddingKeyword, deleteKeyword, isDeletingKeyword, updateKeyword, isUpdatingKeyword, addCollection, isAddingCollection, updateCollection, isUpdatingCollection, deleteCollection, isDeletingCollection };
-};
+};
