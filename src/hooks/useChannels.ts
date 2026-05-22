@@ -62,8 +62,8 @@ export const useChannels = () => {
                 { channel_id: newChannelId, organization_id: orgId, agent_id: 're_engagement_agent', name: 'Re-engagement Bot', description: 'Follows up with silent users.', system_prompt: 'Just checking in to see if you had any other questions.' }
             ];
             const defaultKeywords = [
-                { channel_id: newChannelId, organization_id: orgId, keyword: 'stop', action_type: 'DISABLE_AI' },
-                { channel_id: newChannelId, organization_id: orgId, keyword: 'start', action_type: 'ENABLE_AI' }
+                { channel_id: newChannelId, organization_id: orgId, keyword: '8', action_type: 'DISABLE_AI' },
+                { channel_id: newChannelId, organization_id: orgId, keyword: '9', action_type: 'ENABLE_AI' }
             ];
             const defaultCollections = [
                 { channel_id: newChannelId, organization_id: orgId, collection_id: 'testimonials_1', name: 'Testimonials', items: [] }
