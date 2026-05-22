@@ -34,7 +34,7 @@ ALTER TABLE public.crm_clients
 ADD COLUMN IF NOT EXISTS bmi_data JSONB DEFAULT NULL;
 
 COMMENT ON COLUMN public.crm_clients.bmi_data IS 
-  'Stores BMI data from the bot: {"weight": 87, "height": 175, "bmi": 28.4}';
+  'Stores BMI data from the bot: {"weight": 87, "height": 175, "age": 30, "bmi": 28.4}';
 
 -- ====================================================================
 -- STEP 3: Index for conversation_stage analytics queries
