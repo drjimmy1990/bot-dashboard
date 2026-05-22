@@ -114,8 +114,17 @@ export const useChatMessages = (contactId: string | null, channelId: string | nu
           const newMessage = payload.new as api.Message;
 
           queryClient.setQueryData(['messages', contactId], (oldData: api.Message[] | undefined) => {
-            if (oldData?.find(msg => msg.id === newMessage.id)) return oldData;
-            return oldData ? [...oldData, newMessage] : [newMessage];
+            if (!oldData) return [newMessage];
+            // Skip if we already have this exact message
+            if (oldData.find(msg => msg.id === newMessage.id)) return oldData;
+            
+            // If this is an agent message, replace any temp optimistic messages
+            if (newMessage.sender_type === 'agent') {
+              const withoutTemp = oldData.filter(msg => !msg.id.startsWith('temp-'));
+              return [...withoutTemp, newMessage];
+            }
+            
+            return [...oldData, newMessage];
           });
 
           if (document.hasFocus()) {
