@@ -17,6 +17,7 @@ import {
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import CancelIcon from '@mui/icons-material/Cancel';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import { useChannelConfig, ChannelConfig, NotificationConfig } from '@/hooks/useChannelConfig';
 
 interface NotificationSettingsProps {
@@ -45,6 +46,9 @@ export default function NotificationSettings({ config, channelId }: Notification
     if (formData.telegram_cancellations_group_id?.trim()) {
       cleaned.telegram_cancellations_group_id = formData.telegram_cancellations_group_id.trim();
     }
+    if (formData.telegram_orders_group_id?.trim()) {
+      cleaned.telegram_orders_group_id = formData.telegram_orders_group_id.trim();
+    }
 
     updateConfig(
       { notification_config: cleaned },
@@ -55,7 +59,7 @@ export default function NotificationSettings({ config, channelId }: Notification
     );
   };
 
-  const isConfigured = !!(formData.telegram_complaints_group_id || formData.telegram_cancellations_group_id);
+  const isConfigured = !!(formData.telegram_complaints_group_id || formData.telegram_cancellations_group_id || formData.telegram_orders_group_id);
 
   return (
     <Paper sx={{ p: 3 }}>
@@ -112,6 +116,27 @@ export default function NotificationSettings({ config, channelId }: Notification
                 startAdornment: (
                   <InputAdornment position="start">
                     <CancelIcon fontSize="small" color="error" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+        </Grid>
+
+        <Grid size={12}>
+          <TextField
+            label="Orders Group ID"
+            value={formData.telegram_orders_group_id || ''}
+            onChange={handleChange('telegram_orders_group_id')}
+            fullWidth
+            size="small"
+            placeholder="-123456789"
+            helperText="Telegram group/channel for receiving new order notifications"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <ShoppingCartIcon fontSize="small" color="success" />
                   </InputAdornment>
                 ),
               },

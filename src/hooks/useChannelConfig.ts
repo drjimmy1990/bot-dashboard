@@ -14,6 +14,7 @@ export interface EcommerceConfig {
 export interface NotificationConfig {
   telegram_complaints_group_id?: string;
   telegram_cancellations_group_id?: string;
+  telegram_orders_group_id?: string;
 }
 export interface ChannelConfig {
   channel_id: string;
@@ -22,7 +23,6 @@ export interface ChannelConfig {
   ai_temperature: number;
   is_bot_active: boolean;
   agent_webhook_url?: string;
-  orders_webhook_url?: string;
   ecommerce_config?: EcommerceConfig;
   notification_config?: NotificationConfig;
 }
