@@ -33,9 +33,9 @@ export default function ClientHeader({ client }: ClientHeaderProps) {
 
   // Helper function to format currency
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-EG', {
       style: 'currency',
-      currency: 'USD', // You can make this dynamic later if needed
+      currency: 'EGP',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -84,13 +84,6 @@ export default function ClientHeader({ client }: ClientHeaderProps) {
           <Grid container spacing={{ xs: 2, md: 3 }} justifyContent="flex-end">
             <Grid>
               <StatItem
-                icon={<MonetizationOnIcon color="action" />}
-                label="Total Revenue"
-                value={formatCurrency(client.total_revenue)}
-              />
-            </Grid>
-            <Grid>
-              <StatItem
                 icon={<CalendarTodayIcon color="action" />}
                 label="Last Contact"
                 value={formatDate(client.last_contact_date)}
@@ -98,9 +91,15 @@ export default function ClientHeader({ client }: ClientHeaderProps) {
             </Grid>
             <Grid>
                 <Chip
-                  icon={client.client_type === 'customer' ? <BusinessIcon /> : <PersonIcon />}
-                  label={client.client_type.charAt(0).toUpperCase() + client.client_type.slice(1)}
-                  color={client.client_type === 'customer' ? "success" : "default"}
+                  icon={client.client_type === 'customer' || client.client_type === 'repeat_customer' ? <BusinessIcon /> : <PersonIcon />}
+                  label={client.client_type === 'repeat_customer' ? 'Repeat Customer' : client.client_type.charAt(0).toUpperCase() + client.client_type.slice(1)}
+                  color={{
+                    customer: 'success' as const,
+                    repeat_customer: 'success' as const,
+                    interested: 'warning' as const,
+                    new: 'info' as const,
+                    inactive: 'default' as const,
+                  }[client.client_type] || 'default'}
                   size="small"
                   sx={{ mt: 2 }}
                 />

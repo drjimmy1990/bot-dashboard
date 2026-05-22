@@ -30,8 +30,7 @@ interface ClientFiltersProps {
     onReset: () => void;
 }
 
-const STATUS_OPTIONS = ['lead', 'mql', 'sql', 'opportunity', 'customer', 'evangelist', 'churned'];
-const TYPE_OPTIONS = ['lead', 'prospect', 'customer', 'partner', 'inactive'];
+const TYPE_OPTIONS = ['new', 'interested', 'customer', 'repeat_customer', 'inactive'];
 const QUALITY_OPTIONS = ['hot', 'warm', 'cold'];
 
 export default function ClientFilters({
@@ -77,30 +76,6 @@ export default function ClientFilters({
             </Box>
 
             <Stack spacing={3}>
-                {/* Status */}
-                <FormControl size="small">
-                    <InputLabel>Lifecycle Stage</InputLabel>
-                    <Select
-                        multiple
-                        value={filters.status || []}
-                        onChange={(e) => handleMultiSelectChange(e, 'status')}
-                        input={<OutlinedInput label="Lifecycle Stage" />}
-                        renderValue={(selected) => (
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                {selected.map((value) => (
-                                    <Chip key={value} label={value} size="small" />
-                                ))}
-                            </Box>
-                        )}
-                    >
-                        {STATUS_OPTIONS.map((status) => (
-                            <MenuItem key={status} value={status}>
-                                {status.charAt(0).toUpperCase() + status.slice(1)}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-
                 {/* Type */}
                 <FormControl size="small">
                     <InputLabel>Client Type</InputLabel>
@@ -112,14 +87,14 @@ export default function ClientFilters({
                         renderValue={(selected) => (
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                 {selected.map((value) => (
-                                    <Chip key={value} label={value} size="small" />
+                                    <Chip key={value} label={value === 'repeat_customer' ? 'Repeat Customer' : value.charAt(0).toUpperCase() + value.slice(1)} size="small" />
                                 ))}
                             </Box>
                         )}
                     >
                         {TYPE_OPTIONS.map((type) => (
                             <MenuItem key={type} value={type}>
-                                {type.charAt(0).toUpperCase() + type.slice(1)}
+                                {type === 'repeat_customer' ? 'Repeat Customer' : type.charAt(0).toUpperCase() + type.slice(1)}
                             </MenuItem>
                         ))}
                     </Select>
@@ -194,27 +169,6 @@ export default function ClientFilters({
                         ))}
                     </Select>
                 </FormControl>
-
-                <Divider />
-
-                {/* Revenue */}
-                <Typography variant="subtitle2">Total Revenue</Typography>
-                <Stack direction="row" spacing={2}>
-                    <TextField
-                        label="Min"
-                        type="number"
-                        size="small"
-                        value={filters.min_revenue || ''}
-                        onChange={(e) => handleTextChange('min_revenue', e.target.value ? Number(e.target.value) : undefined)}
-                    />
-                    <TextField
-                        label="Max"
-                        type="number"
-                        size="small"
-                        value={filters.max_revenue || ''}
-                        onChange={(e) => handleTextChange('max_revenue', e.target.value ? Number(e.target.value) : undefined)}
-                    />
-                </Stack>
 
                 <Divider />
 

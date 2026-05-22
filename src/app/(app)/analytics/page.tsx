@@ -8,8 +8,6 @@ import {
     useDashboardSummary,
     useRevenueMetrics,
     useConversionFunnel,
-    useDealMetrics,
-    useDealTrends,
     useChannelPerformance,
     useMessageVolumeTrends,
     useAnalyticsControl
@@ -20,7 +18,7 @@ import { useOrganization } from '@/hooks/useOrganization';
 import DashboardMetricsGrid from './components/DashboardMetricsGrid';
 import RevenueAnalytics from './components/RevenueAnalytics';
 import ConversionFunnel from './components/ConversionFunnel';
-import DealAnalytics from './components/DealAnalytics';
+
 import ChannelPerformanceChart from './components/ChannelPerformance';
 import ChatbotAnalytics from './components/ChatbotAnalytics';
 import ClientMetrics from './components/ClientMetrics';
@@ -127,8 +125,6 @@ export default function AnalyticsPage() {
     const { data: summary, isLoading: isSummaryLoading, refetch: refetchSummary } = useDashboardSummary(orgId || '', selectedChannelId || null, startDate, endDate);
     const { data: revenue, isLoading: isRevenueLoading } = useRevenueMetrics(orgId || '', period, selectedChannelId || null, startDate, endDate);
     const { data: funnel, isLoading: isFunnelLoading } = useConversionFunnel(orgId || '', selectedChannelId || null, startDate, endDate);
-    const { data: deals, isLoading: isDealsLoading } = useDealMetrics(orgId || '', selectedChannelId || null, startDate, endDate);
-    const { data: dealsTrend, isLoading: isDealsTrendLoading } = useDealTrends(orgId || '', period, selectedChannelId || null, startDate, endDate);
     const { data: channelPerformance, isLoading: isChannelLoading } = useChannelPerformance(orgId || '', startDate, endDate);
     const { data: messageTrends } = useMessageVolumeTrends(orgId || '', period, selectedChannelId || null, startDate, endDate);
     const { channels } = useChannels();
@@ -296,12 +292,9 @@ export default function AnalyticsPage() {
                         <RevenueAnalytics data={revenue} isLoading={isRevenueLoading} height={280} />
                     </Grid>
                     <Grid size={{ xs: 12, md: 6 }}>
-                        <DealAnalytics data={deals} trendData={dealsTrend} isLoading={isDealsLoading || isDealsTrendLoading} showTrend={false} showPipeline={true} height={280} />
-                    </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
                         <ConversionFunnel data={funnel} isLoading={isFunnelLoading} height={280} />
                     </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={{ xs: 12 }}>
                         <ChannelPerformanceChart data={channelPerformance} isLoading={isChannelLoading} height={280} />
                     </Grid>
                 </Grid>
@@ -311,9 +304,6 @@ export default function AnalyticsPage() {
                 <Grid container spacing={3}>
                     <Grid size={{ xs: 12 }}>
                         <RevenueAnalytics data={revenue} isLoading={isRevenueLoading} height={500} />
-                    </Grid>
-                    <Grid size={{ xs: 12 }}>
-                        <DealAnalytics data={deals} trendData={dealsTrend} isLoading={isDealsLoading || isDealsTrendLoading} showTrend={true} height={500} />
                     </Grid>
                     <Grid size={{ xs: 12 }}>
                         <ConversionFunnel data={funnel} isLoading={isFunnelLoading} height={500} />

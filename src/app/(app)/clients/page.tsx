@@ -59,27 +59,20 @@ const columns: GridColDef<CrmClient>[] = [
     renderCell: (params) => {
       const colorMap: Record<string, "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning"> = {
         customer: 'success',
-        lead: 'info',
-        prospect: 'warning',
-        partner: 'secondary',
+        repeat_customer: 'success',
+        new: 'info',
+        interested: 'warning',
         inactive: 'default'
       };
-      return <Chip label={params.value} size="small" color={colorMap[params.row.client_type] || 'default'} variant="outlined" />;
+      const label = params.row.client_type === 'repeat_customer' ? 'Repeat' : params.value;
+      return <Chip label={label} size="small" color={colorMap[params.row.client_type] || 'default'} variant="outlined" />;
     }
   },
   {
-    field: 'lifecycle_stage',
-    headerName: 'Stage',
+    field: 'source',
+    headerName: 'Source',
     flex: 0.75,
     valueGetter: (value: string) => value ? value.charAt(0).toUpperCase() + value.slice(1) : 'N/A',
-  },
-  {
-    field: 'total_revenue',
-    headerName: 'Total Revenue',
-    flex: 1,
-    type: 'number',
-    valueFormatter: (value: number) =>
-      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value || 0),
   },
   {
     field: 'last_contact_date',

@@ -60,6 +60,8 @@ pg_dump -h localhost -p 5432 -U postgres -d postgres -F c -f /root/supabase_back
 pg_dump -h supabase.bestlifeeg.store -p 5432 -U postgres.your-tenant-id -d postgres -F c -f /root/supabase_backup_$(date +%Y%m%d_%H%M%S).dump
 ```
 
+pg_dump -h supabase.bestlifeeg.store -p 5432 -U postgres.your-tenant-id -d postgres > backup-latest-schema.sql
+
 This creates a timestamped compressed backup like `supabase_backup_20260521_233800.dump`.
 
 ---
@@ -97,7 +99,7 @@ pg_dump -h localhost -p 5432 -U postgres -d postgres --data-only > data_only.sql
 ### Schema Only (No Data)
 
 ```bash
-pg_dump -h localhost -p 5432 -U postgres -d postgres --schema-only > schema_only.sql
+pg_dump -h supabase.bestlifeeg.store -p 5432 -U postgres.your-tenant-id -d postgres --schema-only > backup-latest-schema-only.sql
 ```
 
 ### Single Table Backup

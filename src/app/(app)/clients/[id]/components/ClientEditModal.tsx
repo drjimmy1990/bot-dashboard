@@ -20,8 +20,7 @@ interface ClientEditModalProps {
     client: CrmClient;
 }
 
-const LIFECYCLE_STAGES = ['lead', 'mql', 'sql', 'opportunity', 'customer', 'evangelist', 'churned'];
-const CLIENT_TYPES = ['lead', 'prospect', 'customer', 'partner', 'inactive'];
+const CLIENT_TYPES = ['new', 'interested', 'customer', 'repeat_customer', 'inactive'];
 
 export default function ClientEditModal({ open, onClose, client }: ClientEditModalProps) {
     const { updateClient, isUpdatingClient } = useClient(client.id);
@@ -35,7 +34,6 @@ export default function ClientEditModal({ open, onClose, client }: ClientEditMod
         state: '',
         postal_code: '',
         country: '',
-        lifecycle_stage: '',
         client_type: '',
         tags: [] as string[],
         assigned_team: ''
@@ -55,8 +53,7 @@ export default function ClientEditModal({ open, onClose, client }: ClientEditMod
                 state: client.state || addressJson?.state || '',
                 postal_code: client.postal_code || addressJson?.postal_code || '',
                 country: client.country || addressJson?.country || '',
-                lifecycle_stage: client.lifecycle_stage || 'lead',
-                client_type: client.client_type || 'lead',
+                client_type: client.client_type || 'new',
                 tags: client.tags || [],
                 assigned_team: client.assigned_team || ''
             });
@@ -83,8 +80,6 @@ export default function ClientEditModal({ open, onClose, client }: ClientEditMod
             state: formData.state,
             postal_code: formData.postal_code,
             country: formData.country,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            lifecycle_stage: formData.lifecycle_stage as any,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             client_type: formData.client_type as any,
             tags: formData.tags,
@@ -162,22 +157,6 @@ export default function ClientEditModal({ open, onClose, client }: ClientEditMod
                         <TextField
                             select
                             fullWidth
-                            label="Lifecycle Stage"
-                            name="lifecycle_stage"
-                            value={formData.lifecycle_stage}
-                            onChange={handleChange}
-                        >
-                            {LIFECYCLE_STAGES.map((stage) => (
-                                <MenuItem key={stage} value={stage}>
-                                    {stage.charAt(0).toUpperCase() + stage.slice(1)}
-                                </MenuItem>
-                            ))}
-                        </TextField>
-                    </Grid>
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <TextField
-                            select
-                            fullWidth
                             label="Client Type"
                             name="client_type"
                             value={formData.client_type}
@@ -185,7 +164,7 @@ export default function ClientEditModal({ open, onClose, client }: ClientEditMod
                         >
                             {CLIENT_TYPES.map((type) => (
                                 <MenuItem key={type} value={type}>
-                                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                                    {type === 'repeat_customer' ? 'Repeat Customer' : type.charAt(0).toUpperCase() + type.slice(1)}
                                 </MenuItem>
                             ))}
                         </TextField>

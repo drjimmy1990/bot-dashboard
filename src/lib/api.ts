@@ -47,7 +47,7 @@ export interface CrmClient {
   id: string;
   organization_id: string;
   contact_id: string | null;
-  client_type: 'lead' | 'prospect' | 'customer' | 'partner' | 'inactive';
+  client_type: 'new' | 'interested' | 'customer' | 'repeat_customer' | 'inactive';
   company_name: string | null;
   email: string | null;
   phone: string | null;
@@ -58,19 +58,12 @@ export interface CrmClient {
   state: string | null;
   postal_code: string | null;
   country: string | null;
-  ecommerce_customer_id: string | null;
-  platform_user_id: string | null; // Added field
-  total_orders: number;
-  total_revenue: number;
-  average_order_value: number;
+  platform_user_id: string | null;
   source: string | null;
-  source_details: { [key: string]: any } | null;
-  utm_data: { [key: string]: any } | null;
-  lifecycle_stage: 'lead' | 'mql' | 'sql' | 'opportunity' | 'customer' | 'evangelist' | 'churned';
   lead_score: number;
   lead_quality: 'hot' | 'warm' | 'cold' | null;
-  assigned_to: string | null; // This is a profile UUID
-  assigned_team: string | null; // This is a team UUID
+  assigned_to: string | null;
+  assigned_team: string | null;
   tags: string[] | null;
   custom_fields: { [key: string]: any } | null;
   first_contact_date: string | null;
@@ -133,30 +126,7 @@ export interface CrmTag {
   created_at: string;
 }
 
-export interface CrmDeal {
-  id: string;
-  organization_id: string;
-  client_id: string;
-  name: string;
-  description: string | null;
-  deal_value: number;
-  currency: string;
-  stage: 'prospecting' | 'qualification' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost';
-  probability: number;
-  expected_close_date: string | null;
-  actual_close_date: string | null;
-  products: { [key: string]: any } | null;
-  owner_id: string | null;
-  assigned_team: string | null;
-  lost_reason: string | null;
-  won_reason: string | null;
-  competitor: string | null;
-  tags: string[] | null;
-  custom_fields: { [key: string]: any } | null;
-  created_at: string;
-  updated_at: string;
-  stage_changed_at: string | null;
-}
+
 
 // Order Item (JSONB structure)
 export interface CrmOrderItem {

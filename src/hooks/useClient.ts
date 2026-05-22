@@ -3,7 +3,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
-import { CrmClient, CrmActivity, CrmNote, Contact, CrmDeal, CrmOrder, CrmOrderItem, CrmShippingAddress } from '@/lib/api';
+import { CrmClient, CrmActivity, CrmNote, Contact, CrmOrder, CrmOrderItem, CrmShippingAddress } from '@/lib/api';
 
 // --- Type Definitions ---
 
@@ -13,7 +13,6 @@ export interface Client360Data {
   contact: Contact | null;
   activities: CrmActivity[];
   notes: CrmNote[];
-  deals: CrmDeal[];
   orders: CrmOrder[];
   messageCount: number;
 }
@@ -51,11 +50,10 @@ export interface AddOrderPayload {
  */
 async function fetchClient360Data(clientId: string): Promise<Client360Data> {
   // Fetch all required data in parallel for maximum efficiency
-  const [clientRes, activitiesRes, notesRes, dealsRes, ordersRes] = await Promise.all([
+  const [clientRes, activitiesRes, notesRes, ordersRes] = await Promise.all([
     supabase.from('crm_clients').select('*').eq('id', clientId).single(),
     supabase.from('crm_activities').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
     supabase.from('crm_notes').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
-    supabase.from('crm_deals').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
     supabase.from('crm_orders').select('*').eq('client_id', clientId).order('order_date', { ascending: false }),
   ]);
 
@@ -63,7 +61,6 @@ async function fetchClient360Data(clientId: string): Promise<Client360Data> {
   if (clientRes.error) throw new Error(`Failed to fetch client: ${clientRes.error.message}`);
   if (activitiesRes.error) throw new Error(`Failed to fetch activities: ${activitiesRes.error.message}`);
   if (notesRes.error) throw new Error(`Failed to fetch notes: ${notesRes.error.message}`);
-  if (dealsRes.error) throw new Error(`Failed to fetch deals: ${dealsRes.error.message}`);
   if (ordersRes.error) throw new Error(`Failed to fetch orders: ${ordersRes.error.message}`);
 
   // If the client has an associated contact_id, fetch that contact record as well
@@ -107,7 +104,6 @@ async function fetchClient360Data(clientId: string): Promise<Client360Data> {
     contact,
     activities: activitiesRes.data || [],
     notes: notesRes.data || [],
-    deals: dealsRes.data || [],
     orders: ordersRes.data || [],
     messageCount,
   };

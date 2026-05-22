@@ -137,7 +137,7 @@ export default function DashboardMetricsGrid({ data, channelPerformance, selecte
 
     const formatCurrency = (v: number) => new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: 'USD',
+        currency: 'EGP',
         maximumFractionDigits: 0
     }).format(v);
 
@@ -163,8 +163,8 @@ export default function DashboardMetricsGrid({ data, channelPerformance, selecte
             </Grid>
             <Grid size={{ xs: 6, sm: 4, md: 4 }}>
                 <MetricCard
-                    label="Open Deals"
-                    value={formatCurrency(data?.open_deals_value ?? 0)}
+                    label="Avg Order"
+                    value={formatCurrency(data?.avg_order_value ?? 0)}
                     gradient={gradients.info}
                     icon={<TrendingUpIcon fontSize="small" />}
                 />

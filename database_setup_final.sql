@@ -7,6 +7,7 @@
 -- SECTION 1: EXTENSIONS
 -- ====================================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
+
 CREATE EXTENSION IF NOT EXISTS "pg_trgm" WITH SCHEMA extensions;
 
 -- ====================================================================
@@ -15,37 +16,40 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm" WITH SCHEMA extensions;
 
 -- 1. Organizations
 CREATE TABLE public.organizations (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
     name TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
 ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 
 -- 1.5. Teams (New Feature)
 CREATE TABLE public.teams (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
 ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
 
 -- 2. Profiles (Linked to auth.users)
 CREATE TABLE public.profiles (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
     full_name TEXT,
     role TEXT NOT NULL DEFAULT 'admin',
-    team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL
+    team_id UUID REFERENCES public.teams (id) ON DELETE SET NULL
 );
+
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- 3. Channels
 CREATE TABLE public.channels (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     platform TEXT NOT NULL,
     platform_channel_id TEXT UNIQUE,
@@ -53,13 +57,14 @@ CREATE TABLE public.channels (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
 ALTER TABLE public.channels ENABLE ROW LEVEL SECURITY;
 
 -- 4. Contacts
 CREATE TABLE public.contacts (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
+    channel_id UUID NOT NULL REFERENCES public.channels (id) ON DELETE CASCADE,
     platform TEXT NOT NULL,
     platform_user_id TEXT NOT NULL,
     name TEXT,
@@ -72,16 +77,24 @@ CREATE TABLE public.contacts (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_contact_per_channel UNIQUE (channel_id, platform_user_id)
 );
+
 ALTER TABLE public.contacts ENABLE ROW LEVEL SECURITY;
 
 -- 5. Messages
 CREATE TABLE public.messages (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
-    contact_id UUID NOT NULL REFERENCES public.contacts(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
+    channel_id UUID NOT NULL REFERENCES public.channels (id) ON DELETE CASCADE,
+    contact_id UUID NOT NULL REFERENCES public.contacts (id) ON DELETE CASCADE,
     message_platform_id TEXT,
-    sender_type TEXT NOT NULL CHECK (sender_type IN ('user', 'agent', 'ai', 'system')),
+    sender_type TEXT NOT NULL CHECK (
+        sender_type IN (
+            'user',
+            'agent',
+            'ai',
+            'system'
+        )
+    ),
     content_type TEXT NOT NULL DEFAULT 'text',
     text_content TEXT,
     attachment_url TEXT,
@@ -90,29 +103,32 @@ CREATE TABLE public.messages (
     sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     platform_timestamp TIMESTAMPTZ
 );
+
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
 -- 6. AI & Configuration Tables
 CREATE TABLE public.channel_configurations (
-    channel_id UUID PRIMARY KEY REFERENCES public.channels(id) ON DELETE CASCADE,
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    channel_id UUID PRIMARY KEY REFERENCES public.channels (id) ON DELETE CASCADE,
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
     ai_model TEXT NOT NULL DEFAULT 'models/gemini-1.5-flash',
     ai_temperature NUMERIC(2, 1) NOT NULL DEFAULT 0.7,
     is_bot_active BOOLEAN NOT NULL DEFAULT TRUE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
 ALTER TABLE public.channel_configurations ENABLE ROW LEVEL SECURITY;
 
 CREATE TABLE public.agent_prompts (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
+    channel_id UUID NOT NULL REFERENCES public.channels (id) ON DELETE CASCADE,
     agent_id TEXT NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
     system_prompt TEXT NOT NULL,
-    UNIQUE(channel_id, agent_id)
+    UNIQUE (channel_id, agent_id)
 );
+
 ALTER TABLE public.agent_prompts ENABLE ROW LEVEL SECURITY;
 
 CREATE TABLE public.content_collections (
@@ -124,16 +140,18 @@ CREATE TABLE public.content_collections (
     items TEXT[],
     UNIQUE(channel_id, collection_id)
 );
+
 ALTER TABLE public.content_collections ENABLE ROW LEVEL SECURITY;
 
 CREATE TABLE public.keyword_actions (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
+    channel_id UUID NOT NULL REFERENCES public.channels (id) ON DELETE CASCADE,
     keyword TEXT NOT NULL,
     action_type TEXT NOT NULL,
-    UNIQUE(channel_id, keyword)
+    UNIQUE (channel_id, keyword)
 );
+
 ALTER TABLE public.keyword_actions ENABLE ROW LEVEL SECURITY;
 
 -- ====================================================================
@@ -178,6 +196,7 @@ CREATE TABLE public.crm_clients (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT unique_ecommerce_customer UNIQUE (organization_id, ecommerce_customer_id)
 );
+
 ALTER TABLE public.crm_clients ENABLE ROW LEVEL SECURITY;
 
 -- 2. CRM Deals
@@ -206,25 +225,27 @@ CREATE TABLE public.crm_deals (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     stage_changed_at TIMESTAMPTZ DEFAULT NOW()
 );
+
 ALTER TABLE public.crm_deals ENABLE ROW LEVEL SECURITY;
 
 -- 3. CRM Deal History
 CREATE TABLE public.crm_deal_stages_history (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    deal_id UUID NOT NULL REFERENCES public.crm_deals(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
+    deal_id UUID NOT NULL REFERENCES public.crm_deals (id) ON DELETE CASCADE,
     from_stage TEXT,
     to_stage TEXT NOT NULL,
-    changed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    changed_by UUID REFERENCES public.profiles (id) ON DELETE SET NULL,
     notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
 ALTER TABLE public.crm_deal_stages_history ENABLE ROW LEVEL SECURITY;
 
 -- 4. CRM Products
 CREATE TABLE public.crm_products (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
     sku TEXT,
@@ -237,16 +258,20 @@ CREATE TABLE public.crm_products (
     custom_fields JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT unique_ecommerce_product UNIQUE (organization_id, ecommerce_product_id)
+    CONSTRAINT unique_ecommerce_product UNIQUE (
+        organization_id,
+        ecommerce_product_id
+    )
 );
+
 ALTER TABLE public.crm_products ENABLE ROW LEVEL SECURITY;
 
 -- 5. CRM Orders
 CREATE TABLE public.crm_orders (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    client_id UUID NOT NULL REFERENCES public.crm_clients(id) ON DELETE CASCADE,
-    deal_id UUID REFERENCES public.crm_deals(id) ON DELETE SET NULL,
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
+    client_id UUID NOT NULL REFERENCES public.crm_clients (id) ON DELETE CASCADE,
+    deal_id UUID REFERENCES public.crm_deals (id) ON DELETE SET NULL,
     order_number TEXT NOT NULL,
     ecommerce_order_id TEXT,
     subtotal NUMERIC(12, 2) NOT NULL DEFAULT 0,
@@ -255,7 +280,16 @@ CREATE TABLE public.crm_orders (
     discount NUMERIC(12, 2) DEFAULT 0,
     total NUMERIC(12, 2) NOT NULL DEFAULT 0,
     currency TEXT NOT NULL DEFAULT 'USD',
-    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded')),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (
+        status IN (
+            'pending',
+            'processing',
+            'shipped',
+            'delivered',
+            'cancelled',
+            'refunded'
+        )
+    ),
     items JSONB,
     shipping_address JSONB,
     tracking_number TEXT,
@@ -266,28 +300,53 @@ CREATE TABLE public.crm_orders (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_order_number UNIQUE (organization_id, order_number)
 );
+
 ALTER TABLE public.crm_orders ENABLE ROW LEVEL SECURITY;
 
 -- 6. CRM Activities
 CREATE TABLE public.crm_activities (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    client_id UUID REFERENCES public.crm_clients(id) ON DELETE CASCADE,
-    deal_id UUID REFERENCES public.crm_deals(id) ON DELETE CASCADE,
-    message_id UUID REFERENCES public.messages(id) ON DELETE SET NULL,
-    activity_type TEXT NOT NULL CHECK (activity_type IN ('call', 'email', 'meeting', 'task', 'note', 'chatbot_interaction', 'website_visit')),
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
+    client_id UUID REFERENCES public.crm_clients (id) ON DELETE CASCADE,
+    deal_id UUID REFERENCES public.crm_deals (id) ON DELETE CASCADE,
+    message_id UUID REFERENCES public.messages (id) ON DELETE SET NULL,
+    activity_type TEXT NOT NULL CHECK (
+        activity_type IN (
+            'call',
+            'email',
+            'meeting',
+            'task',
+            'note',
+            'chatbot_interaction',
+            'website_visit'
+        )
+    ),
     subject TEXT NOT NULL,
     description TEXT,
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'cancelled')),
-    priority TEXT CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+    status TEXT DEFAULT 'pending' CHECK (
+        status IN (
+            'pending',
+            'completed',
+            'cancelled'
+        )
+    ),
+    priority TEXT CHECK (
+        priority IN (
+            'low',
+            'medium',
+            'high',
+            'urgent'
+        )
+    ),
     due_date TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
-    assigned_to UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    assigned_to UUID REFERENCES public.profiles (id) ON DELETE SET NULL,
+    created_by UUID REFERENCES public.profiles (id) ON DELETE SET NULL,
     metadata JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
 ALTER TABLE public.crm_activities ENABLE ROW LEVEL SECURITY;
 
 -- 7. CRM Notes
@@ -305,18 +364,20 @@ CREATE TABLE public.crm_notes (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
 ALTER TABLE public.crm_notes ENABLE ROW LEVEL SECURITY;
 
 -- 8. CRM Tags
 CREATE TABLE public.crm_tags (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     color TEXT DEFAULT '#3B82F6',
     category TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_tag_per_org UNIQUE (organization_id, name)
 );
+
 ALTER TABLE public.crm_tags ENABLE ROW LEVEL SECURITY;
 
 -- ====================================================================
@@ -324,18 +385,29 @@ ALTER TABLE public.crm_tags ENABLE ROW LEVEL SECURITY;
 -- ====================================================================
 
 -- CRM & Contacts Indexes
-CREATE INDEX idx_contacts_name_trgm ON public.contacts USING gin(name gin_trgm_ops);
-CREATE INDEX idx_crm_clients_company_name_trgm ON public.crm_clients USING gin(company_name gin_trgm_ops);
-CREATE INDEX idx_messages_sent_at_contact ON public.messages(contact_id, sent_at DESC);
-CREATE INDEX idx_crm_activities_created_at_client ON public.crm_activities(client_id, created_at DESC);
-CREATE INDEX idx_crm_clients_organization ON public.crm_clients(organization_id);
-CREATE INDEX idx_crm_clients_contact ON public.crm_clients(contact_id);
-CREATE INDEX idx_crm_clients_email ON public.crm_clients(email);
-CREATE INDEX idx_crm_clients_platform_user_id ON public.crm_clients(platform_user_id);
-CREATE INDEX idx_crm_deals_organization ON public.crm_deals(organization_id);
-CREATE INDEX idx_crm_deals_stage ON public.crm_deals(stage);
-CREATE INDEX idx_crm_orders_organization ON public.crm_orders(organization_id);
-CREATE INDEX idx_crm_activities_organization ON public.crm_activities(organization_id);
+CREATE INDEX idx_contacts_name_trgm ON public.contacts USING gin (name gin_trgm_ops);
+
+CREATE INDEX idx_crm_clients_company_name_trgm ON public.crm_clients USING gin (company_name gin_trgm_ops);
+
+CREATE INDEX idx_messages_sent_at_contact ON public.messages (contact_id, sent_at DESC);
+
+CREATE INDEX idx_crm_activities_created_at_client ON public.crm_activities (client_id, created_at DESC);
+
+CREATE INDEX idx_crm_clients_organization ON public.crm_clients (organization_id);
+
+CREATE INDEX idx_crm_clients_contact ON public.crm_clients (contact_id);
+
+CREATE INDEX idx_crm_clients_email ON public.crm_clients (email);
+
+CREATE INDEX idx_crm_clients_platform_user_id ON public.crm_clients (platform_user_id);
+
+CREATE INDEX idx_crm_deals_organization ON public.crm_deals (organization_id);
+
+CREATE INDEX idx_crm_deals_stage ON public.crm_deals (stage);
+
+CREATE INDEX idx_crm_orders_organization ON public.crm_orders (organization_id);
+
+CREATE INDEX idx_crm_activities_organization ON public.crm_activities (organization_id);
 
 -- ====================================================================
 -- SECTION 5: FUNCTIONS (CORE, HELPERS, & ANALYTICS)
@@ -680,6 +752,7 @@ BEGIN
     RETURN NULL;
 END;
 $$;
+
 CREATE TRIGGER messages_summary_trigger AFTER INSERT OR UPDATE OR DELETE ON public.messages FOR EACH ROW EXECUTE FUNCTION public.update_contact_summary_on_message();
 
 -- 2. Auth Trigger
@@ -693,6 +766,7 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
 CREATE TRIGGER on_new_contact_create_client AFTER INSERT ON public.contacts FOR EACH ROW EXECUTE FUNCTION public.create_client_on_new_contact();
 
 -- 4. Create Activity from Message (AI Only - DISABLED BY DEFAULT)
@@ -709,25 +783,35 @@ END;
 $$;
 -- Creating the trigger but DISABLING it immediately as requested
 CREATE TRIGGER trigger_create_activity_from_message AFTER INSERT ON public.messages FOR EACH ROW WHEN (NEW.sender_type = 'ai') EXECUTE FUNCTION public.create_activity_from_message();
+
 ALTER TABLE public.messages DISABLE TRIGGER trigger_create_activity_from_message;
 
 -- 5. Standard Updated_At Timestamps
 CREATE OR REPLACE FUNCTION public.update_updated_at() RETURNS TRIGGER LANGUAGE plpgsql SET search_path = '' AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$;
+
 CREATE TRIGGER trigger_crm_clients_updated_at BEFORE UPDATE ON public.crm_clients FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
 CREATE TRIGGER trigger_crm_products_updated_at BEFORE UPDATE ON public.crm_products FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
 CREATE TRIGGER trigger_crm_orders_updated_at BEFORE UPDATE ON public.crm_orders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
 CREATE TRIGGER trigger_crm_activities_updated_at BEFORE UPDATE ON public.crm_activities FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
 CREATE TRIGGER trigger_crm_notes_updated_at BEFORE UPDATE ON public.crm_notes FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
 CREATE TRIGGER trigger_teams_updated_at BEFORE UPDATE ON public.teams FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
 -- 6. CRM Logic Triggers (Revenue, Stage History, Last Contact)
 CREATE OR REPLACE FUNCTION public.update_client_revenue() RETURNS TRIGGER LANGUAGE plpgsql SET search_path = '' AS $$ BEGIN UPDATE public.crm_clients SET total_orders = (SELECT COUNT(*) FROM public.crm_orders WHERE client_id = NEW.client_id AND status NOT IN ('cancelled', 'refunded')), total_revenue = (SELECT COALESCE(SUM(total), 0) FROM public.crm_orders WHERE client_id = NEW.client_id AND status NOT IN ('cancelled', 'refunded')), average_order_value = (SELECT COALESCE(AVG(total), 0) FROM public.crm_orders WHERE client_id = NEW.client_id AND status NOT IN ('cancelled', 'refunded')), last_contact_date = NOW(), updated_at = NOW() WHERE id = NEW.client_id; RETURN NEW; END; $$;
+
 CREATE TRIGGER trigger_update_client_revenue AFTER INSERT OR UPDATE ON public.crm_orders FOR EACH ROW EXECUTE FUNCTION public.update_client_revenue();
 
 CREATE OR REPLACE FUNCTION public.track_deal_stage_change() RETURNS TRIGGER LANGUAGE plpgsql SET search_path = '' AS $$ BEGIN IF OLD.stage IS DISTINCT FROM NEW.stage THEN INSERT INTO public.crm_deal_stages_history (organization_id, deal_id, from_stage, to_stage, changed_by) VALUES (NEW.organization_id, NEW.id, OLD.stage, NEW.stage, auth.uid()); NEW.stage_changed_at = NOW(); END IF; NEW.updated_at = NOW(); RETURN NEW; END; $$;
+
 CREATE TRIGGER trigger_track_deal_stage_change BEFORE UPDATE ON public.crm_deals FOR EACH ROW EXECUTE FUNCTION public.track_deal_stage_change();
 
 CREATE OR REPLACE FUNCTION public.update_last_contact() RETURNS TRIGGER LANGUAGE plpgsql SET search_path = '' AS $$ BEGIN UPDATE public.crm_clients SET last_contact_date = NEW.created_at WHERE id = NEW.client_id; RETURN NEW; END; $$;
+
 CREATE TRIGGER trigger_update_last_contact AFTER INSERT ON public.crm_activities FOR EACH ROW WHEN (NEW.client_id IS NOT NULL) EXECUTE FUNCTION public.update_last_contact();
 
 -- ====================================================================
@@ -735,101 +819,251 @@ CREATE TRIGGER trigger_update_last_contact AFTER INSERT ON public.crm_activities
 -- ====================================================================
 
 -- 1. Channel Performance (Snapshot)
-CREATE MATERIALIZED VIEW public.analytics_channel_performance AS 
-SELECT 
-    ch.organization_id, 
-    ch.id as channel_id, 
-    ch.name as channel_name, 
-    ch.platform, 
-    COUNT(DISTINCT c.id) as total_contacts, 
-    COUNT(m.id) as total_messages, 
-    COUNT(m.id) FILTER (WHERE m.sender_type = 'user') as incoming_messages, 
-    COUNT(m.id) FILTER (WHERE m.sender_type = 'agent') as agent_responses, 
-    COUNT(m.id) FILTER (WHERE m.sender_type = 'ai') as ai_responses
-FROM public.channels ch 
-LEFT JOIN public.contacts c ON c.channel_id = ch.id 
-LEFT JOIN public.messages m ON m.channel_id = ch.id 
-GROUP BY ch.organization_id, ch.id, ch.name, ch.platform;
+CREATE MATERIALIZED VIEW public.analytics_channel_performance AS
+SELECT
+    ch.organization_id,
+    ch.id as channel_id,
+    ch.name as channel_name,
+    ch.platform,
+    COUNT(DISTINCT c.id) as total_contacts,
+    COUNT(m.id) as total_messages,
+    COUNT(m.id) FILTER (
+        WHERE
+            m.sender_type = 'user'
+    ) as incoming_messages,
+    COUNT(m.id) FILTER (
+        WHERE
+            m.sender_type = 'agent'
+    ) as agent_responses,
+    COUNT(m.id) FILTER (
+        WHERE
+            m.sender_type = 'ai'
+    ) as ai_responses
+FROM public.channels ch
+    LEFT JOIN public.contacts c ON c.channel_id = ch.id
+    LEFT JOIN public.messages m ON m.channel_id = ch.id
+GROUP BY
+    ch.organization_id,
+    ch.id,
+    ch.name,
+    ch.platform;
 
-CREATE INDEX idx_analytics_channel_perf_org ON public.analytics_channel_performance(organization_id);
+CREATE INDEX idx_analytics_channel_perf_org ON public.analytics_channel_performance (organization_id);
 
 -- 2. Deal Metrics (Snapshot by Stage)
-CREATE MATERIALIZED VIEW public.analytics_deal_metrics AS 
-SELECT 
-    d.organization_id, 
+CREATE MATERIALIZED VIEW public.analytics_deal_metrics AS
+SELECT
+    d.organization_id,
     co.channel_id,
-    d.stage, 
-    COUNT(*) as deal_count, 
-    SUM(d.deal_value) as total_value, 
+    d.stage,
+    COUNT(*) as deal_count,
+    SUM(d.deal_value) as total_value,
     AVG(d.deal_value) as avg_deal_size
 FROM public.crm_deals d
-LEFT JOIN public.crm_clients c ON d.client_id = c.id
-LEFT JOIN public.contacts co ON c.contact_id = co.id
-GROUP BY d.organization_id, co.channel_id, d.stage;
+    LEFT JOIN public.crm_clients c ON d.client_id = c.id
+    LEFT JOIN public.contacts co ON c.contact_id = co.id
+GROUP BY
+    d.organization_id,
+    co.channel_id,
+    d.stage;
 
-CREATE INDEX idx_analytics_deal_metrics_org ON public.analytics_deal_metrics(organization_id);
+CREATE INDEX idx_analytics_deal_metrics_org ON public.analytics_deal_metrics (organization_id);
 
 -- 3. Revenue Metrics (Snapshot by Day)
-CREATE MATERIALIZED VIEW public.analytics_revenue_metrics AS 
-SELECT 
-    o.organization_id, 
+CREATE MATERIALIZED VIEW public.analytics_revenue_metrics AS
+SELECT
+    o.organization_id,
     co.channel_id,
-    SUM(o.total) as total_revenue, 
-    COUNT(*) as order_count, 
-    DATE_TRUNC('day', o.order_date) as period_day
+    SUM(o.total) as total_revenue,
+    COUNT(*) as order_count,
+    DATE_TRUNC ('day', o.order_date) as period_day
 FROM public.crm_orders o
-LEFT JOIN public.crm_clients c ON o.client_id = c.id
-LEFT JOIN public.contacts co ON c.contact_id = co.id
-GROUP BY o.organization_id, co.channel_id, DATE_TRUNC('day', o.order_date);
+    LEFT JOIN public.crm_clients c ON o.client_id = c.id
+    LEFT JOIN public.contacts co ON c.contact_id = co.id
+GROUP BY
+    o.organization_id,
+    co.channel_id,
+    DATE_TRUNC ('day', o.order_date);
 
-CREATE INDEX idx_analytics_revenue_metrics_org ON public.analytics_revenue_metrics(organization_id);
+CREATE INDEX idx_analytics_revenue_metrics_org ON public.analytics_revenue_metrics (organization_id);
 
 -- 4. Chatbot Effectiveness (Snapshot)
-CREATE MATERIALIZED VIEW public.analytics_chatbot_effectiveness AS 
-SELECT 
-    a.organization_id, 
-    m.channel_id, 
-    COUNT(DISTINCT a.client_id) as unique_clients_engaged, 
-    COUNT(*) as total_chatbot_interactions, 
-    COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.client_id END) as successful_interactions, 
-    AVG(EXTRACT(EPOCH FROM (a.completed_at - a.created_at)) / 60) as avg_interaction_duration_minutes, 
-    DATE_TRUNC('day', a.created_at) as period_day 
-FROM public.crm_activities a 
-LEFT JOIN public.messages m ON a.message_id = m.id 
-WHERE a.activity_type = 'chatbot_interaction' 
-GROUP BY a.organization_id, m.channel_id, DATE_TRUNC('day', a.created_at);
+CREATE MATERIALIZED VIEW public.analytics_chatbot_effectiveness AS
+SELECT
+    a.organization_id,
+    m.channel_id,
+    COUNT(DISTINCT a.client_id) as unique_clients_engaged,
+    COUNT(*) as total_chatbot_interactions,
+    COUNT(
+        DISTINCT CASE
+            WHEN a.status = 'completed' THEN a.client_id
+        END
+    ) as successful_interactions,
+    AVG(
+        EXTRACT(
+            EPOCH
+            FROM (a.completed_at - a.created_at)
+        ) / 60
+    ) as avg_interaction_duration_minutes,
+    DATE_TRUNC ('day', a.created_at) as period_day
+FROM public.crm_activities a
+    LEFT JOIN public.messages m ON a.message_id = m.id
+WHERE
+    a.activity_type = 'chatbot_interaction'
+GROUP BY
+    a.organization_id,
+    m.channel_id,
+    DATE_TRUNC ('day', a.created_at);
 
-CREATE INDEX idx_analytics_chatbot_effectiveness_org ON public.analytics_chatbot_effectiveness(organization_id);
+CREATE INDEX idx_analytics_chatbot_effectiveness_org ON public.analytics_chatbot_effectiveness (organization_id);
 
 -- ====================================================================
 -- SECTION 8: ROW-LEVEL SECURITY (RLS) POLICIES
 -- ====================================================================
 
 -- Organizations & Profiles
-CREATE POLICY "Users can manage their own profile" ON public.profiles FOR ALL USING (id = auth.uid()) WITH CHECK (id = auth.uid());
-CREATE POLICY "Users can manage their own organization" ON public.organizations FOR ALL USING (id = get_my_organization_id()) WITH CHECK (id = get_my_organization_id());
-CREATE POLICY "Users can manage teams in their organization" ON public.teams FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+CREATE POLICY "Users can manage their own profile" ON public.profiles FOR ALL USING (id = auth.uid ())
+WITH
+    CHECK (id = auth.uid ());
+
+CREATE POLICY "Users can manage their own organization" ON public.organizations FOR ALL USING (
+    id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        id = get_my_organization_id ()
+    );
+
+CREATE POLICY "Users can manage teams in their organization" ON public.teams FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
 
 -- Core Channels/Contacts/Messages
-CREATE POLICY "Users can manage channels" ON public.channels FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
-CREATE POLICY "Users can manage contacts" ON public.contacts FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
-CREATE POLICY "Users can manage messages" ON public.messages FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+CREATE POLICY "Users can manage channels" ON public.channels FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
+
+CREATE POLICY "Users can manage contacts" ON public.contacts FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
+
+CREATE POLICY "Users can manage messages" ON public.messages FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
 
 -- Configurations
-CREATE POLICY "Users can manage config" ON public.channel_configurations FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
-CREATE POLICY "Users can manage prompts" ON public.agent_prompts FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
-CREATE POLICY "Users can manage content" ON public.content_collections FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
-CREATE POLICY "Users can manage keywords" ON public.keyword_actions FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+CREATE POLICY "Users can manage config" ON public.channel_configurations FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
+
+CREATE POLICY "Users can manage prompts" ON public.agent_prompts FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
+
+CREATE POLICY "Users can manage content" ON public.content_collections FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
+
+CREATE POLICY "Users can manage keywords" ON public.keyword_actions FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
 
 -- CRM Tables
-CREATE POLICY "Users can manage CRM clients" ON public.crm_clients FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
-CREATE POLICY "Users can manage CRM deals" ON public.crm_deals FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
-CREATE POLICY "Users can manage CRM history" ON public.crm_deal_stages_history FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
-CREATE POLICY "Users can manage CRM products" ON public.crm_products FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
-CREATE POLICY "Users can manage CRM orders" ON public.crm_orders FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
-CREATE POLICY "Users can manage CRM activities" ON public.crm_activities FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
-CREATE POLICY "Users can manage CRM notes" ON public.crm_notes FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
-CREATE POLICY "Users can manage CRM tags" ON public.crm_tags FOR ALL USING (organization_id = get_my_organization_id()) WITH CHECK (organization_id = get_my_organization_id());
+CREATE POLICY "Users can manage CRM clients" ON public.crm_clients FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
+
+CREATE POLICY "Users can manage CRM deals" ON public.crm_deals FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
+
+CREATE POLICY "Users can manage CRM history" ON public.crm_deal_stages_history FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
+
+CREATE POLICY "Users can manage CRM products" ON public.crm_products FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
+
+CREATE POLICY "Users can manage CRM orders" ON public.crm_orders FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
+
+CREATE POLICY "Users can manage CRM activities" ON public.crm_activities FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
+
+CREATE POLICY "Users can manage CRM notes" ON public.crm_notes FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
+
+CREATE POLICY "Users can manage CRM tags" ON public.crm_tags FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
 
 -- ====================================================================
 -- SECTION 9: PERMISSIONS & BACKFILL
@@ -837,33 +1071,101 @@ CREATE POLICY "Users can manage CRM tags" ON public.crm_tags FOR ALL USING (orga
 
 -- 1. Grant Access
 GRANT USAGE ON SCHEMA public TO authenticated;
+
 GRANT USAGE ON SCHEMA public TO anon;
+
 GRANT SELECT ON public.analytics_deal_metrics TO authenticated;
+
 GRANT SELECT ON public.analytics_revenue_metrics TO authenticated;
-GRANT SELECT ON public.analytics_channel_performance TO authenticated;
-GRANT SELECT ON public.analytics_chatbot_effectiveness TO authenticated;
+
+GRANT
+SELECT ON public.analytics_channel_performance TO authenticated;
+
+GRANT
+SELECT ON public.analytics_chatbot_effectiveness TO authenticated;
 
 GRANT EXECUTE ON FUNCTION public.get_revenue_trends(UUID, TEXT, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_deal_trends(UUID, TEXT, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_message_volume_trends(UUID, TEXT, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_crm_dashboard_summary(UUID, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_conversion_funnel(UUID, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_deal_pipeline_snapshot(UUID, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_channel_performance_snapshot(UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO authenticated;
+
+GRANT
+EXECUTE ON FUNCTION public.get_deal_trends (
+    UUID,
+    TEXT,
+    UUID,
+    TIMESTAMPTZ,
+    TIMESTAMPTZ
+) TO authenticated;
+
+GRANT
+EXECUTE ON FUNCTION public.get_message_volume_trends (
+    UUID,
+    TEXT,
+    UUID,
+    TIMESTAMPTZ,
+    TIMESTAMPTZ
+) TO authenticated;
+
+GRANT
+EXECUTE ON FUNCTION public.get_crm_dashboard_summary (
+    UUID,
+    UUID,
+    TIMESTAMPTZ,
+    TIMESTAMPTZ
+) TO authenticated;
+
+GRANT
+EXECUTE ON FUNCTION public.get_conversion_funnel (
+    UUID,
+    UUID,
+    TIMESTAMPTZ,
+    TIMESTAMPTZ
+) TO authenticated;
+
+GRANT
+EXECUTE ON FUNCTION public.get_deal_pipeline_snapshot (
+    UUID,
+    UUID,
+    TIMESTAMPTZ,
+    TIMESTAMPTZ
+) TO authenticated;
+
+GRANT
+EXECUTE ON FUNCTION public.get_channel_performance_snapshot (
+    UUID,
+    TIMESTAMPTZ,
+    TIMESTAMPTZ
+) TO authenticated;
+
+GRANT
+EXECUTE ON FUNCTION public.refresh_all_analytics () TO authenticated;
 
 -- 2. CRM Backfill (Safe for existing data)
 -- This ensures that if you load this on a database that already has contacts,
 -- they get corresponding CRM entries.
-INSERT INTO public.crm_clients (organization_id, contact_id, company_name, email, client_type, lifecycle_stage, total_revenue, last_contact_date, created_at, updated_at)
+INSERT INTO
+    public.crm_clients (
+        organization_id,
+        contact_id,
+        company_name,
+        email,
+        client_type,
+        lifecycle_stage,
+        total_revenue,
+        last_contact_date,
+        created_at,
+        updated_at
+    )
 SELECT c.organization_id, c.id, c.name, NULL, 'lead', 'lead', 0, c.last_interaction_at, c.created_at, c.updated_at
 FROM public.contacts c
-WHERE NOT EXISTS (SELECT 1 FROM public.crm_clients cc WHERE cc.contact_id = c.id);
+WHERE
+    NOT EXISTS (
+        SELECT 1
+        FROM public.crm_clients cc
+        WHERE
+            cc.contact_id = c.id
+    );
 
 -- 3. Initial Analytics Refresh
-SELECT public.refresh_all_analytics();
-
-
+SELECT public.refresh_all_analytics ();
 
 -- ====================================================================
 --          FIX FINAL DATABASE LINTS
@@ -872,6 +1174,7 @@ SELECT public.refresh_all_analytics();
 -- 1. Fix "Extension in Public" for pg_trgm
 -- If pg_trgm was installed in 'public', this moves it to 'extensions'.
 CREATE SCHEMA IF NOT EXISTS extensions;
+
 ALTER EXTENSION pg_trgm SET SCHEMA extensions;
 
 -- 2. Fix "Function Search Path Mutable" for create_activity_from_message
@@ -887,30 +1190,6 @@ DO $$
 BEGIN
     RAISE NOTICE 'Moved pg_trgm to extensions and hardened function search paths.';
 END $$;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 -- ====================================================================
 -- SAFE UPDATE: SYNC & UTILITIES
@@ -948,8 +1227,7 @@ ALTER TABLE public.crm_orders
 ADD COLUMN IF NOT EXISTS fulfillment_status TEXT DEFAULT 'unfulfilled';
 
 -- 4. Safely add a generic search index to help find clients faster
-CREATE INDEX IF NOT EXISTS idx_crm_clients_search_safe 
-ON public.crm_clients (email, phone, company_name);
+CREATE INDEX IF NOT EXISTS idx_crm_clients_search_safe ON public.crm_clients (email, phone, company_name);
 
 -- ====================================================================
 -- SAFE UPDATE: ANALYTICS
@@ -974,8 +1252,12 @@ END;
 $$;
 
 -- Re-apply permissions to be safe
-GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO service_role;
+GRANT
+EXECUTE ON FUNCTION public.refresh_all_analytics () TO authenticated;
+
+GRANT
+EXECUTE ON FUNCTION public.refresh_all_analytics () TO service_role;
+
 ALTER FUNCTION public.refresh_all_analytics() OWNER TO postgres;
 
 -- ====================================================================
@@ -985,9 +1267,9 @@ ALTER FUNCTION public.refresh_all_analytics() OWNER TO postgres;
 
 -- 1. Create the notifications table
 CREATE TABLE IF NOT EXISTS public.system_notifications (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    client_id UUID REFERENCES public.crm_clients(id) ON DELETE SET NULL,
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
+    client_id UUID REFERENCES public.crm_clients (id) ON DELETE SET NULL,
     type TEXT NOT NULL, -- e.g., 'handoff', 'alert', 'info'
     title TEXT NOT NULL,
     message TEXT,
@@ -1000,50 +1282,58 @@ ALTER TABLE public.system_notifications ENABLE ROW LEVEL SECURITY;
 
 -- 3. Policy: Users can only see notifications for their organization
 DROP POLICY IF EXISTS "Users can view org notifications" ON public.system_notifications;
-CREATE POLICY "Users can view org notifications"
-ON public.system_notifications
-FOR SELECT
-USING (organization_id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Users can view org notifications" ON public.system_notifications FOR
+SELECT USING (
+        organization_id = (
+            SELECT organization_id
+            FROM public.profiles
+            WHERE
+                id = auth.uid ()
+        )
+    );
 
 -- 4. Policy: Users can update (mark as read) notifications
 DROP POLICY IF EXISTS "Users can update org notifications" ON public.system_notifications;
-CREATE POLICY "Users can update org notifications"
-ON public.system_notifications
-FOR UPDATE
-USING (organization_id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Users can update org notifications" ON public.system_notifications FOR
+UPDATE USING (
+    organization_id = (
+        SELECT organization_id
+        FROM public.profiles
+        WHERE
+            id = auth.uid ()
+    )
+);
 
 -- 5. Enable Realtime (Crucial for the popup to work instantly)
-ALTER PUBLICATION supabase_realtime ADD TABLE public.system_notifications;
+ALTER PUBLICATION supabase_realtime
+ADD
+TABLE public.system_notifications;
 
 -- 6. Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_notifications_org_read ON public.system_notifications(organization_id, is_read);
-CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.system_notifications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_org_read ON public.system_notifications (organization_id, is_read);
 
-
-
-
-
-
-
-
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.system_notifications (created_at DESC);
 
 -- Grant refresh permissions to the function owner
 ALTER MATERIALIZED VIEW public.analytics_channel_performance OWNER TO postgres;
+
 ALTER MATERIALIZED VIEW public.analytics_deal_metrics OWNER TO postgres;
+
 ALTER MATERIALIZED VIEW public.analytics_revenue_metrics OWNER TO postgres;
+
 ALTER MATERIALIZED VIEW public.analytics_chatbot_effectiveness OWNER TO postgres;
 
 -- Make sure the refresh function runs as postgres (owner)
 ALTER FUNCTION public.refresh_all_analytics() OWNER TO postgres;
 
 -- Grant execute to authenticated users
-GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO service_role;
+GRANT
+EXECUTE ON FUNCTION public.refresh_all_analytics () TO authenticated;
 
-
-
-
-
+GRANT
+EXECUTE ON FUNCTION public.refresh_all_analytics () TO service_role;
 
 -- ====================================================================
 -- SETTINGS PAGE V2 — New Channel Configuration Columns
@@ -1056,28 +1346,19 @@ GRANT EXECUTE ON FUNCTION public.refresh_all_analytics() TO service_role;
 ALTER TABLE public.channel_configurations
 ADD COLUMN IF NOT EXISTS agent_webhook_url TEXT;
 
-COMMENT ON COLUMN public.channel_configurations.agent_webhook_url IS
-  'n8n webhook URL for sending agent-initiated messages (text, media, voice)';
+COMMENT ON COLUMN public.channel_configurations.agent_webhook_url IS 'n8n webhook URL for sending agent-initiated messages (text, media, voice)';
 
 -- 2. E-Commerce Integration Config (for order creation via external API)
 ALTER TABLE public.channel_configurations
 ADD COLUMN IF NOT EXISTS ecommerce_config JSONB DEFAULT '{}';
 
-COMMENT ON COLUMN public.channel_configurations.ecommerce_config IS
-  'E-commerce platform credentials: { api_url, api_key, login_email, login_password }';
+COMMENT ON COLUMN public.channel_configurations.ecommerce_config IS 'E-commerce platform credentials: { api_url, api_key, login_email, login_password }';
 
 -- 3. Notification Config (Telegram group IDs for escalations)
 ALTER TABLE public.channel_configurations
 ADD COLUMN IF NOT EXISTS notification_config JSONB DEFAULT '{}';
 
-COMMENT ON COLUMN public.channel_configurations.notification_config IS
-  'Notification routing config: { telegram_complaints_group_id, telegram_cancellations_group_id }';
-
-
-
-
-
-
+COMMENT ON COLUMN public.channel_configurations.notification_config IS 'Notification routing config: { telegram_complaints_group_id, telegram_cancellations_group_id }';
 
 -- ====================================================================
 --          SCHEMA UPGRADE V2 — Bot Dashboard Modernization
@@ -1101,8 +1382,9 @@ ALTER TABLE public.queue ENABLE ROW LEVEL SECURITY;
 
 -- Service-role-only access (workflow uses service_role key)
 -- No RLS policy needed for authenticated users — they don't access this table.
-CREATE INDEX IF NOT EXISTS idx_queue_sender_id ON public.queue(sender_id);
-CREATE INDEX IF NOT EXISTS idx_queue_created_at ON public.queue(created_at);
+CREATE INDEX IF NOT EXISTS idx_queue_sender_id ON public.queue (sender_id);
+
+CREATE INDEX IF NOT EXISTS idx_queue_created_at ON public.queue (created_at);
 
 -- ====================================================================
 -- 2. CONTENT TYPE CONSTRAINT ON MESSAGES
@@ -1119,7 +1401,9 @@ BEGIN
         ALTER TABLE public.messages
         ADD CONSTRAINT chk_content_type
         CHECK (content_type IN ('text', 'image', 'audio', 'video', 'document', 'sticker', 'location'));
-    END IF;
+
+END IF;
+
 END $$;
 
 -- ====================================================================
@@ -1148,28 +1432,32 @@ END $$;
 -- Tracks files uploaded by agents (images, voice recordings, documents)
 
 CREATE TABLE IF NOT EXISTS public.media_uploads (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
-    message_id UUID REFERENCES public.messages(id) ON DELETE SET NULL,
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
+    channel_id UUID NOT NULL REFERENCES public.channels (id) ON DELETE CASCADE,
+    message_id UUID REFERENCES public.messages (id) ON DELETE SET NULL,
     storage_path TEXT NOT NULL,
     public_url TEXT NOT NULL,
     file_name TEXT NOT NULL,
     mime_type TEXT NOT NULL,
     file_size_bytes BIGINT,
-    uploaded_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    uploaded_by UUID REFERENCES public.profiles (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE public.media_uploads ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can manage media in their org"
-ON public.media_uploads FOR ALL
-USING (organization_id = get_my_organization_id())
-WITH CHECK (organization_id = get_my_organization_id());
+CREATE POLICY "Users can manage media in their org" ON public.media_uploads FOR ALL USING (
+    organization_id = get_my_organization_id ()
+)
+WITH
+    CHECK (
+        organization_id = get_my_organization_id ()
+    );
 
-CREATE INDEX IF NOT EXISTS idx_media_uploads_message ON public.media_uploads(message_id);
-CREATE INDEX IF NOT EXISTS idx_media_uploads_org ON public.media_uploads(organization_id);
+CREATE INDEX IF NOT EXISTS idx_media_uploads_message ON public.media_uploads (message_id);
+
+CREATE INDEX IF NOT EXISTS idx_media_uploads_org ON public.media_uploads (organization_id);
 
 -- ====================================================================
 -- 5. CHECK CONSTRAINTS (Schema Hardening)
@@ -1185,7 +1473,9 @@ BEGIN
         ALTER TABLE public.profiles
         ADD CONSTRAINT chk_profile_role
         CHECK (role IN ('admin', 'agent', 'viewer'));
-    END IF;
+
+END IF;
+
 END $$;
 
 -- channels.platform
@@ -1246,13 +1536,14 @@ END $$;
 -- Add channel_id and contact_id for quick navigation from notifications
 
 ALTER TABLE public.system_notifications
-ADD COLUMN IF NOT EXISTS channel_id UUID REFERENCES public.channels(id) ON DELETE SET NULL;
+ADD COLUMN IF NOT EXISTS channel_id UUID REFERENCES public.channels (id) ON DELETE SET NULL;
 
 ALTER TABLE public.system_notifications
-ADD COLUMN IF NOT EXISTS contact_id UUID REFERENCES public.contacts(id) ON DELETE SET NULL;
+ADD COLUMN IF NOT EXISTS contact_id UUID REFERENCES public.contacts (id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS idx_notifications_channel ON public.system_notifications(channel_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_contact ON public.system_notifications(contact_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_channel ON public.system_notifications (channel_id);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_contact ON public.system_notifications (contact_id);
 
 -- ====================================================================
 -- 7. MISSING UPDATED_AT TRIGGERS
@@ -1260,6 +1551,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_contact ON public.system_notificati
 
 -- contacts.updated_at trigger
 DROP TRIGGER IF EXISTS trigger_contacts_updated_at ON public.contacts;
+
 CREATE TRIGGER trigger_contacts_updated_at
 BEFORE UPDATE ON public.contacts
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
@@ -1269,12 +1561,14 @@ ALTER TABLE public.channels
 ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 DROP TRIGGER IF EXISTS trigger_channels_updated_at ON public.channels;
+
 CREATE TRIGGER trigger_channels_updated_at
 BEFORE UPDATE ON public.channels
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
 -- channel_configurations.updated_at trigger (already has the column)
 DROP TRIGGER IF EXISTS trigger_channel_config_updated_at ON public.channel_configurations;
+
 CREATE TRIGGER trigger_channel_config_updated_at
 BEFORE UPDATE ON public.channel_configurations
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
@@ -1290,22 +1584,33 @@ ALTER FUNCTION public.sync_contact_update_to_client() SET search_path = '';
 -- ====================================================================
 
 -- Messages: filter by sender_type (analytics)
-CREATE INDEX IF NOT EXISTS idx_messages_sender_type ON public.messages(sender_type);
+CREATE INDEX IF NOT EXISTS idx_messages_sender_type ON public.messages (sender_type);
 
 -- Messages: filter by content_type for media browsing (skip text)
-CREATE INDEX IF NOT EXISTS idx_messages_content_type ON public.messages(content_type) WHERE content_type != 'text';
+CREATE INDEX IF NOT EXISTS idx_messages_content_type ON public.messages (content_type)
+WHERE
+    content_type != 'text';
 
 -- Messages: delivery status for tracking
-CREATE INDEX IF NOT EXISTS idx_messages_delivery_status ON public.messages(delivery_status) WHERE delivery_status != 'sent';
+CREATE INDEX IF NOT EXISTS idx_messages_delivery_status ON public.messages (delivery_status)
+WHERE
+    delivery_status != 'sent';
 
 -- Contacts: composite for the main chat query
-CREATE INDEX IF NOT EXISTS idx_contacts_channel_unread ON public.contacts(channel_id, unread_count DESC, last_interaction_at DESC);
+CREATE INDEX IF NOT EXISTS idx_contacts_channel_unread ON public.contacts (
+    channel_id,
+    unread_count DESC,
+    last_interaction_at DESC
+);
 
 -- CRM clients: lifecycle funnel queries
-CREATE INDEX IF NOT EXISTS idx_crm_clients_lifecycle ON public.crm_clients(organization_id, lifecycle_stage);
+CREATE INDEX IF NOT EXISTS idx_crm_clients_lifecycle ON public.crm_clients (
+    organization_id,
+    lifecycle_stage
+);
 
 -- CRM deals: per-client queries
-CREATE INDEX IF NOT EXISTS idx_crm_deals_client ON public.crm_deals(client_id);
+CREATE INDEX IF NOT EXISTS idx_crm_deals_client ON public.crm_deals (client_id);
 
 -- ====================================================================
 -- 10. VERIFICATION
@@ -1358,22 +1663,26 @@ CREATE TABLE IF NOT EXISTS public.user_permissions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(user_id, permission)
 );
+
 ALTER TABLE public.user_permissions ENABLE ROW LEVEL SECURITY;
 
 -- Per-user channel access (junction table)
 CREATE TABLE IF NOT EXISTS public.user_channel_access (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+    channel_id UUID NOT NULL REFERENCES public.channels (id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(user_id, channel_id)
+    UNIQUE (user_id, channel_id)
 );
+
 ALTER TABLE public.user_channel_access ENABLE ROW LEVEL SECURITY;
 
-CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON public.user_permissions(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_channel_access_user ON public.user_channel_access(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_channel_access_channel ON public.user_channel_access(channel_id);
+CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON public.user_permissions (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_channel_access_user ON public.user_channel_access (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_channel_access_channel ON public.user_channel_access (channel_id);
 
 -- ====================================================================
 -- 2. HELPER FUNCTIONS
@@ -1462,30 +1771,32 @@ $$;
 -- ====================================================================
 
 -- --- user_permissions table ---
-CREATE POLICY "Admins can manage permissions" ON public.user_permissions
-    FOR ALL USING (
-        organization_id = public.get_my_organization_id()
-        AND public.get_my_role() = 'admin'
-    ) WITH CHECK (
-        organization_id = public.get_my_organization_id()
-        AND public.get_my_role() = 'admin'
+CREATE POLICY "Admins can manage permissions" ON public.user_permissions FOR ALL USING (
+    organization_id = public.get_my_organization_id ()
+    AND public.get_my_role () = 'admin'
+)
+WITH
+    CHECK (
+        organization_id = public.get_my_organization_id ()
+        AND public.get_my_role () = 'admin'
     );
 
-CREATE POLICY "Users can read own permissions" ON public.user_permissions
-    FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "Users can read own permissions" ON public.user_permissions FOR
+SELECT USING (user_id = auth.uid ());
 
 -- --- user_channel_access table ---
-CREATE POLICY "Admins can manage channel access" ON public.user_channel_access
-    FOR ALL USING (
-        organization_id = public.get_my_organization_id()
-        AND public.get_my_role() = 'admin'
-    ) WITH CHECK (
-        organization_id = public.get_my_organization_id()
-        AND public.get_my_role() = 'admin'
+CREATE POLICY "Admins can manage channel access" ON public.user_channel_access FOR ALL USING (
+    organization_id = public.get_my_organization_id ()
+    AND public.get_my_role () = 'admin'
+)
+WITH
+    CHECK (
+        organization_id = public.get_my_organization_id ()
+        AND public.get_my_role () = 'admin'
     );
 
-CREATE POLICY "Users can read own channel access" ON public.user_channel_access
-    FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "Users can read own channel access" ON public.user_channel_access FOR
+SELECT USING (user_id = auth.uid ());
 
 -- --- Channels: Replace existing policy ---
 -- (Run these ONLY after dropping the old policy)
@@ -1509,23 +1820,19 @@ CREATE POLICY "Users can read own channel access" ON public.user_channel_access
 -- The existing policy only allows users to manage their OWN profile.
 -- We need admins to see all profiles in their org for team management.
 
-CREATE POLICY "Admins can read org profiles" ON public.profiles
-    FOR SELECT USING (
-        organization_id = public.get_my_organization_id()
-        AND public.get_my_role() = 'admin'
+CREATE POLICY "Admins can read org profiles" ON public.profiles FOR
+SELECT USING (
+        organization_id = public.get_my_organization_id ()
+        AND public.get_my_role () = 'admin'
     );
 
-CREATE POLICY "Admins can update org profiles" ON public.profiles
-    FOR UPDATE USING (
-        organization_id = public.get_my_organization_id()
-        AND public.get_my_role() = 'admin'
-    );
-
-
+CREATE POLICY "Admins can update org profiles" ON public.profiles FOR
+UPDATE USING (
+    organization_id = public.get_my_organization_id ()
+    AND public.get_my_role () = 'admin'
+);
 
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS team_id UUID;
-
-
 
 -- ====================================================================
 -- PAGINATION UPGRADE — Infinite Scroll for Contacts
@@ -1535,7 +1842,7 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS team_id UUID;
 -- ====================================================================
 
 -- Drop the OLD 2-parameter version to avoid PostgREST overload conflict (PGRST203)
-DROP FUNCTION IF EXISTS public.get_contacts_for_channel(UUID, TEXT);
+DROP FUNCTION IF EXISTS public.get_contacts_for_channel (UUID, TEXT);
 
 -- Replace with pagination-enabled version
 
@@ -1549,9 +1856,11 @@ DROP FUNCTION IF EXISTS public.get_contacts_for_channel(UUID, TEXT);
 -- ====================================================================
 
 -- Drop ALL old versions to avoid PostgREST overload conflict (PGRST203)
-DROP FUNCTION IF EXISTS public.get_contacts_for_channel(UUID, TEXT);
-DROP FUNCTION IF EXISTS public.get_contacts_for_channel(UUID, TEXT, INT, INT);
-DROP FUNCTION IF EXISTS public.get_contacts_for_channel(UUID, TEXT, INT, INT, TEXT);
+DROP FUNCTION IF EXISTS public.get_contacts_for_channel (UUID, TEXT);
+
+DROP FUNCTION IF EXISTS public.get_contacts_for_channel (UUID, TEXT, INT, INT);
+
+DROP FUNCTION IF EXISTS public.get_contacts_for_channel (UUID, TEXT, INT, INT, TEXT);
 
 -- Create with pagination + sorting support
 CREATE OR REPLACE FUNCTION public.get_contacts_for_channel(
@@ -1611,8 +1920,11 @@ END;
 $$;
 
 -- Grant access
-GRANT EXECUTE ON FUNCTION public.get_contacts_for_channel(UUID, TEXT, INT, INT, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_contacts_for_channel(UUID, TEXT, INT, INT, TEXT) TO service_role;
+GRANT
+EXECUTE ON FUNCTION public.get_contacts_for_channel (UUID, TEXT, INT, INT, TEXT) TO authenticated;
+
+GRANT
+EXECUTE ON FUNCTION public.get_contacts_for_channel (UUID, TEXT, INT, INT, TEXT) TO service_role;
 
 -- ====================================================================
 -- VERIFICATION
@@ -1625,7 +1937,231 @@ BEGIN
     RAISE NOTICE '  ✓ Pagination: p_limit (default 30), p_offset (default 0)';
 END $$;
 
+-- ====================================================================
+-- STEP 1: Drop old CHECK constraint first (it blocks new values)
+-- ====================================================================
+ALTER TABLE public.crm_clients
+DROP CONSTRAINT IF EXISTS crm_clients_client_type_check;
 
+-- ====================================================================
+-- STEP 2: Migrate existing client_type values to new values
+-- ====================================================================
+UPDATE public.crm_clients
+SET
+    client_type = 'new'
+WHERE
+    client_type = 'lead';
 
+UPDATE public.crm_clients
+SET
+    client_type = 'interested'
+WHERE
+    client_type = 'prospect';
 
+UPDATE public.crm_clients
+SET
+    client_type = 'customer'
+WHERE
+    client_type = 'partner';
+-- 'customer' stays 'customer', 'inactive' stays 'inactive'
 
+-- ====================================================================
+-- STEP 3: Add new CHECK constraint
+-- ====================================================================
+ALTER TABLE public.crm_clients
+ADD CONSTRAINT crm_clients_client_type_check CHECK (
+    client_type IN (
+        'new',
+        'interested',
+        'customer',
+        'repeat_customer',
+        'inactive'
+    )
+);
+
+-- Update default
+ALTER TABLE public.crm_clients
+ALTER COLUMN client_type
+SET DEFAULT 'new';
+
+-- ====================================================================
+-- STEP 3: Drop lifecycle_stage column
+-- ====================================================================
+ALTER TABLE public.crm_clients
+DROP CONSTRAINT IF EXISTS crm_clients_lifecycle_stage_check;
+
+ALTER TABLE public.crm_clients DROP COLUMN IF EXISTS lifecycle_stage;
+
+-- ====================================================================
+-- STEP 4: Drop unused e-commerce columns
+-- ====================================================================
+ALTER TABLE public.crm_clients
+DROP CONSTRAINT IF EXISTS unique_ecommerce_customer;
+
+ALTER TABLE public.crm_clients
+DROP COLUMN IF EXISTS ecommerce_customer_id;
+
+ALTER TABLE public.crm_clients DROP COLUMN IF EXISTS total_orders;
+
+ALTER TABLE public.crm_clients DROP COLUMN IF EXISTS total_revenue;
+
+ALTER TABLE public.crm_clients
+DROP COLUMN IF EXISTS average_order_value;
+
+ALTER TABLE public.crm_clients DROP COLUMN IF EXISTS utm_data;
+
+ALTER TABLE public.crm_clients DROP COLUMN IF EXISTS source_details;
+
+-- ====================================================================
+-- STEP 5: Remove deal_id from related tables BEFORE dropping deals
+-- ====================================================================
+ALTER TABLE public.crm_orders DROP COLUMN IF EXISTS deal_id;
+
+ALTER TABLE public.crm_activities DROP COLUMN IF EXISTS deal_id;
+
+ALTER TABLE public.crm_notes DROP COLUMN IF EXISTS deal_id;
+
+-- ====================================================================
+-- STEP 6: Drop deal tables (stages history first due to FK)
+-- ====================================================================
+DROP TABLE IF EXISTS public.crm_deal_stages_history CASCADE;
+
+DROP TABLE IF EXISTS public.crm_deals CASCADE;
+
+-- ====================================================================
+-- STEP 7: Drop deal-related indexes
+-- ====================================================================
+DROP INDEX IF EXISTS public.idx_crm_deals_organization;
+
+DROP INDEX IF EXISTS public.idx_crm_deals_stage;
+
+-- ====================================================================
+-- STEP 8: Change currency defaults from USD to EGP
+-- ====================================================================
+ALTER TABLE public.crm_orders
+ALTER COLUMN currency
+SET DEFAULT 'EGP';
+
+ALTER TABLE public.crm_products
+ALTER COLUMN currency
+SET DEFAULT 'EGP';
+
+-- ====================================================================
+-- STEP 9: Update auto-create trigger to use 'new' instead of 'lead'
+-- ====================================================================
+CREATE OR REPLACE FUNCTION public.create_client_on_new_contact() RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  INSERT INTO public.crm_clients (organization_id, contact_id, company_name, email, platform_user_id, source, first_contact_date, client_type)
+  VALUES (
+    NEW.organization_id, 
+    NEW.id, 
+    NEW.name, 
+    CASE WHEN NEW.name ~* '^[A-Za-z0-9._+%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$' THEN NEW.name ELSE NULL END, 
+    NEW.platform_user_id, 
+    NEW.platform, 
+    NOW(),
+    'new'
+  );
+  RETURN NEW;
+END;
+$$;
+
+-- ====================================================================
+-- STEP 10: Drop deal-related functions
+-- ====================================================================
+DROP FUNCTION IF EXISTS public.calculate_win_rate (
+    UUID,
+    TIMESTAMPTZ,
+    TIMESTAMPTZ
+);
+
+DROP FUNCTION IF EXISTS public.get_deal_trends (
+    UUID,
+    TEXT,
+    UUID,
+    TIMESTAMPTZ,
+    TIMESTAMPTZ
+);
+
+DROP FUNCTION IF EXISTS public.get_deal_pipeline_snapshot (
+    UUID,
+    UUID,
+    TIMESTAMPTZ,
+    TIMESTAMPTZ
+);
+
+-- ====================================================================
+-- STEP 11: Update dashboard summary (remove deal references)
+-- ====================================================================
+CREATE OR REPLACE FUNCTION public.get_crm_dashboard_summary(
+    org_id UUID, 
+    p_channel_id UUID DEFAULT NULL,
+    start_date TIMESTAMPTZ DEFAULT NULL,
+    end_date TIMESTAMPTZ DEFAULT NULL
+) 
+RETURNS TABLE (
+    total_clients BIGINT, 
+    total_customers BIGINT, 
+    total_leads BIGINT, 
+    total_deals BIGINT, 
+    open_deals_value NUMERIC, 
+    closed_won_deals BIGINT, 
+    total_revenue NUMERIC, 
+    avg_order_value NUMERIC, 
+    pending_activities BIGINT
+) AS $$ 
+BEGIN 
+    RETURN QUERY 
+    SELECT 
+        (SELECT COUNT(*) FROM public.crm_clients c LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE c.organization_id = org_id AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR c.created_at >= start_date) AND (end_date IS NULL OR c.created_at <= end_date)), 
+        (SELECT COUNT(*) FROM public.crm_clients c LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE c.organization_id = org_id AND c.client_type IN ('customer', 'repeat_customer') AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR c.created_at >= start_date) AND (end_date IS NULL OR c.created_at <= end_date)), 
+        (SELECT COUNT(*) FROM public.crm_clients c LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE c.organization_id = org_id AND c.client_type = 'new' AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR c.created_at >= start_date) AND (end_date IS NULL OR c.created_at <= end_date)), 
+        0::BIGINT,  -- deals removed
+        0::NUMERIC, -- deals removed
+        0::BIGINT,  -- deals removed
+        (SELECT COALESCE(SUM(o.total), 0) FROM public.crm_orders o LEFT JOIN public.crm_clients c ON o.client_id = c.id LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE o.organization_id = org_id AND o.status NOT IN ('cancelled', 'refunded') AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR o.order_date >= start_date) AND (end_date IS NULL OR o.order_date <= end_date)), 
+        (SELECT COALESCE(AVG(o.total), 0) FROM public.crm_orders o LEFT JOIN public.crm_clients c ON o.client_id = c.id LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE o.organization_id = org_id AND o.status NOT IN ('cancelled', 'refunded') AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR o.order_date >= start_date) AND (end_date IS NULL OR o.order_date <= end_date)), 
+        (SELECT COUNT(*) FROM public.crm_activities a LEFT JOIN public.crm_clients c ON a.client_id = c.id LEFT JOIN public.contacts co ON c.contact_id = co.id WHERE a.organization_id = org_id AND a.status = 'pending' AND (p_channel_id IS NULL OR co.channel_id = p_channel_id) AND (start_date IS NULL OR a.created_at >= start_date) AND (end_date IS NULL OR a.created_at <= end_date)); 
+END; 
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
+
+-- ====================================================================
+-- STEP 12: Update conversion funnel to use client_type instead of lifecycle_stage
+-- ====================================================================
+CREATE OR REPLACE FUNCTION public.get_conversion_funnel(
+    org_id UUID, 
+    p_channel_id UUID DEFAULT NULL,
+    start_date TIMESTAMPTZ DEFAULT NULL,
+    end_date TIMESTAMPTZ DEFAULT NULL
+) 
+RETURNS TABLE (lifecycle_stage TEXT, count BIGINT, percentage NUMERIC) AS $$ 
+BEGIN 
+    RETURN QUERY 
+    SELECT 
+        c.client_type AS lifecycle_stage, 
+        COUNT(*) as count, 
+        ROUND(COUNT(*) * 100.0 / NULLIF(SUM(COUNT(*)) OVER (), 0), 2) as percentage 
+    FROM public.crm_clients c 
+    LEFT JOIN public.contacts co ON c.contact_id = co.id
+    WHERE c.organization_id = org_id 
+      AND (p_channel_id IS NULL OR co.channel_id = p_channel_id)
+      AND (start_date IS NULL OR c.created_at >= start_date)
+      AND (end_date IS NULL OR c.created_at <= end_date)
+    GROUP BY c.client_type;
+END; 
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
+
+-- ====================================================================
+-- STEP 13: Update refresh_all_analytics (remove deal materialized view)
+-- ====================================================================
+CREATE OR REPLACE FUNCTION public.refresh_all_analytics() RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  REFRESH MATERIALIZED VIEW public.analytics_channel_performance;
+  -- analytics_deal_metrics view removed
+  REFRESH MATERIALIZED VIEW public.analytics_revenue_metrics;
+  REFRESH MATERIALIZED VIEW public.analytics_chatbot_effectiveness;
+END;
+$$;
+
+-- Drop the deal metrics materialized view if it exists
+DROP MATERIALIZED VIEW IF EXISTS public.analytics_deal_metrics;

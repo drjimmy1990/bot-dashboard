@@ -8,7 +8,7 @@ import ClientSidebar from './components/ClientSidebar';
 import ClientOverview from './components/ClientOverview';
 import ClientTimeline from './components/ClientTimeline';
 import ClientNotes from './components/ClientNotes';
-import ClientDeals from './components/ClientDeals';
+
 import ClientOrders from './components/ClientOrders';
 import { useClient } from '@/hooks/useClient';
 
@@ -66,7 +66,7 @@ export default function ClientProfilePage() {
         );
     }
 
-    const { client, contact, deals, orders, messageCount } = clientData;
+    const { client, contact, orders, messageCount } = clientData;
 
     return (
         <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -87,13 +87,12 @@ export default function ClientProfilePage() {
                             <Tab label="Orders" />
                             <Tab label="Timeline" />
                             <Tab label="Notes" />
-                            <Tab label="Deals" />
                         </Tabs>
                     </Box>
 
                     <Box sx={{ flexGrow: 1, overflowY: 'auto', bgcolor: '#f8fafc' }}>
                         <CustomTabPanel value={tabValue} index={0}>
-                            <ClientOverview client={client} deals={deals} messageCount={messageCount} />
+                            <ClientOverview client={client} messageCount={messageCount} />
                         </CustomTabPanel>
                         <CustomTabPanel value={tabValue} index={1}>
                             <ClientOrders clientId={client.id} orders={orders} />
@@ -103,9 +102,6 @@ export default function ClientProfilePage() {
                         </CustomTabPanel>
                         <CustomTabPanel value={tabValue} index={3}>
                             <ClientNotes />
-                        </CustomTabPanel>
-                        <CustomTabPanel value={tabValue} index={4}>
-                            <ClientDeals />
                         </CustomTabPanel>
                     </Box>
                 </Grid>

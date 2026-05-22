@@ -14,7 +14,8 @@ import {
     LineChart,
     Line
 } from 'recharts';
-import { DealMetric } from '@/hooks/useAnalytics';
+// Deal analytics removed - this component is kept for potential future use
+interface DealMetric { stage: string; count: number; value: number; avg_deal_size: number; }
 import HandshakeIcon from '@mui/icons-material/Handshake';
 
 interface DealAnalyticsProps {

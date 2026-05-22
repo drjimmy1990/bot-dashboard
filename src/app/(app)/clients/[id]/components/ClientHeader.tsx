@@ -44,7 +44,7 @@ export default function ClientHeader({ client, contact }: ClientHeaderProps) {
                             {client?.company_name || client?.email || 'Client Name'}
                         </Typography>
                         <Chip
-                            label={client?.lifecycle_stage || 'Lead'}
+                            label={client?.client_type === 'repeat_customer' ? 'Repeat Customer' : (client?.client_type || 'New').charAt(0).toUpperCase() + (client?.client_type || 'new').slice(1)}
                             size="small"
                             color="primary"
                             variant="outlined"

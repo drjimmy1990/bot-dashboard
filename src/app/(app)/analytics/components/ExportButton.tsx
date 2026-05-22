@@ -29,9 +29,9 @@ export default function ExportButton({ summary, channelPerformance }: ExportButt
         if (summary) {
             const summaryData = [
                 ['Metric', 'Value'],
-                ['Total Revenue', `$${summary.total_revenue}`],
-                ['Active Leads', `${summary.total_leads}`],
-                ['Open Deals Value', `$${summary.open_deals_value}`],
+                ['Total Revenue', `EGP ${summary.total_revenue}`],
+                ['New Clients', `${summary.total_leads}`],
+                ['Avg Order Value', `EGP ${summary.avg_order_value}`],
                 ['Pending Activities', `${summary.pending_activities}`],
                 ['Total Clients', `${summary.total_clients}`],
                 ['Total Customers', `${summary.total_customers}`],

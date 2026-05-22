@@ -49,7 +49,6 @@ export default function ClientProfile({ client }: ClientProfileProps) {
     formData.phone !== client.phone ||
     formData.secondary_phone !== client.secondary_phone ||
     formData.client_type !== client.client_type ||
-    formData.lifecycle_stage !== client.lifecycle_stage ||
     formData.source !== client.source ||
     JSON.stringify([...(formData.tags || [])].sort()) !== JSON.stringify([...(client.tags || [])].sort());
 
@@ -61,7 +60,6 @@ export default function ClientProfile({ client }: ClientProfileProps) {
       phone: formData.phone,
       secondary_phone: formData.secondary_phone,
       client_type: formData.client_type,
-      lifecycle_stage: formData.lifecycle_stage,
       source: formData.source,
       tags: formData.tags,
     };
@@ -87,20 +85,11 @@ export default function ClientProfile({ client }: ClientProfileProps) {
           <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>CRM Details</Typography>
             <TextField name="client_type" label="Client Type" value={formData.client_type} onChange={handleChange} select fullWidth size="small" sx={{ mb: 2 }}>
-              <MenuItem value="lead">Lead</MenuItem>
-              <MenuItem value="prospect">Prospect</MenuItem>
+              <MenuItem value="new">New</MenuItem>
+              <MenuItem value="interested">Interested</MenuItem>
               <MenuItem value="customer">Customer</MenuItem>
-              <MenuItem value="partner">Partner</MenuItem>
+              <MenuItem value="repeat_customer">Repeat Customer</MenuItem>
               <MenuItem value="inactive">Inactive</MenuItem>
-            </TextField>
-            <TextField name="lifecycle_stage" label="Lifecycle Stage" value={formData.lifecycle_stage} onChange={handleChange} select fullWidth size="small" sx={{ mb: 2 }}>
-              <MenuItem value="lead">Lead</MenuItem>
-              <MenuItem value="mql">Marketing Qualified Lead (MQL)</MenuItem>
-              <MenuItem value="sql">Sales Qualified Lead (SQL)</MenuItem>
-              <MenuItem value="opportunity">Opportunity</MenuItem>
-              <MenuItem value="customer">Customer</MenuItem>
-              <MenuItem value="evangelist">Evangelist</MenuItem>
-              <MenuItem value="churned">Churned</MenuItem>
             </TextField>
             <TextField name="source" label="Lead Source" value={formData.source || ''} onChange={handleChange} fullWidth size="small" sx={{ mb: 2 }} />
             <Box sx={{ mt: 2 }}>

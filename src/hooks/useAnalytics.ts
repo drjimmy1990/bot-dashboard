@@ -30,12 +30,7 @@ export interface ConversionFunnelStep {
     conversion_rate: number;
 }
 
-export interface DealMetric {
-    stage: string;
-    count: number;
-    value: number;
-    avg_deal_size: number;
-}
+
 
 export interface ChannelPerformance {
     organization_id: string;
@@ -134,43 +129,7 @@ export const useConversionFunnel = (orgId: string, channelId?: string | null, st
     });
 };
 
-export const useDealMetrics = (orgId: string, channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
-    return useQuery({
-        queryKey: ['analytics', 'deals', orgId, channelId, startDate?.toISOString(), endDate?.toISOString()],
-        queryFn: async () => {
-            const { data, error } = await supabase.rpc('get_deal_pipeline_snapshot', {
-                org_id: orgId,
-                p_channel_id: channelId || null,
-                start_date: startDate ? startDate.toISOString() : null,
-                end_date: endDate ? endDate.toISOString() : null
-            });
 
-            if (error) throw error;
-            return data as DealMetric[];
-        },
-        enabled: !!orgId,
-        staleTime: 5 * 60 * 1000, // 5 minutes
-    });
-};
-
-export const useDealTrends = (orgId: string, period: 'day' | 'week' | 'month', channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
-    return useQuery({
-        queryKey: ['analytics', 'deals_trend', orgId, period, channelId, startDate?.toISOString(), endDate?.toISOString()],
-        queryFn: async () => {
-            const { data, error } = await supabase.rpc('get_deal_trends', {
-                org_id: orgId,
-                period_type: period,
-                p_channel_id: channelId || null,
-                start_date: startDate ? startDate.toISOString() : null,
-                end_date: endDate ? endDate.toISOString() : null
-            });
-            if (error) throw error;
-            return data;
-        },
-        enabled: !!orgId,
-        staleTime: 5 * 60 * 1000,
-    });
-};
 
 export const useMessageVolumeTrends = (orgId: string, period: 'day' | 'week' | 'month', channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
     return useQuery({

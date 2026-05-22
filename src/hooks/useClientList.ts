@@ -22,13 +22,10 @@ function useDebounce(value: string, delay: number) {
 
 // --- Type Definitions ---
 export interface ClientFilters {
-  status?: string[];
   type?: string[];
   lead_quality?: string[];
   assignee?: string;
   tags?: string[];
-  min_revenue?: number;
-  max_revenue?: number;
   created_after?: Date | null;
   created_before?: Date | null;
   last_contact_after?: Date | null;
@@ -67,12 +64,7 @@ async function fetchClientList({
     );
   }
 
-  // 2. Status (Lifecycle Stage)
-  if (filters.status && filters.status.length > 0) {
-    query = query.in('lifecycle_stage', filters.status);
-  }
-
-  // 3. Type (Client Type)
+  // 2. Type (Client Type)
   if (filters.type && filters.type.length > 0) {
     query = query.in('client_type', filters.type);
   }
@@ -91,19 +83,9 @@ async function fetchClientList({
     }
   }
 
-  // 6. Tags (Array Overlap)
+  // 5. Tags (Array Overlap)
   if (filters.tags && filters.tags.length > 0) {
-    // 'cs' means contains. For array columns, it checks if the array contains these values.
-    // Note: This assumes 'tags' column is text[]
     query = query.contains('tags', filters.tags);
-  }
-
-  // 7. Revenue Range
-  if (filters.min_revenue !== undefined) {
-    query = query.gte('total_revenue', filters.min_revenue);
-  }
-  if (filters.max_revenue !== undefined) {
-    query = query.lte('total_revenue', filters.max_revenue);
   }
 
   // 8. Date Ranges
