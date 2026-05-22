@@ -1,7 +1,7 @@
 // src/app/(app)/channels/page.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -15,14 +15,65 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
+  Switch,
+  Tooltip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SettingsIcon from '@mui/icons-material/Settings';
 import Link from 'next/link';
 
-import { useChannels, NewChannelPayload } from '@/hooks/useChannels';
+import { useChannels, NewChannelPayload, Channel } from '@/hooks/useChannels';
 import ChannelForm from '@/components/channels/ChannelForm';
 import PlatformAvatar from '@/components/ui/PlatformAvatar';
+import { supabase } from '@/lib/supabaseClient';
+
+// Small component for each channel's bot toggle
+function BotToggle({ channelId }: { channelId: string }) {
+  const [isActive, setIsActive] = useState<boolean | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from('channel_configurations')
+      .select('is_bot_active')
+      .eq('channel_id', channelId)
+      .single()
+      .then(({ data }) => {
+        if (data) setIsActive(data.is_bot_active);
+      });
+  }, [channelId]);
+
+  const handleToggle = useCallback(async () => {
+    if (isActive === null) return;
+    const newValue = !isActive;
+    setIsUpdating(true);
+    setIsActive(newValue);
+
+    const { error } = await supabase
+      .from('channel_configurations')
+      .update({ is_bot_active: newValue })
+      .eq('channel_id', channelId);
+
+    if (error) {
+      setIsActive(!newValue); // rollback
+    }
+    setIsUpdating(false);
+  }, [channelId, isActive]);
+
+  if (isActive === null) return <CircularProgress size={20} sx={{ mr: 1 }} />;
+
+  return (
+    <Tooltip title={isActive ? 'Bot is ON — click to turn off' : 'Bot is OFF — click to turn on'}>
+      <Switch
+        checked={isActive}
+        onChange={handleToggle}
+        disabled={isUpdating}
+        color="success"
+        size="small"
+      />
+    </Tooltip>
+  );
+}
 
 export default function ChannelsPage() {
   const { channels, isLoading, isError, error, addChannel, isAdding } = useChannels();
@@ -87,17 +138,18 @@ export default function ChannelsPage() {
             <ListItem
               key={channel.id}
               secondaryAction={
-                // --- THIS IS THE FIX ---
-                // The href now points to the new dynamic route for channel settings.
-                <Button
-                  component={Link}
-                  href={`/channels/${channel.id}/settings`}
-                  startIcon={<SettingsIcon />}
-                  aria-label="settings"
-                  size="small"
-                >
-                  Configure
-                </Button>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <BotToggle channelId={channel.id} />
+                  <Button
+                    component={Link}
+                    href={`/channels/${channel.id}/settings`}
+                    startIcon={<SettingsIcon />}
+                    aria-label="settings"
+                    size="small"
+                  >
+                    Configure
+                  </Button>
+                </Box>
               }
             >
               <ListItemIcon>
@@ -138,4 +190,4 @@ export default function ChannelsPage() {
       )}
     </Container>
   );
-}
+}
