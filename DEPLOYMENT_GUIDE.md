@@ -423,4 +423,16 @@ npm install
 npm run build
 pm2 start dashboard
 rm -rf /www/server/nginx/proxy_cache_dir/*
+
+
+
+cd /www/wwwroot/dashboard
+git pull origin feature/rbac-media-upgrades
+npm run build
+pm2 restart dashboard
+rm -rf /www/server/nginx/proxy_cache_dir/*
 ```
+
+
+
+
