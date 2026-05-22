@@ -137,6 +137,7 @@ export default function UnifiedChatInterface() {
           {/* We'll need to adapt ChatArea to work with just an ID */}
           <ChatArea
             contactId={selectedContactId}
+            channelPlatformId={activeChannel?.platform_channel_id || null}
             messages={messages}
             isLoadingMessages={isLoadingMessages}
             onSendMessage={handleSendMessage}

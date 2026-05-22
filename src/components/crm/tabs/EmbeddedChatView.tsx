@@ -8,6 +8,7 @@ import { useChatMessages } from '@/hooks/useChatMessages';
 import ChatArea from '@/components/chat/ChatArea'; // We will reuse the existing component
 import * as api from '@/lib/api';
 import { Contact } from '@/lib/api';
+import { useChannel } from '@/providers/ChannelProvider';
 
 interface EmbeddedChatViewProps {
   contact: Contact;
@@ -16,6 +17,8 @@ interface EmbeddedChatViewProps {
 
 export default function EmbeddedChatView({ contact, organizationId }: EmbeddedChatViewProps) {
   const queryClient = useQueryClient();
+  const { channels } = useChannel();
+  const channel = channels.find(c => c.id === contact.channel_id);
 
   // The useChatMessages hook does all the heavy lifting for fetching and sending messages
   const { messages, isLoadingMessages, sendMessage, isSendingMessage } = useChatMessages(
@@ -84,6 +87,7 @@ export default function EmbeddedChatView({ contact, organizationId }: EmbeddedCh
     <Box sx={{ height: '75vh', width: '100%', position: 'relative' }}>
       <ChatArea
         contactId={contact.id}
+        channelPlatformId={channel?.platform_channel_id || null}
         messages={messages}
         isLoadingMessages={isLoadingMessages}
         onSendMessage={handleSendMessage}
