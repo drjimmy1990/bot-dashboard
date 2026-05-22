@@ -15,6 +15,7 @@ import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
 type ContactWithClient = Contact & {
   crm_clients: { id: string } | null; // Adjusted to match the direct query result
+  channels: { platform_channel_id: string } | null;
 }
 
 interface ChatAreaProps {
@@ -72,7 +73,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     queryFn: async () => {
       const { data: directData, error: directError } = await supabase
         .from('contacts')
-        .select('*, crm_clients!contact_id(id)')
+        .select('*, crm_clients!contact_id(id), channels!channel_id(platform_channel_id)')
         .eq('id', contactId!)
         .single();
 
@@ -83,7 +84,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       const reshapedData = {
         ...directData,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        crm_clients: directData.crm_clients ? { id: (directData.crm_clients as any).id } : null
+        crm_clients: directData.crm_clients ? { id: (directData.crm_clients as any).id } : null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        channels: directData.channels ? { platform_channel_id: (directData.channels as any).platform_channel_id } : null,
       };
 
       return reshapedData as ContactWithClient;
@@ -109,7 +112,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   const handleSend = () => {
     if (messageText.trim() && contact) {
-      onSendMessage(messageText, contact.platform, contact.platform_user_id, contact.channel_id);
+      onSendMessage(messageText, contact.platform, contact.platform_user_id, contact.channels?.platform_channel_id || contact.channel_id);
       setMessageText('');
     }
   };
@@ -137,7 +140,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       onSendMedia({
         platform: contact.platform,
         platform_user_id: contact.platform_user_id,
-        platform_channel_id: contact.channel_id,
+        platform_channel_id: contact.channels?.platform_channel_id || contact.channel_id,
         content_type: contentType,
         attachment_url: result.url,
         attachment_metadata: {
@@ -171,7 +174,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       onSendMedia({
         platform: contact.platform,
         platform_user_id: contact.platform_user_id,
-        platform_channel_id: contact.channel_id,
+        platform_channel_id: contact.channels?.platform_channel_id || contact.channel_id,
         content_type: 'audio',
         attachment_url: result.url,
         attachment_metadata: {
