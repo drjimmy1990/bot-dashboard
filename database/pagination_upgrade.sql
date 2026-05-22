@@ -5,6 +5,11 @@
 -- Run this AFTER all previous migrations.
 -- ====================================================================
 
+-- Drop the OLD 2-parameter version to avoid PostgREST overload conflict (PGRST203)
+DROP FUNCTION IF EXISTS public.get_contacts_for_channel(UUID, TEXT);
+
+-- Replace with pagination-enabled version
+
 -- Replace the existing function with pagination support
 -- The old function returns ALL contacts; this one paginates.
 CREATE OR REPLACE FUNCTION public.get_contacts_for_channel(

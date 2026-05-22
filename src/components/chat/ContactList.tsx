@@ -54,7 +54,7 @@ const ContactList: React.FC<ContactListProps> = ({ selectedContactId, onSelectCo
       <List
         ref={listRef}
         onScroll={handleScroll}
-        sx={{ overflowY: 'auto', flexGrow: 1, overflowX: 'hidden' }}
+        sx={{ overflowY: 'auto', flexGrow: 1, minHeight: 0, overflowX: 'hidden' }}
       >
         {isLoadingContacts ? (<Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}> <CircularProgress /> </Box>) : contacts.length > 0 ? (
           <>
