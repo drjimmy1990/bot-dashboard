@@ -1541,11 +1541,25 @@ DROP FUNCTION IF EXISTS public.get_contacts_for_channel(UUID, TEXT);
 
 -- Replace the existing function with pagination support
 -- The old function returns ALL contacts; this one paginates.
+-- ====================================================================
+-- PAGINATION UPGRADE — Infinite Scroll + Sorting for Contacts
+-- ====================================================================
+-- Updates: get_contacts_for_channel RPC with pagination and sorting
+-- Run this AFTER all previous migrations.
+-- ====================================================================
+
+-- Drop ALL old versions to avoid PostgREST overload conflict (PGRST203)
+DROP FUNCTION IF EXISTS public.get_contacts_for_channel(UUID, TEXT);
+DROP FUNCTION IF EXISTS public.get_contacts_for_channel(UUID, TEXT, INT, INT);
+DROP FUNCTION IF EXISTS public.get_contacts_for_channel(UUID, TEXT, INT, INT, TEXT);
+
+-- Create with pagination + sorting support
 CREATE OR REPLACE FUNCTION public.get_contacts_for_channel(
     p_channel_id UUID,
     p_search_term TEXT DEFAULT '',
     p_limit INT DEFAULT 30,
-    p_offset INT DEFAULT 0
+    p_offset INT DEFAULT 0,
+    p_sort TEXT DEFAULT 'recent'
 )
 RETURNS TABLE (
     id UUID,
@@ -1585,27 +1599,31 @@ BEGIN
           OR c.name ILIKE '%' || p_search_term || '%'
           OR c.platform_user_id ILIKE '%' || p_search_term || '%'
       )
-    ORDER BY c.unread_count DESC, c.last_interaction_at DESC NULLS LAST
+    ORDER BY
+        CASE WHEN p_sort = 'recent' THEN c.last_interaction_at END DESC NULLS LAST,
+        CASE WHEN p_sort = 'unread' THEN c.unread_count END DESC,
+        CASE WHEN p_sort = 'unread' THEN c.last_interaction_at END DESC NULLS LAST,
+        CASE WHEN p_sort = 'name' THEN c.name END ASC NULLS LAST,
+        CASE WHEN p_sort = 'name' THEN c.platform_user_id END ASC
     LIMIT p_limit
     OFFSET p_offset;
 END;
 $$;
 
 -- Grant access
-GRANT EXECUTE ON FUNCTION public.get_contacts_for_channel(UUID, TEXT, INT, INT) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_contacts_for_channel(UUID, TEXT, INT, INT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.get_contacts_for_channel(UUID, TEXT, INT, INT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_contacts_for_channel(UUID, TEXT, INT, INT, TEXT) TO service_role;
 
 -- ====================================================================
 -- VERIFICATION
 -- ====================================================================
 DO $$
 BEGIN
-    RAISE NOTICE 'Pagination Upgrade applied successfully.';
-    RAISE NOTICE '  ✓ get_contacts_for_channel updated with p_limit and p_offset';
-    RAISE NOTICE '  ✓ Default: 30 contacts per page';
-    RAISE NOTICE '  ✓ Backward compatible (old calls without limit/offset still work)';
+    RAISE NOTICE 'Pagination + Sorting Upgrade applied successfully.';
+    RAISE NOTICE '  ✓ get_contacts_for_channel updated with p_sort parameter';
+    RAISE NOTICE '  ✓ Sort options: recent (default), unread, name';
+    RAISE NOTICE '  ✓ Pagination: p_limit (default 30), p_offset (default 0)';
 END $$;
-
 
 
 

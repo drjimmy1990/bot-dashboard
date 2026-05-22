@@ -20,6 +20,7 @@ type ContactWithClient = Contact & {
 
 interface ChatAreaProps {
   contactId: string | null;
+  channelPlatformId: string | null; // The real Facebook Page ID / WA number
   messages: Message[];
   isLoadingMessages: boolean;
   onSendMessage: (text: string, platform: string, platformUserId: string, platformChannelId: string) => void;
@@ -43,6 +44,7 @@ interface ChatAreaProps {
 
 const ChatArea: React.FC<ChatAreaProps> = ({
   contactId,
+  channelPlatformId,
   messages,
   isLoadingMessages,
   onSendMessage,
@@ -112,7 +114,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   const handleSend = () => {
     if (messageText.trim() && contact) {
-      onSendMessage(messageText, contact.platform, contact.platform_user_id, contact.channels?.platform_channel_id || contact.channel_id);
+      onSendMessage(messageText, contact.platform, contact.platform_user_id, channelPlatformId || contact.channel_id);
       setMessageText('');
     }
   };
@@ -140,7 +142,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       onSendMedia({
         platform: contact.platform,
         platform_user_id: contact.platform_user_id,
-        platform_channel_id: contact.channels?.platform_channel_id || contact.channel_id,
+        platform_channel_id: channelPlatformId || contact.channel_id,
         content_type: contentType,
         attachment_url: result.url,
         attachment_metadata: {
@@ -174,7 +176,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       onSendMedia({
         platform: contact.platform,
         platform_user_id: contact.platform_user_id,
-        platform_channel_id: contact.channels?.platform_channel_id || contact.channel_id,
+        platform_channel_id: channelPlatformId || contact.channel_id,
         content_type: 'audio',
         attachment_url: result.url,
         attachment_metadata: {
