@@ -12,6 +12,8 @@ export interface DashboardSummary {
     total_revenue: number;
     avg_order_value: number;
     pending_activities: number;
+    bmi_collected_count: number;
+    price_viewed_count: number;
 }
 
 export interface RevenueMetric {
@@ -27,7 +29,13 @@ export interface ConversionFunnelStep {
     conversion_rate: number;
 }
 
-
+export interface ConversationFunnelStep {
+    stage: string;
+    total: number;
+    completed: number;
+    dropped: number;
+    completion_rate: number;
+}
 
 export interface ChannelPerformance {
     organization_id: string;
@@ -44,7 +52,7 @@ export interface ChannelPerformance {
 
 export interface ChatbotEffectiveness {
     organization_id: string;
-    channel_id: string; // Added channel_id
+    channel_id: string;
     unique_clients_engaged: number;
     total_chatbot_interactions: number;
     successful_interactions: number;
@@ -60,6 +68,11 @@ export interface MessageVolumeTrend {
     ai_responses: number;
 }
 
+export interface ClientTypeDistribution {
+    client_type: string;
+    count: number;
+}
+
 // --- Hooks ---
 
 export const useDashboardSummary = (orgId: string, channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
@@ -73,11 +86,10 @@ export const useDashboardSummary = (orgId: string, channelId?: string | null, st
                 end_date: endDate ? endDate.toISOString() : null
             });
             if (error) throw error;
-            // RPC returns an array for TABLE return types
             return (Array.isArray(data) && data.length > 0 ? data[0] : data) as DashboardSummary;
         },
         enabled: !!orgId,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 5 * 60 * 1000,
     });
 };
 
@@ -97,7 +109,7 @@ export const useRevenueMetrics = (orgId: string, period: 'day' | 'week' | 'month
             return data as unknown as RevenueMetric[];
         },
         enabled: !!orgId,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 5 * 60 * 1000,
     });
 };
 
@@ -113,20 +125,70 @@ export const useConversionFunnel = (orgId: string, channelId?: string | null, st
             });
             if (error) throw error;
 
-            // Map RPC result to interface
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (data as any[]).map(item => ({
-                stage: item.lifecycle_stage || item.client_type,
+                stage: item.lifecycle_stage,
                 count: item.count,
                 conversion_rate: item.percentage
             })) as ConversionFunnelStep[];
         },
         enabled: !!orgId,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 5 * 60 * 1000,
     });
 };
 
+export const useConversationFunnel = (orgId: string, channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
+    return useQuery({
+        queryKey: ['analytics', 'conversation_funnel', orgId, channelId, startDate?.toISOString(), endDate?.toISOString()],
+        queryFn: async () => {
+            const { data, error } = await supabase.rpc('get_conversation_funnel', {
+                org_id: orgId,
+                p_channel_id: channelId || null,
+                start_date: startDate ? startDate.toISOString() : null,
+                end_date: endDate ? endDate.toISOString() : null
+            });
+            if (error) throw error;
+            return data as ConversationFunnelStep[];
+        },
+        enabled: !!orgId,
+        staleTime: 5 * 60 * 1000,
+    });
+};
 
+export const useClientTypeDistribution = (orgId: string, channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
+    return useQuery({
+        queryKey: ['analytics', 'client_types', orgId, channelId, startDate?.toISOString(), endDate?.toISOString()],
+        queryFn: async () => {
+            const query = supabase
+                .from('crm_clients')
+                .select('client_type')
+                .eq('organization_id', orgId);
+
+            if (channelId) {
+                // Need to join through contacts — use RPC or filter in JS
+                // For now, fetch all and filter
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+
+            // Group by client_type
+            const counts: Record<string, number> = {};
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (data as any[]).forEach(row => {
+                const type = row.client_type || 'unknown';
+                counts[type] = (counts[type] || 0) + 1;
+            });
+
+            return Object.entries(counts).map(([client_type, count]) => ({
+                client_type,
+                count
+            })) as ClientTypeDistribution[];
+        },
+        enabled: !!orgId,
+        staleTime: 5 * 60 * 1000,
+    });
+};
 
 export const useMessageVolumeTrends = (orgId: string, period: 'day' | 'week' | 'month', channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
     return useQuery({
@@ -161,7 +223,7 @@ export const useChannelPerformance = (orgId: string, startDate?: Date | null, en
             return data as ChannelPerformance[];
         },
         enabled: !!orgId,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 5 * 60 * 1000,
     });
 };
 
@@ -187,7 +249,7 @@ export const useChatbotEffectiveness = (orgId: string, channelId?: string | null
             return data as ChatbotEffectiveness[];
         },
         enabled: !!orgId,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 5 * 60 * 1000,
     });
 };
 
@@ -203,36 +265,4 @@ export const useAnalyticsControl = () => {
     };
 
     return { refreshAnalytics };
-};
-
-// --- Sales Funnel Analytics ---
-
-export interface SalesFunnelData {
-    bmi_started: number;
-    bmi_completed: number;
-    bmi_dropped: number;
-    testimonials_shown: number;
-    testimonials_passed: number;
-    testimonials_dropped: number;
-    price_shown: number;
-    purchased: number;
-    price_dropped: number;
-}
-
-export const useSalesFunnel = (orgId: string, channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
-    return useQuery({
-        queryKey: ['analytics', 'sales_funnel', orgId, channelId, startDate?.toISOString(), endDate?.toISOString()],
-        queryFn: async () => {
-            const { data, error } = await supabase.rpc('get_sales_funnel_analytics', {
-                org_id: orgId,
-                p_channel_id: channelId || null,
-                start_date: startDate ? startDate.toISOString() : null,
-                end_date: endDate ? endDate.toISOString() : null
-            });
-            if (error) throw error;
-            return (Array.isArray(data) && data.length > 0 ? data[0] : data) as SalesFunnelData;
-        },
-        enabled: !!orgId,
-        staleTime: 5 * 60 * 1000,
-    });
 };

@@ -22,7 +22,7 @@ import AddIcon from '@mui/icons-material/Add';
 import SettingsIcon from '@mui/icons-material/Settings';
 import Link from 'next/link';
 
-import { useChannels, NewChannelPayload, Channel } from '@/hooks/useChannels';
+import { useChannels, NewChannelPayload } from '@/hooks/useChannels';
 import ChannelForm from '@/components/channels/ChannelForm';
 import PlatformAvatar from '@/components/ui/PlatformAvatar';
 import { supabase } from '@/lib/supabaseClient';

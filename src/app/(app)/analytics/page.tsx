@@ -10,8 +10,7 @@ import {
     useConversionFunnel,
     useChannelPerformance,
     useMessageVolumeTrends,
-    useAnalyticsControl,
-    useSalesFunnel
+    useAnalyticsControl
 } from '@/hooks/useAnalytics';
 import { useChannels } from '@/hooks/useChannels';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -22,7 +21,7 @@ import ConversionFunnel from './components/ConversionFunnel';
 
 import ChannelPerformanceChart from './components/ChannelPerformance';
 import ChatbotAnalytics from './components/ChatbotAnalytics';
-import SalesFunnelAnalytics from './components/SalesFunnelAnalytics';
+import ClientMetrics from './components/ClientMetrics';
 import MessageDistributionChart from './components/MessageDistributionChart';
 import DateRangePicker, { DateRangeOption } from './components/DateRangePicker';
 import ExportButton from './components/ExportButton';
@@ -128,7 +127,6 @@ export default function AnalyticsPage() {
     const { data: funnel, isLoading: isFunnelLoading } = useConversionFunnel(orgId || '', selectedChannelId || null, startDate, endDate);
     const { data: channelPerformance, isLoading: isChannelLoading } = useChannelPerformance(orgId || '', startDate, endDate);
     const { data: messageTrends } = useMessageVolumeTrends(orgId || '', period, selectedChannelId || null, startDate, endDate);
-    const { data: salesFunnel, isLoading: isFunnelDataLoading } = useSalesFunnel(orgId || '', selectedChannelId || null, startDate, endDate);
     const { channels } = useChannels();
     const { refreshAnalytics } = useAnalyticsControl();
 
@@ -328,7 +326,7 @@ export default function AnalyticsPage() {
             </CustomTabPanel>
 
             <CustomTabPanel value={tabValue} index={3}>
-                <SalesFunnelAnalytics data={salesFunnel} isLoading={isFunnelDataLoading} />
+                <ClientMetrics selectedChannelId={selectedChannelId || null} startDate={startDate} endDate={endDate} />
             </CustomTabPanel>
         </Box>
     );
