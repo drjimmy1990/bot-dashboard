@@ -34,7 +34,7 @@ export default function ChatPage() {
 
       try {
         // Query the DB to find which contact belongs to this client
-        const { data, error } = await supabase
+        const { data, error: _error } = await supabase
           .from('crm_clients')
           .select('contact_id')
           .eq('id', linkedClientId)
