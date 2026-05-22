@@ -60,14 +60,41 @@ export const useChatMessages = (contactId: string | null, channelId: string | nu
         organization_id: organizationId,
       });
     },
-    onSuccess: (newMessage) => {
-      if (!newMessage) return;
+    // Optimistic update: show message immediately with local data
+    onMutate: async (vars) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['messages', contactId] });
 
-      queryClient.setQueryData(['messages', contactId], (oldData: api.Message[] | undefined) => {
-        return oldData ? [...oldData, newMessage] : [newMessage];
-      });
+      const previousMessages = queryClient.getQueryData<api.Message[]>(['messages', contactId]);
 
-      // 5. Invalidate the dynamic contacts query key
+      // Build a temporary message from the local data we already have
+      const optimisticMessage: api.Message = {
+        id: `temp-${Date.now()}`,
+        contact_id: vars.contact_id,
+        sender_type: 'agent',
+        content_type: vars.content_type,
+        text_content: vars.text_content || null,
+        attachment_url: vars.attachment_url || null,
+        attachment_metadata: vars.attachment_metadata || null,
+        sent_at: new Date().toISOString(),
+        delivery_status: 'pending',
+      };
+
+      queryClient.setQueryData(['messages', contactId], (old: api.Message[] | undefined) =>
+        old ? [...old, optimisticMessage] : [optimisticMessage]
+      );
+
+      return { previousMessages };
+    },
+    // If the mutation fails, roll back to the previous messages
+    onError: (_err, _vars, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['messages', contactId], context.previousMessages);
+      }
+    },
+    // After success or error, refetch to get the real data from DB
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages', contactId] });
       queryClient.invalidateQueries({ queryKey: ['contacts', channelId] });
     },
   });
