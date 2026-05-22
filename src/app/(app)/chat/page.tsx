@@ -146,7 +146,6 @@ export default function ChatPage() {
         <Box sx={{ flexGrow: 1, position: 'relative' }}>
           <ChatArea
             contactId={selectedContactId}
-            channelPlatformId={activeChannel?.platform_channel_id || null}
             messages={messages}
             isLoadingMessages={isLoadingMessages}
             onSendMessage={handleSendMessage}

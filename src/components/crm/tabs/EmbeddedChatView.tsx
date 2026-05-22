@@ -87,7 +87,6 @@ export default function EmbeddedChatView({ contact, organizationId }: EmbeddedCh
     <Box sx={{ height: '75vh', width: '100%', position: 'relative' }}>
       <ChatArea
         contactId={contact.id}
-        channelPlatformId={channel?.platform_channel_id || null}
         messages={messages}
         isLoadingMessages={isLoadingMessages}
         onSendMessage={handleSendMessage}
