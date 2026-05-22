@@ -13,7 +13,8 @@ import {
   Snackbar,
   Alert,
   Button,
-  CircularProgress
+  CircularProgress,
+  Divider,
 } from '@mui/material';
 import { useChannelConfig, ChannelConfig } from '@/hooks/useChannelConfig';
 // REMOVED: No longer need useSearchParams
@@ -46,8 +47,8 @@ export default function GeneralSettings({ config, channelId }: GeneralSettingsPr
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  const handleSliderChange = (event: Event, newValue: number | number[]) => {
-    setFormData(prev => ({ ...prev, ai_temperature: newValue as number }));
+  const handleSliderChange = (name: string) => (event: Event, newValue: number | number[]) => {
+    setFormData(prev => ({ ...prev, [name]: newValue as number }));
   };
 
   const handleSaveChanges = () => {
@@ -56,6 +57,8 @@ export default function GeneralSettings({ config, channelId }: GeneralSettingsPr
       is_bot_active: formData.is_bot_active,
       ai_model: formData.ai_model,
       ai_temperature: formData.ai_temperature,
+      fallback_model: formData.fallback_model || undefined,
+      fallback_temperature: formData.fallback_temperature ?? formData.ai_temperature,
     };
 
     updateConfig(payload, {
@@ -102,7 +105,40 @@ export default function GeneralSettings({ config, channelId }: GeneralSettingsPr
           <Slider
             name="ai_temperature"
             value={formData.ai_temperature}
-            onChange={handleSliderChange}
+            onChange={handleSliderChange('ai_temperature')}
+            valueLabelDisplay="auto"
+            step={0.1}
+            marks
+            min={0}
+            max={1}
+          />
+        </Grid>
+
+        <Grid size={12}>
+          <Divider sx={{ my: 1 }} />
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
+            Fallback Model — Used when the primary model fails or is unavailable
+          </Typography>
+        </Grid>
+
+        <Grid size={12}>
+          <TextField
+            name="fallback_model"
+            label="Fallback AI Model"
+            value={formData.fallback_model || ''}
+            onChange={handleChange}
+            fullWidth
+            size="small"
+            helperText="e.g., models/gemini-2.0-flash-lite"
+            placeholder="models/gemini-2.0-flash-lite"
+          />
+        </Grid>
+        <Grid size={12}>
+          <Typography gutterBottom variant="body2">Fallback Temperature: {formData.fallback_temperature ?? formData.ai_temperature}</Typography>
+          <Slider
+            name="fallback_temperature"
+            value={formData.fallback_temperature ?? formData.ai_temperature}
+            onChange={handleSliderChange('fallback_temperature')}
             valueLabelDisplay="auto"
             step={0.1}
             marks
