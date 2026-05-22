@@ -22,6 +22,7 @@ export interface ChannelConfig {
   ai_temperature: number;
   is_bot_active: boolean;
   agent_webhook_url?: string;
+  orders_webhook_url?: string;
   ecommerce_config?: EcommerceConfig;
   notification_config?: NotificationConfig;
 }

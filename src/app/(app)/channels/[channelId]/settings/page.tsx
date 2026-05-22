@@ -23,6 +23,7 @@ import ContentCollectionsManager from '@/components/settings/ContentCollectionsM
 import ChannelCredentialsManager from '@/components/settings/ChannelCredentialsManager';
 import WebhookSettings from '@/components/settings/WebhookSettings';
 import EcommerceSettings from '@/components/settings/EcommerceSettings';
+import OrdersWebhookSettings from '@/components/settings/OrdersWebhookSettings';
 import NotificationSettings from '@/components/settings/NotificationSettings';
 
 // This component displays the settings when a valid channelId is present
@@ -56,6 +57,7 @@ function ChannelSettingsDisplay({ channelId }: { channelId: string }) {
       {/* --- Integration & Webhooks --- */}
       <WebhookSettings config={data.config} channelId={channelId} />
       <EcommerceSettings config={data.config} channelId={channelId} />
+      <OrdersWebhookSettings config={data.config} channelId={channelId} />
       <NotificationSettings config={data.config} channelId={channelId} />
 
       {/* --- AI Configuration --- */}

@@ -12,12 +12,16 @@ import {
   TextField,
   IconButton,
   Divider,
+  Tooltip,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import LockIcon from '@mui/icons-material/Lock';
 import { supabase } from '@/lib/supabaseClient';
 
-// This component expects the channelId as a prop
+// These keys are required for every channel and cannot be deleted
+const REQUIRED_KEYS = ['token', 'FB_PAGE_NO'];
+
 interface ChannelCredentialsManagerProps {
   channelId: string;
 }
@@ -28,7 +32,6 @@ interface CredentialField {
 }
 
 export default function ChannelCredentialsManager({ channelId }: ChannelCredentialsManagerProps) {
-  // We use local state to manage this component's data
   const [fields, setFields] = useState<CredentialField[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -49,27 +52,42 @@ export default function ChannelCredentialsManager({ channelId }: ChannelCredenti
 
       if (error) {
         setError(error.message);
-      } else if (data && data.credentials) {
-        // Parse the JSON object into an array of fields
-        try {
-          const credentialsObj = typeof data.credentials === 'string'
-            ? JSON.parse(data.credentials)
-            : data.credentials;
+      } else {
+        let parsed: CredentialField[] = [];
 
-          if (credentialsObj && typeof credentialsObj === 'object' && !Array.isArray(credentialsObj)) {
-            const newFields = Object.entries(credentialsObj).map(([key, value]) => ({
-              key,
-              value: String(value), // Ensure value is a string
-            }));
-            setFields(newFields);
-          } else {
-            // If it's not a valid object (e.g. null or array), start with empty or handle gracefully
-            setFields([]);
+        if (data && data.credentials) {
+          try {
+            const credentialsObj = typeof data.credentials === 'string'
+              ? JSON.parse(data.credentials)
+              : data.credentials;
+
+            if (credentialsObj && typeof credentialsObj === 'object' && !Array.isArray(credentialsObj)) {
+              parsed = Object.entries(credentialsObj).map(([key, value]) => ({
+                key,
+                value: String(value),
+              }));
+            }
+          } catch (e) {
+            console.error("Failed to parse credentials", e);
           }
-        } catch (e) {
-          console.error("Failed to parse credentials", e);
-          setFields([]);
         }
+
+        // Ensure required keys are always present
+        for (const reqKey of REQUIRED_KEYS) {
+          if (!parsed.find(f => f.key === reqKey)) {
+            parsed.unshift({ key: reqKey, value: '' });
+          }
+        }
+
+        // Sort: required keys first, then the rest
+        const required = parsed.filter(f => REQUIRED_KEYS.includes(f.key));
+        const others = parsed.filter(f => !REQUIRED_KEYS.includes(f.key));
+        // Order required keys in the same order as REQUIRED_KEYS
+        const sortedRequired = REQUIRED_KEYS
+          .map(k => required.find(f => f.key === k))
+          .filter(Boolean) as CredentialField[];
+
+        setFields([...sortedRequired, ...others]);
       }
       setIsLoading(false);
     }
@@ -77,6 +95,10 @@ export default function ChannelCredentialsManager({ channelId }: ChannelCredenti
   }, [channelId]);
 
   const handleFieldChange = (index: number, field: 'key' | 'value', newValue: string) => {
+    const currentField = fields[index];
+    // Don't allow renaming the key of required fields
+    if (field === 'key' && REQUIRED_KEYS.includes(currentField.key)) return;
+    
     const newFields = [...fields];
     newFields[index][field] = newValue;
     setFields(newFields);
@@ -87,6 +109,10 @@ export default function ChannelCredentialsManager({ channelId }: ChannelCredenti
   };
 
   const handleDeleteField = (index: number) => {
+    const field = fields[index];
+    // Don't allow deleting required fields
+    if (REQUIRED_KEYS.includes(field.key)) return;
+    
     const newFields = fields.filter((_, i) => i !== index);
     setFields(newFields);
   };
@@ -94,7 +120,6 @@ export default function ChannelCredentialsManager({ channelId }: ChannelCredenti
   const handleSave = async () => {
     setIsSaving(true);
 
-    // Convert array of fields back to JSON object
     const credentialsToSave: Record<string, string> = {};
     let hasEmptyKeys = false;
 
@@ -102,7 +127,6 @@ export default function ChannelCredentialsManager({ channelId }: ChannelCredenti
       if (field.key.trim()) {
         credentialsToSave[field.key.trim()] = field.value;
       } else {
-        // If key is empty but value exists, we might want to warn, but for now we just skip or flag
         if (field.value) hasEmptyKeys = true;
       }
     });
@@ -142,36 +166,63 @@ export default function ChannelCredentialsManager({ channelId }: ChannelCredenti
         Channel Credentials
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Manage the API keys and secrets for this channel. Add key-value pairs below.
+        Manage the API keys and secrets for this channel. <strong>Token</strong> and <strong>FB_PAGE_NO</strong> are required and cannot be removed.
       </Typography>
 
       <Box sx={{ mb: 3 }}>
-        {fields.map((field, index) => (
-          <Box key={index} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'flex-start' }}>
-            <TextField
-              label="Key"
-              value={field.key}
-              onChange={(e) => handleFieldChange(index, 'key', e.target.value)}
-              variant="outlined"
-              size="small"
-              sx={{ flex: 1 }}
-              placeholder="e.g. api_key"
-            />
-            <TextField
-              label="Value"
-              value={field.value}
-              onChange={(e) => handleFieldChange(index, 'value', e.target.value)}
-              variant="outlined"
-              size="small"
-              sx={{ flex: 1 }}
-              placeholder="e.g. 12345abcde"
-              type="text"
-            />
-            <IconButton onClick={() => handleDeleteField(index)} color="error" size="small" sx={{ mt: 0.5 }}>
-              <DeleteIcon />
-            </IconButton>
-          </Box>
-        ))}
+        {fields.map((field, index) => {
+          const isRequired = REQUIRED_KEYS.includes(field.key);
+
+          return (
+            <Box key={index} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'flex-start' }}>
+              <TextField
+                label="Key"
+                value={field.key}
+                onChange={(e) => handleFieldChange(index, 'key', e.target.value)}
+                variant="outlined"
+                size="small"
+                sx={{ flex: 1 }}
+                placeholder="e.g. api_key"
+                disabled={isRequired}
+                slotProps={{
+                  input: isRequired ? {
+                    startAdornment: (
+                      <Tooltip title="Required field — cannot be removed">
+                        <LockIcon fontSize="small" color="primary" sx={{ mr: 0.5 }} />
+                      </Tooltip>
+                    ),
+                  } : undefined,
+                }}
+              />
+              <TextField
+                label="Value"
+                value={field.value}
+                onChange={(e) => handleFieldChange(index, 'value', e.target.value)}
+                variant="outlined"
+                size="small"
+                sx={{ flex: 1 }}
+                placeholder={isRequired ? `Enter ${field.key}` : 'e.g. 12345abcde'}
+                type="text"
+                required={isRequired}
+                error={isRequired && !field.value.trim()}
+                helperText={isRequired && !field.value.trim() ? `${field.key} is required` : undefined}
+              />
+              {isRequired ? (
+                <Tooltip title="Required — cannot be deleted">
+                  <span>
+                    <IconButton disabled size="small" sx={{ mt: 0.5 }}>
+                      <LockIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              ) : (
+                <IconButton onClick={() => handleDeleteField(index)} color="error" size="small" sx={{ mt: 0.5 }}>
+                  <DeleteIcon />
+                </IconButton>
+              )}
+            </Box>
+          );
+        })}
 
         {fields.length === 0 && (
           <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mb: 2 }}>
