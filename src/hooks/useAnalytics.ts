@@ -9,9 +9,6 @@ export interface DashboardSummary {
     total_clients: number;
     total_customers: number;
     total_leads: number;
-    total_deals: number;
-    open_deals_value: number;
-    closed_won_deals: number;
     total_revenue: number;
     avg_order_value: number;
     pending_activities: number;
@@ -119,7 +116,7 @@ export const useConversionFunnel = (orgId: string, channelId?: string | null, st
             // Map RPC result to interface
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (data as any[]).map(item => ({
-                stage: item.lifecycle_stage,
+                stage: item.lifecycle_stage || item.client_type,
                 count: item.count,
                 conversion_rate: item.percentage
             })) as ConversionFunnelStep[];
@@ -206,4 +203,36 @@ export const useAnalyticsControl = () => {
     };
 
     return { refreshAnalytics };
+};
+
+// --- Sales Funnel Analytics ---
+
+export interface SalesFunnelData {
+    bmi_started: number;
+    bmi_completed: number;
+    bmi_dropped: number;
+    testimonials_shown: number;
+    testimonials_passed: number;
+    testimonials_dropped: number;
+    price_shown: number;
+    purchased: number;
+    price_dropped: number;
+}
+
+export const useSalesFunnel = (orgId: string, channelId?: string | null, startDate?: Date | null, endDate?: Date | null) => {
+    return useQuery({
+        queryKey: ['analytics', 'sales_funnel', orgId, channelId, startDate?.toISOString(), endDate?.toISOString()],
+        queryFn: async () => {
+            const { data, error } = await supabase.rpc('get_sales_funnel_analytics', {
+                org_id: orgId,
+                p_channel_id: channelId || null,
+                start_date: startDate ? startDate.toISOString() : null,
+                end_date: endDate ? endDate.toISOString() : null
+            });
+            if (error) throw error;
+            return (Array.isArray(data) && data.length > 0 ? data[0] : data) as SalesFunnelData;
+        },
+        enabled: !!orgId,
+        staleTime: 5 * 60 * 1000,
+    });
 };

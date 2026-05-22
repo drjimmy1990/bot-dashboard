@@ -110,7 +110,7 @@ export default function RevenueAnalytics({ data, isLoading, height = 350 }: Reve
                         <YAxis
                             stroke={theme.palette.text.secondary}
                             tick={{ fontSize: 12 }}
-                            tickFormatter={(value) => `$${value}`}
+                            tickFormatter={(value) => `${value} EGP`}
                         />
                         <Tooltip
                             contentStyle={{
@@ -118,7 +118,7 @@ export default function RevenueAnalytics({ data, isLoading, height = 350 }: Reve
                                 border: `1px solid ${theme.palette.divider}`,
                                 borderRadius: 8
                             }}
-                            formatter={(value) => value !== undefined ? [`$${value}`, 'Revenue'] : ['N/A', 'Revenue']}
+                            formatter={(value) => value !== undefined ? [`${value} EGP`, 'Revenue'] : ['N/A', 'Revenue']}
                             labelFormatter={(label) => new Date(label).toLocaleDateString()}
                         />
                         <Legend />
