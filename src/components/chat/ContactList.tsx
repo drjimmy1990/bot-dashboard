@@ -1,7 +1,7 @@
 // src/components/chat/ContactList.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Box, List, ListItem, ListItemButton, ListItemAvatar, ListItemText, Typography, Badge, CircularProgress, TextField, IconButton, InputAdornment, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Tooltip } from '@mui/material';
 import PlatformAvatar from '@/components/ui/PlatformAvatar';
 import ToggleOnIcon from '@mui/icons-material/ToggleOn';
@@ -21,10 +21,23 @@ const ContactList: React.FC<ContactListProps> = ({ selectedContactId, onSelectCo
   const queryClient = useQueryClient();
   const { channels, activeChannel, setActiveChannelId, isLoadingChannels } = useChannel();
   const [searchTerm, setSearchTerm] = useState('');
-  const { contacts, isLoadingContacts } = useChatContacts(activeChannel?.id || null, searchTerm);
+  const { contacts, isLoadingContacts, loadMore, hasNextPage, isFetchingNextPage } = useChatContacts(activeChannel?.id || null, searchTerm);
   const { mutate: toggleAi } = useMutation({ mutationFn: api.toggleAiStatus, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['contacts', activeChannel?.id] }); }, });
 
   const handleChannelChange = (event: SelectChangeEvent<string>) => { setActiveChannelId(event.target.value); };
+
+  // --- INFINITE SCROLL HANDLER ---
+  const listRef = useRef<HTMLUListElement>(null);
+
+  const handleScroll = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    // Load more when scrolled within 200px of bottom
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
+    if (nearBottom && hasNextPage && !isFetchingNextPage) {
+      loadMore();
+    }
+  }, [hasNextPage, isFetchingNextPage, loadMore]);
 
   return (
     <Box sx={{ width: 320, flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', borderRight: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', }}>
@@ -38,35 +51,50 @@ const ContactList: React.FC<ContactListProps> = ({ selectedContactId, onSelectCo
         </FormControl>
         <TextField fullWidth variant="outlined" size="small" placeholder="Search by name or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} InputProps={{ startAdornment: (<InputAdornment position="start"> <SearchIcon /> </InputAdornment>), }} />
       </Box>
-      <List sx={{ overflowY: 'auto', flexGrow: 1, overflowX: 'hidden' }}>
+      <List
+        ref={listRef}
+        onScroll={handleScroll}
+        sx={{ overflowY: 'auto', flexGrow: 1, overflowX: 'hidden' }}
+      >
         {isLoadingContacts ? (<Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}> <CircularProgress /> </Box>) : contacts.length > 0 ? (
-          contacts.map((contact) => {
-            // --- THIS IS THE FIX ---
-            // We extract the complex JSX into a variable. This simplifies the code
-            // inside the <ListItem> props and resolves the obscure linter error.
-            const secondaryActionContent = (
-              <Tooltip title={contact.ai_enabled ? "AI is ON" : "AI is OFF"}>
-                <IconButton
-                  edge="end"
-                  onClick={() => toggleAi({ contactId: contact.id, newStatus: !contact.ai_enabled })}
-                >
-                  {contact.ai_enabled ? <ToggleOnIcon color="success" /> : <ToggleOffIcon color="action" />}
-                </IconButton>
-              </Tooltip>
-            );
+          <>
+            {contacts.map((contact) => {
+              const secondaryActionContent = (
+                <Tooltip title={contact.ai_enabled ? "AI is ON" : "AI is OFF"}>
+                  <IconButton
+                    edge="end"
+                    onClick={() => toggleAi({ contactId: contact.id, newStatus: !contact.ai_enabled })}
+                  >
+                    {contact.ai_enabled ? <ToggleOnIcon color="success" /> : <ToggleOffIcon color="action" />}
+                  </IconButton>
+                </Tooltip>
+              );
 
-            return (
-              <ListItem key={contact.id} disablePadding secondaryAction={secondaryActionContent}>
-                <ListItemButton
-                  selected={selectedContactId === contact.id}
-                  onClick={() => onSelectContact(contact.id)}
-                >
-                  <ListItemAvatar> <Badge badgeContent={contact.unread_count} color="error"> <PlatformAvatar platform={contact.platform} /> </Badge> </ListItemAvatar>
-                  <ListItemText primary={<Typography noWrap>{contact.name || contact.platform_user_id}</Typography>} secondary={<Typography noWrap variant="body2" color="text.secondary">{contact.last_message_preview}</Typography>} />
-                </ListItemButton>
-              </ListItem>
-            );
-          })
+              return (
+                <ListItem key={contact.id} disablePadding secondaryAction={secondaryActionContent}>
+                  <ListItemButton
+                    selected={selectedContactId === contact.id}
+                    onClick={() => onSelectContact(contact.id)}
+                  >
+                    <ListItemAvatar> <Badge badgeContent={contact.unread_count} color="error"> <PlatformAvatar platform={contact.platform} /> </Badge> </ListItemAvatar>
+                    <ListItemText primary={<Typography noWrap>{contact.name || contact.platform_user_id}</Typography>} secondary={<Typography noWrap variant="body2" color="text.secondary">{contact.last_message_preview}</Typography>} />
+                  </ListItemButton>
+                </ListItem>
+              );
+            })}
+            {/* Loading indicator at bottom while fetching next page */}
+            {isFetchingNextPage && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                <CircularProgress size={24} />
+              </Box>
+            )}
+            {/* End of list indicator */}
+            {!hasNextPage && contacts.length > 0 && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', py: 1 }}>
+                {contacts.length} conversations
+              </Typography>
+            )}
+          </>
         ) : (<Typography sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}> {searchTerm ? 'No contacts match your search.' : 'No contacts found in this channel.'} </Typography>)}
       </List>
     </Box>

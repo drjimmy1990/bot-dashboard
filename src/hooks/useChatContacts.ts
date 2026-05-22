@@ -1,11 +1,13 @@
 // src/hooks/useChatContacts.ts
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '@/lib/api';
 import { supabase } from '@/lib/supabaseClient';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
+
+const PAGE_SIZE = 30;
 
 // --- DEBOUNCING UTILITY ---
 function useDebounce(value: string, delay: number) {
@@ -29,16 +31,22 @@ export const useChatContacts = (channelId: string | null, searchTerm?: string) =
   const debouncedSearchTerm = useDebounce(searchTerm || '', 300);
   const queryKey = ['contacts', channelId, debouncedSearchTerm];
 
-  const { data: contacts = [], isLoading: isLoadingContacts } = useQuery<ContactWithClient[]>({
+  const {
+    data,
+    isLoading: isLoadingContacts,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery<ContactWithClient[]>({
     queryKey: queryKey,
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
       if (!channelId) return [];
 
-      // --- THIS IS THE NEW LOGIC ---
-      // We call the RPC function directly.
       const { data, error } = await supabase.rpc('get_contacts_for_channel', {
         p_channel_id: channelId,
         p_search_term: debouncedSearchTerm,
+        p_limit: PAGE_SIZE,
+        p_offset: pageParam as number,
       });
 
       if (error) {
@@ -47,8 +55,18 @@ export const useChatContacts = (channelId: string | null, searchTerm?: string) =
       }
       return data || [];
     },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      // If the last page returned fewer items than PAGE_SIZE, there are no more pages
+      if (lastPage.length < PAGE_SIZE) return undefined;
+      // Otherwise, the next offset is total items loaded so far
+      return allPages.reduce((total, page) => total + page.length, 0);
+    },
     enabled: !!channelId,
   });
+
+  // Flatten all pages into a single contacts array
+  const contacts = data?.pages.flat() ?? [];
 
   // (Mutations remain the same)
   const updateNameMutation = useMutation({ mutationFn: api.updateContactName, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['contacts', channelId] }); }, });
@@ -66,5 +84,21 @@ export const useChatContacts = (channelId: string | null, searchTerm?: string) =
     return () => { supabase.removeChannel(subscriptionChannel); };
   }, [queryClient, channelId]);
 
-  return { contacts, isLoadingContacts, updateName: updateNameMutation.mutate, toggleAi: toggleAiMutation.mutate, deleteContact: deleteContactMutation.mutate };
+  // Scroll handler to be called from the UI component
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  return {
+    contacts,
+    isLoadingContacts,
+    updateName: updateNameMutation.mutate,
+    toggleAi: toggleAiMutation.mutate,
+    deleteContact: deleteContactMutation.mutate,
+    loadMore,
+    hasNextPage: !!hasNextPage,
+    isFetchingNextPage,
+  };
 };
