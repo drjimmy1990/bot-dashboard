@@ -9,6 +9,8 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 
 const PAGE_SIZE = 30;
 
+export type SortOption = 'recent' | 'unread' | 'name';
+
 // --- DEBOUNCING UTILITY ---
 function useDebounce(value: string, delay: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -26,10 +28,10 @@ interface ContactWithClient extends api.Contact {
   crm_client_id: string | null;
 }
 
-export const useChatContacts = (channelId: string | null, searchTerm?: string) => {
+export const useChatContacts = (channelId: string | null, searchTerm?: string, sortBy: SortOption = 'recent') => {
   const queryClient = useQueryClient();
   const debouncedSearchTerm = useDebounce(searchTerm || '', 300);
-  const queryKey = ['contacts', channelId, debouncedSearchTerm];
+  const queryKey = ['contacts', channelId, debouncedSearchTerm, sortBy];
 
   const {
     data,
@@ -47,6 +49,7 @@ export const useChatContacts = (channelId: string | null, searchTerm?: string) =
         p_search_term: debouncedSearchTerm,
         p_limit: PAGE_SIZE,
         p_offset: pageParam as number,
+        p_sort: sortBy,
       });
 
       if (error) {
@@ -57,9 +60,7 @@ export const useChatContacts = (channelId: string | null, searchTerm?: string) =
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
-      // If the last page returned fewer items than PAGE_SIZE, there are no more pages
       if (lastPage.length < PAGE_SIZE) return undefined;
-      // Otherwise, the next offset is total items loaded so far
       return allPages.reduce((total, page) => total + page.length, 0);
     },
     enabled: !!channelId,
@@ -84,7 +85,7 @@ export const useChatContacts = (channelId: string | null, searchTerm?: string) =
     return () => { supabase.removeChannel(subscriptionChannel); };
   }, [queryClient, channelId]);
 
-  // Scroll handler to be called from the UI component
+  // Scroll handler
   const loadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();

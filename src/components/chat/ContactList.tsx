@@ -2,13 +2,17 @@
 'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
-import { Box, List, ListItem, ListItemButton, ListItemAvatar, ListItemText, Typography, Badge, CircularProgress, TextField, IconButton, InputAdornment, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Tooltip } from '@mui/material';
+import { Box, List, ListItem, ListItemButton, ListItemAvatar, ListItemText, Typography, Badge, CircularProgress, TextField, IconButton, InputAdornment, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Tooltip, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import PlatformAvatar from '@/components/ui/PlatformAvatar';
 import ToggleOnIcon from '@mui/icons-material/ToggleOn';
 import ToggleOffIcon from '@mui/icons-material/ToggleOff';
 import SearchIcon from '@mui/icons-material/Search';
+import SortIcon from '@mui/icons-material/Sort';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import SortByAlphaIcon from '@mui/icons-material/SortByAlpha';
+import MarkUnreadChatAltIcon from '@mui/icons-material/MarkUnreadChatAlt';
 import { useChannel } from '@/providers/ChannelProvider';
-import { useChatContacts } from '@/hooks/useChatContacts';
+import { useChatContacts, SortOption } from '@/hooks/useChatContacts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '@/lib/api';
 
@@ -21,10 +25,15 @@ const ContactList: React.FC<ContactListProps> = ({ selectedContactId, onSelectCo
   const queryClient = useQueryClient();
   const { channels, activeChannel, setActiveChannelId, isLoadingChannels } = useChannel();
   const [searchTerm, setSearchTerm] = useState('');
-  const { contacts, isLoadingContacts, loadMore, hasNextPage, isFetchingNextPage } = useChatContacts(activeChannel?.id || null, searchTerm);
+  const [sortBy, setSortBy] = useState<SortOption>('recent');
+  const { contacts, isLoadingContacts, loadMore, hasNextPage, isFetchingNextPage } = useChatContacts(activeChannel?.id || null, searchTerm, sortBy);
   const { mutate: toggleAi } = useMutation({ mutationFn: api.toggleAiStatus, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['contacts', activeChannel?.id] }); }, });
 
   const handleChannelChange = (event: SelectChangeEvent<string>) => { setActiveChannelId(event.target.value); };
+
+  const handleSortChange = (_: React.MouseEvent<HTMLElement>, newSort: SortOption | null) => {
+    if (newSort) setSortBy(newSort);
+  };
 
   // --- INFINITE SCROLL HANDLER ---
   const listRef = useRef<HTMLUListElement>(null);
@@ -32,7 +41,6 @@ const ContactList: React.FC<ContactListProps> = ({ selectedContactId, onSelectCo
   const handleScroll = useCallback(() => {
     const el = listRef.current;
     if (!el) return;
-    // Load more when scrolled within 200px of bottom
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
     if (nearBottom && hasNextPage && !isFetchingNextPage) {
       loadMore();
@@ -49,7 +57,29 @@ const ContactList: React.FC<ContactListProps> = ({ selectedContactId, onSelectCo
             {channels.map((channel) => (<MenuItem key={channel.id} value={channel.id}> <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}> <PlatformAvatar platform={channel.platform} sx={{ width: 24, height: 24 }} /> <Typography variant="body2">{channel.name}</Typography> </Box> </MenuItem>))}
           </Select>
         </FormControl>
-        <TextField fullWidth variant="outlined" size="small" placeholder="Search by name or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} InputProps={{ startAdornment: (<InputAdornment position="start"> <SearchIcon /> </InputAdornment>), }} />
+        <TextField fullWidth variant="outlined" size="small" placeholder="Search by name or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} InputProps={{ startAdornment: (<InputAdornment position="start"> <SearchIcon /> </InputAdornment>), }} sx={{ mb: 1 }} />
+
+        {/* Sort Toggle */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <SortIcon fontSize="small" color="action" />
+          <ToggleButtonGroup
+            value={sortBy}
+            exclusive
+            onChange={handleSortChange}
+            size="small"
+            sx={{ flex: 1 }}
+          >
+            <ToggleButton value="recent" sx={{ flex: 1, textTransform: 'none', fontSize: '0.75rem', py: 0.3 }}>
+              <AccessTimeIcon sx={{ fontSize: 16, mr: 0.5 }} /> Recent
+            </ToggleButton>
+            <ToggleButton value="unread" sx={{ flex: 1, textTransform: 'none', fontSize: '0.75rem', py: 0.3 }}>
+              <MarkUnreadChatAltIcon sx={{ fontSize: 16, mr: 0.5 }} /> Unread
+            </ToggleButton>
+            <ToggleButton value="name" sx={{ flex: 1, textTransform: 'none', fontSize: '0.75rem', py: 0.3 }}>
+              <SortByAlphaIcon sx={{ fontSize: 16, mr: 0.5 }} /> Name
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
       </Box>
       <List
         ref={listRef}
@@ -82,13 +112,11 @@ const ContactList: React.FC<ContactListProps> = ({ selectedContactId, onSelectCo
                 </ListItem>
               );
             })}
-            {/* Loading indicator at bottom while fetching next page */}
             {isFetchingNextPage && (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
                 <CircularProgress size={24} />
               </Box>
             )}
-            {/* End of list indicator */}
             {!hasNextPage && contacts.length > 0 && (
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', py: 1 }}>
                 {contacts.length} conversations
