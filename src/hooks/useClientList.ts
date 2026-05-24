@@ -55,7 +55,12 @@ async function fetchClientList({
   const from = page * pageSize;
   const to = from + pageSize - 1;
 
-  let query = supabase.from('crm_clients').select('*, contacts!crm_clients_contact_id_fkey(channel_id, channels(id, name))', { count: 'exact' });
+  // Use !inner join when filtering by channel so PostgREST filters parent rows
+  const contactsJoin = filters.channel_id
+    ? 'contacts!crm_clients_contact_id_fkey!inner(channel_id, channels(id, name))'
+    : 'contacts!crm_clients_contact_id_fkey(channel_id, channels(id, name))';
+
+  let query = supabase.from('crm_clients').select(`*, ${contactsJoin}`, { count: 'exact' });
 
   // 1. Search Term
   if (searchTerm) {
