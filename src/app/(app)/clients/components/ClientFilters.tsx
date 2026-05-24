@@ -21,6 +21,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { ClientFilters as FilterType } from '@/hooks/useClientList';
 import { useTags } from '@/hooks/useTags';
 import { useAgents } from '@/hooks/useAgents';
+import { useChannels } from '@/hooks/useChannels';
 
 interface ClientFiltersProps {
     open: boolean;
@@ -42,6 +43,7 @@ export default function ClientFilters({
 }: ClientFiltersProps) {
     const { data: tags } = useTags();
     const { data: agents } = useAgents();
+    const { channels } = useChannels();
 
     const handleMultiSelectChange = (event: SelectChangeEvent<string[]>, field: keyof FilterType) => {
         const {
@@ -119,6 +121,25 @@ export default function ClientFilters({
                         {QUALITY_OPTIONS.map((q) => (
                             <MenuItem key={q} value={q}>
                                 {q.charAt(0).toUpperCase() + q.slice(1)}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
+                {/* Page / Channel */}
+                <FormControl size="small">
+                    <InputLabel>Page / Channel</InputLabel>
+                    <Select
+                        value={filters.channel_id || ''}
+                        label="Page / Channel"
+                        onChange={(e) => handleTextChange('channel_id', e.target.value || undefined)}
+                    >
+                        <MenuItem value="">
+                            <em>All Pages</em>
+                        </MenuItem>
+                        {channels?.map((ch) => (
+                            <MenuItem key={ch.id} value={ch.id}>
+                                {ch.name} ({ch.platform})
                             </MenuItem>
                         ))}
                     </Select>

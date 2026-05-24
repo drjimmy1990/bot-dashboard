@@ -26,6 +26,7 @@ export interface ClientFilters {
   lead_quality?: string[];
   assignee?: string;
   tags?: string[];
+  channel_id?: string;
   created_after?: Date | null;
   created_before?: Date | null;
   last_contact_after?: Date | null;
@@ -54,7 +55,7 @@ async function fetchClientList({
   const from = page * pageSize;
   const to = from + pageSize - 1;
 
-  let query = supabase.from('crm_clients').select('*', { count: 'exact' });
+  let query = supabase.from('crm_clients').select('*, contacts!crm_clients_contact_id_fkey(channel_id, channels(id, name))', { count: 'exact' });
 
   // 1. Search Term
   if (searchTerm) {
@@ -102,6 +103,11 @@ async function fetchClientList({
     query = query.lte('last_contact_date', filters.last_contact_before.toISOString());
   }
 
+  // Channel (Page Name) Filter
+  if (filters.channel_id) {
+    query = query.eq('contacts.channel_id', filters.channel_id);
+  }
+
   // Sorting & Pagination
   query = query
     .order('last_contact_date', { ascending: false, nullsFirst: false })
@@ -115,7 +121,19 @@ async function fetchClientList({
     throw new Error(error.message);
   }
 
-  return { clients: data || [], count: count || 0 };
+  // Flatten the channel name from the nested join into a top-level field
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clients = (data || []).map((client: any) => {
+    const contact = client.contacts;
+    const channelName = contact?.channels?.name || null;
+    const channelId = contact?.channel_id || null;
+    // Remove the nested object to keep CrmClient clean
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { contacts: _contacts, ...rest } = client;
+    return { ...rest, channel_name: channelName, channel_id_resolved: channelId };
+  });
+
+  return { clients, count: count || 0 };
 }
 
 // --- Main React Query Hook ---

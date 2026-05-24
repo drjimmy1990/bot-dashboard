@@ -71,8 +71,25 @@ const columns: GridColDef<CrmClient>[] = [
   {
     field: 'source',
     headerName: 'Source',
-    flex: 0.75,
-    valueGetter: (value: string) => value ? value.charAt(0).toUpperCase() + value.slice(1) : 'N/A',
+    flex: 1,
+    renderCell: (params) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const row = params.row as any;
+      const channelName = row.channel_name;
+      const platform = params.row.source;
+      return (
+        <Stack direction="column" justifyContent="center" sx={{ height: '100%', py: 0.5 }}>
+          <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.3 }}>
+            {channelName || platform || 'N/A'}
+          </Typography>
+          {channelName && platform && (
+            <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
+              {platform.charAt(0).toUpperCase() + platform.slice(1)}
+            </Typography>
+          )}
+        </Stack>
+      );
+    },
   },
   {
     field: 'last_contact_date',
