@@ -190,7 +190,10 @@ GRANT EXECUTE ON FUNCTION public.get_conversation_funnel(UUID, UUID, TIMESTAMPTZ
 
 -- ====================================================================
 -- STEP 6: Update get_crm_dashboard_summary — remove deal fields
+-- Must DROP first because return type is changing (removed deal columns)
 -- ====================================================================
+DROP FUNCTION IF EXISTS public.get_crm_dashboard_summary(uuid, uuid, timestamp with time zone, timestamp with time zone);
+
 CREATE OR REPLACE FUNCTION public.get_crm_dashboard_summary(
     org_id UUID, 
     p_channel_id UUID DEFAULT NULL,

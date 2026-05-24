@@ -2,7 +2,7 @@
 
 ## Overview
 
-The dashboard now tracks where each client is in the bot's sales conversation funnel. The bot needs to call a Supabase RPC endpoint at specific moments to update the client's stage and store BMI data.
+The dashboard now tracks where each client is in the bot's sales conversation funnel. The bot needs to call a Supabase RPC endpoint at specific moments to update the client's stage. BMI data (weight, height, age, bmi) is sent **only when creating the order** — not as a separate call.
 
 ---
 
@@ -27,7 +27,7 @@ POST https://<YOUR_PROJECT>.supabase.co/rest/v1/rpc/update_client_stage
 | `p_platform_user_id` | string | ✅ | The user's platform ID (Facebook PSID, Instagram IGSID, etc.) |
 | `p_channel_id` | UUID | ✅ | The channel UUID from the dashboard |
 | `p_stage` | string | ✅ | One of: `first_contact`, `bmi_collected`, `testimonials_viewed`, `price_viewed`, `purchased` |
-| `p_bmi_data` | JSON object | ❌ | Only needed for `bmi_collected` stage: `{"weight": 87, "height": 175, "age": 30, "bmi": 28.4}` |
+| `p_bmi_data` | JSON object | ❌ | Only sent when creating the order (with `purchased` stage): `{"weight": 87, "height": 175, "age": 30, "bmi": 28.4}` |
 
 ### Response
 
@@ -46,11 +46,15 @@ POST https://<YOUR_PROJECT>.supabase.co/rest/v1/rpc/update_client_stage
 
 ## Where to Add HTTP Nodes in n8n
 
+You need **4 HTTP Request nodes** added to your bot workflow. Each one fires at a specific moment in the conversation.
+
 ### Stage 1: `bmi_collected` — After BMI Calculation
 
 **When:** The bot has collected weight, height, and age, and calculated the BMI.
 
-**Add an HTTP Request node** right after the BMI calculation step:
+**Add an HTTP Request node** right after the BMI calculation step.
+
+> ⚠️ **No BMI data is sent here** — this only marks that the stage was reached. The actual BMI numbers are sent later with the order.
 
 ```
 Method: POST
@@ -65,17 +69,9 @@ Body (JSON):
 {
   "p_platform_user_id": "{{ $json.sender_id }}",
   "p_channel_id": "<CHANNEL_UUID>",
-  "p_stage": "bmi_collected",
-  "p_bmi_data": {
-    "weight": {{ $json.weight }},
-    "height": {{ $json.height }},
-    "age": {{ $json.age }},
-    "bmi": {{ $json.bmi }}
-  }
+  "p_stage": "bmi_collected"
 }
 ```
-
-> **Note:** Replace `$json.sender_id`, `$json.weight`, etc. with the actual field names from your n8n workflow variables.
 
 ---
 
@@ -96,8 +92,6 @@ Body (JSON):
   "p_stage": "testimonials_viewed"
 }
 ```
-
-> No `p_bmi_data` needed for this stage.
 
 ---
 
@@ -121,11 +115,11 @@ Body (JSON):
 
 ---
 
-### Stage 4: `purchased` — After Successful Purchase
+### Stage 4: `purchased` — When Creating the Order (+ BMI Data)
 
-**When:** The client confirms purchase / payment is received / order is created.
+**When:** The bot creates the order / the client confirms purchase.
 
-**Add an HTTP Request node** at the end of the purchase confirmation flow:
+**This is the only stage that includes BMI data.** Add an HTTP Request node in the order creation intent:
 
 ```
 Method: POST
@@ -135,9 +129,17 @@ Body (JSON):
 {
   "p_platform_user_id": "{{ $json.sender_id }}",
   "p_channel_id": "<CHANNEL_UUID>",
-  "p_stage": "purchased"
+  "p_stage": "purchased",
+  "p_bmi_data": {
+    "weight": {{ $json.weight }},
+    "height": {{ $json.height }},
+    "age": {{ $json.age }},
+    "bmi": {{ $json.bmi }}
+  }
 }
 ```
+
+> **Note:** Replace `$json.sender_id`, `$json.weight`, etc. with the actual field names from your n8n workflow variables.
 
 ---
 
@@ -156,6 +158,15 @@ This is the UUID of the channel in the dashboard. You can find it by:
 3. The UUID is in the URL: `/channels/<THIS_UUID>/settings`
 
 You can store this as a **static variable** or **environment variable** in n8n since it doesn't change per message.
+
+### BMI Values (for the `purchased` stage)
+These come from the conversation where the bot collected:
+- `weight` — client's weight in kg
+- `height` — client's height in cm
+- `age` — client's age
+- `bmi` — calculated BMI value
+
+These should already be available in your n8n workflow variables from the BMI calculation step.
 
 ---
 
@@ -205,13 +216,13 @@ User Message
     ▼
 [AI Process Message]
     │
-    ├── Bot collects weight/height/age ──► [HTTP: stage = bmi_collected + bmi_data]
+    ├── Bot collects weight/height/age ──► [HTTP: stage = bmi_collected]
     │
     ├── Bot sends testimonials ──────────► [HTTP: stage = testimonials_viewed]
     │
     ├── Bot sends price ─────────────────► [HTTP: stage = price_viewed]
     │
-    └── Client purchases ────────────────► [HTTP: stage = purchased]
+    └── Order creation intent ───────────► [HTTP: stage = purchased + bmi_data]
 ```
 
 ---
@@ -223,19 +234,19 @@ User Message
 1. Create a manual workflow with just an HTTP Request node
 2. Use a known `platform_user_id` from your contacts
 3. Use the channel UUID from the dashboard
-4. Send a test call:
+4. Send a test call (with BMI data — simulating order creation):
 
 ```json
 {
   "p_platform_user_id": "1234567890",
   "p_channel_id": "your-channel-uuid-here",
-  "p_stage": "bmi_collected",
+  "p_stage": "purchased",
   "p_bmi_data": {"weight": 80, "height": 170, "age": 28, "bmi": 27.7}
 }
 ```
 
 5. Check the response — should return `{"success": true, ...}`
-6. Verify in the dashboard: go to Clients → find the client → check their tags for `stage:bmi_collected`
+6. Verify in the dashboard: go to Clients → find the client → check their tags for `stage:purchased`
 
 ### Quick Test via Supabase SQL Editor
 
@@ -243,7 +254,7 @@ User Message
 SELECT * FROM public.update_client_stage(
   '1234567890',           -- platform_user_id
   'your-channel-uuid',    -- channel_id
-  'bmi_collected',        -- stage
+  'purchased',            -- stage
   '{"weight": 80, "height": 170, "age": 28, "bmi": 27.7}'::jsonb  -- bmi_data
 );
 ```
@@ -253,7 +264,7 @@ SELECT * FROM public.update_client_stage(
 ## Important Notes
 
 - **Stages only go forward** — the function allows setting any stage, but the analytics funnel assumes forward progression. Don't set `first_contact` after `bmi_collected`.
-- **BMI data is only needed once** — send `p_bmi_data` only with the `bmi_collected` stage. Other stages don't need it.
+- **BMI data is sent only with the order** — the `p_bmi_data` field is only needed in the `purchased` stage call. Other stages don't need it.
 - **Tags are auto-updated** — each stage update adds a `stage:xxx` tag to the client for easy filtering in the client list.
 - **Continue On Fail** — always enable this on the HTTP nodes so the bot continues even if the CRM call fails.
 - **The `first_contact` stage** is set automatically when a new CRM client is created — no n8n call needed for this one.
