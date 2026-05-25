@@ -32,8 +32,9 @@ const ALLOWED_TYPES: Record<string, string[]> = {
 const ALL_ALLOWED_TYPES = Object.values(ALLOWED_TYPES).flat();
 
 export function getContentTypeFromMime(mimeType: string): 'image' | 'audio' | 'video' | 'document' {
+  const baseMime = mimeType.split(';')[0].trim();
   for (const [contentType, mimes] of Object.entries(ALLOWED_TYPES)) {
-    if (mimes.includes(mimeType)) {
+    if (mimes.includes(baseMime)) {
       return contentType as 'image' | 'audio' | 'video' | 'document';
     }
   }
@@ -56,8 +57,9 @@ export const useMediaUpload = (): UseMediaUploadReturn => {
         throw new Error(`File is too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.`);
       }
 
-      // Validate file type
-      if (!ALL_ALLOWED_TYPES.includes(file.type)) {
+      // Validate file type — strip codec params (e.g., "audio/webm;codecs=opus" → "audio/webm")
+      const baseMimeType = file.type.split(';')[0].trim();
+      if (!ALL_ALLOWED_TYPES.includes(baseMimeType)) {
         throw new Error(`Unsupported file type: ${file.type}`);
       }
 
