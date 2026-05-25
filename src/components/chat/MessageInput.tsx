@@ -14,6 +14,8 @@ import StopCircleIcon from '@mui/icons-material/StopCircle';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import BoltIcon from '@mui/icons-material/Bolt';
+import TemplatePopover from './TemplatePopover';
 
 interface MessageInputProps {
   value: string;
@@ -31,6 +33,7 @@ interface MessageInputProps {
   onStartRecording?: () => void;
   onStopRecording?: () => void;
   onCancelRecording?: () => void;
+  onSetValue?: (text: string) => void; // For template insertion
 }
 
 const formatRecordingTime = (seconds: number): string => {
@@ -54,11 +57,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
   onStartRecording,
   onStopRecording,
   onCancelRecording,
+  onSetValue,
 }) => {
   const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [templateAnchor, setTemplateAnchor] = useState<null | HTMLElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const templateBtnRef = useRef<HTMLButtonElement>(null);
 
   const handleKeyPress = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -66,6 +72,21 @@ const MessageInput: React.FC<MessageInputProps> = ({
       if (value.trim()) {
         onSendText();
       }
+    }
+  };
+
+  // Handle "/" shortcut to open templates
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === '/' && value === '' && templateBtnRef.current) {
+      event.preventDefault();
+      setTemplateAnchor(templateBtnRef.current);
+    }
+  };
+
+  // Template selection
+  const handleTemplateSelect = (content: string) => {
+    if (onSetValue) {
+      onSetValue(content);
     }
   };
 
@@ -185,15 +206,31 @@ const MessageInput: React.FC<MessageInputProps> = ({
           <AttachmentIcon />
         </IconButton>
 
+        {/* ⚡ Templates button */}
+        <Tooltip title="Quick replies (or type /)">
+          <IconButton
+            ref={templateBtnRef}
+            onClick={(e) => setTemplateAnchor(e.currentTarget)}
+            disabled={disabled || isSending || isUploading}
+            sx={{
+              color: 'warning.main',
+              '&:hover': { bgcolor: 'warning.light', color: 'warning.dark' },
+            }}
+          >
+            <BoltIcon />
+          </IconButton>
+        </Tooltip>
+
         {/* Text input */}
         <TextField
           fullWidth
           variant="outlined"
-          placeholder="Type your message..."
+          placeholder="Type your message... (/ for templates)"
           size="small"
           value={value}
           onChange={onChange}
           onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyDown}
           disabled={disabled || isSending || isUploading}
           multiline
           maxRows={4}
@@ -281,6 +318,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Template Popover */}
+      <TemplatePopover
+        anchorEl={templateAnchor}
+        open={Boolean(templateAnchor)}
+        onClose={() => setTemplateAnchor(null)}
+        onSelect={handleTemplateSelect}
+      />
     </>
   );
 };

@@ -260,6 +260,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           onStartRecording={startRecording}
           onStopRecording={handleStopRecording}
           onCancelRecording={cancelRecording}
+          onSetValue={setMessageText}
         />
       </Box>
 

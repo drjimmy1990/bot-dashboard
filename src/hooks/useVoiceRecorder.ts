@@ -61,7 +61,6 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const samplesRef = useRef<Float32Array[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const resolveBlobRef = useRef<((blob: Blob | null) => void) | null>(null);
   const isCancelledRef = useRef(false);
 
   // Cleanup on unmount
