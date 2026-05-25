@@ -23,7 +23,7 @@ function useDebounce(value: string, delay: number) {
 // --- Type Definitions ---
 export interface ClientFilters {
   type?: string[];
-  lead_quality?: string[];
+  conversation_stage?: string[];
   assignee?: string;
   tags?: string[];
   channel_id?: string;
@@ -75,9 +75,9 @@ async function fetchClientList({
     query = query.in('client_type', filters.type);
   }
 
-  // 4. Lead Quality
-  if (filters.lead_quality && filters.lead_quality.length > 0) {
-    query = query.in('lead_quality', filters.lead_quality);
+  // 4. Conversation Stage
+  if (filters.conversation_stage && filters.conversation_stage.length > 0) {
+    query = query.in('conversation_stage', filters.conversation_stage);
   }
 
   // 5. Assignee (Agent)

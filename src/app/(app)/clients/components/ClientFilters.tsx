@@ -9,7 +9,6 @@ import {
     MenuItem,
     Chip,
     OutlinedInput,
-    TextField,
     Button,
     Divider,
     Stack,
@@ -31,8 +30,21 @@ interface ClientFiltersProps {
     onReset: () => void;
 }
 
-const TYPE_OPTIONS = ['new', 'interested', 'customer', 'repeat_customer', 'inactive'];
-const QUALITY_OPTIONS = ['hot', 'warm', 'cold'];
+const TYPE_OPTIONS = [
+    { value: 'new', label: '🆕 New' },
+    { value: 'interested', label: '👀 Interested' },
+    { value: 'customer', label: '✅ Customer' },
+    { value: 'repeat_customer', label: '🔄 Repeat Customer' },
+    { value: 'inactive', label: '💤 Inactive' },
+];
+
+const STAGE_OPTIONS = [
+    { value: 'first_contact', label: '👋 First Contact' },
+    { value: 'bmi_collected', label: '📊 BMI Collected' },
+    { value: 'testimonials_viewed', label: '⭐ Testimonials' },
+    { value: 'price_viewed', label: '💰 Price Viewed' },
+    { value: 'purchased', label: '🎉 Purchased' },
+];
 
 export default function ClientFilters({
     open,
@@ -78,7 +90,7 @@ export default function ClientFilters({
             </Box>
 
             <Stack spacing={3}>
-                {/* Type */}
+                {/* Client Type */}
                 <FormControl size="small">
                     <InputLabel>Client Type</InputLabel>
                     <Select
@@ -88,39 +100,41 @@ export default function ClientFilters({
                         input={<OutlinedInput label="Client Type" />}
                         renderValue={(selected) => (
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                {selected.map((value) => (
-                                    <Chip key={value} label={value === 'repeat_customer' ? 'Repeat Customer' : value.charAt(0).toUpperCase() + value.slice(1)} size="small" />
-                                ))}
+                                {selected.map((value) => {
+                                    const opt = TYPE_OPTIONS.find(o => o.value === value);
+                                    return <Chip key={value} label={opt?.label || value} size="small" />;
+                                })}
                             </Box>
                         )}
                     >
-                        {TYPE_OPTIONS.map((type) => (
-                            <MenuItem key={type} value={type}>
-                                {type === 'repeat_customer' ? 'Repeat Customer' : type.charAt(0).toUpperCase() + type.slice(1)}
+                        {TYPE_OPTIONS.map((opt) => (
+                            <MenuItem key={opt.value} value={opt.value}>
+                                {opt.label}
                             </MenuItem>
                         ))}
                     </Select>
                 </FormControl>
 
-                {/* Lead Quality */}
+                {/* Conversation Stage */}
                 <FormControl size="small">
-                    <InputLabel>Lead Quality</InputLabel>
+                    <InputLabel>Stage</InputLabel>
                     <Select
                         multiple
-                        value={filters.lead_quality || []}
-                        onChange={(e) => handleMultiSelectChange(e, 'lead_quality')}
-                        input={<OutlinedInput label="Lead Quality" />}
+                        value={filters.conversation_stage || []}
+                        onChange={(e) => handleMultiSelectChange(e, 'conversation_stage')}
+                        input={<OutlinedInput label="Stage" />}
                         renderValue={(selected) => (
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                {selected.map((value) => (
-                                    <Chip key={value} label={value} size="small" />
-                                ))}
+                                {selected.map((value) => {
+                                    const opt = STAGE_OPTIONS.find(o => o.value === value);
+                                    return <Chip key={value} label={opt?.label || value} size="small" />;
+                                })}
                             </Box>
                         )}
                     >
-                        {QUALITY_OPTIONS.map((q) => (
-                            <MenuItem key={q} value={q}>
-                                {q.charAt(0).toUpperCase() + q.slice(1)}
+                        {STAGE_OPTIONS.map((opt) => (
+                            <MenuItem key={opt.value} value={opt.value}>
+                                {opt.label}
                             </MenuItem>
                         ))}
                     </Select>
@@ -147,7 +161,7 @@ export default function ClientFilters({
 
                 <Divider />
 
-                {/* Agent */}
+                {/* Assigned Agent */}
                 <FormControl size="small">
                     <InputLabel>Assigned Agent</InputLabel>
                     <Select
