@@ -103,6 +103,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   const queryClient = useQueryClient();
   const [typeMenuAnchor, setTypeMenuAnchor] = useState<null | HTMLElement>(null);
+  const [stageMenuAnchor, setStageMenuAnchor] = useState<null | HTMLElement>(null);
 
   const { data: contact, isLoading: isLoadingContact } = useQuery<ContactWithClient>({
     queryKey: ['contact-details', contactId],
@@ -284,15 +285,23 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               );
             })()}
 
-            {/* Stage chip */}
-            {contact.crm_clients?.conversation_stage && (() => {
-              const st = STAGE_CONFIG[contact.crm_clients.conversation_stage] || STAGE_CONFIG.first_contact;
+            {/* Stage chip — clickable to change */}
+            {contact.crm_clients && (() => {
+              const stageKey = contact.crm_clients.conversation_stage || 'first_contact';
+              const st = STAGE_CONFIG[stageKey] || STAGE_CONFIG.first_contact;
               return (
                 <Chip
                   label={`${st.emoji} ${st.label}`}
                   size="small"
                   variant="outlined"
-                  sx={{ fontWeight: 500, fontSize: '0.7rem', height: 24 }}
+                  onClick={(e) => setStageMenuAnchor(e.currentTarget)}
+                  sx={{
+                    fontWeight: 500,
+                    fontSize: '0.7rem',
+                    height: 24,
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
                 />
               );
             })()}
@@ -356,6 +365,37 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 setSnackbar({ open: true, message: 'Failed to update', severity: 'error' });
               } else {
                 setSnackbar({ open: true, message: `Type changed to ${cfg.label}`, severity: 'success' });
+                queryClient.invalidateQueries({ queryKey: ['contact-details', contactId] });
+              }
+            }}
+            sx={{ fontSize: '0.85rem' }}
+          >
+            {cfg.emoji} {cfg.label}
+          </MenuItem>
+        ))}
+      </Menu>
+
+      {/* Stage Change Menu */}
+      <Menu
+        anchorEl={stageMenuAnchor}
+        open={Boolean(stageMenuAnchor)}
+        onClose={() => setStageMenuAnchor(null)}
+      >
+        {Object.entries(STAGE_CONFIG).map(([key, cfg]) => (
+          <MenuItem
+            key={key}
+            selected={contact.crm_clients?.conversation_stage === key}
+            onClick={async () => {
+              setStageMenuAnchor(null);
+              if (!contact.crm_clients?.id) return;
+              const { error } = await supabase
+                .from('crm_clients')
+                .update({ conversation_stage: key })
+                .eq('id', contact.crm_clients.id);
+              if (error) {
+                setSnackbar({ open: true, message: 'Failed to update', severity: 'error' });
+              } else {
+                setSnackbar({ open: true, message: `Stage changed to ${cfg.label}`, severity: 'success' });
                 queryClient.invalidateQueries({ queryKey: ['contact-details', contactId] });
               }
             }}
