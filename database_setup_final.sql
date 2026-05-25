@@ -2495,3 +2495,28 @@ WHERE
         cc.last_contact_date IS NULL
         OR cc.last_contact_date < latest.max_ts
     );
+
+-- Create the chat-attachments storage bucket
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'chat-attachments',
+  'chat-attachments',
+  true,
+  10485760,  -- 10MB
+  ARRAY['image/jpeg','image/png','image/gif','image/webp','audio/webm','audio/ogg','audio/mp3','audio/mpeg','audio/wav','audio/mp4','video/mp4','video/webm','video/quicktime','application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','text/plain']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Allow public read access
+CREATE POLICY "Public read chat-attachments" ON storage.objects FOR
+SELECT USING (
+        bucket_id = 'chat-attachments'
+    );
+
+-- Allow authenticated upload
+CREATE POLICY "Authenticated upload chat-attachments" ON storage.objects FOR
+INSERT
+WITH
+    CHECK (
+        bucket_id = 'chat-attachments'
+    );

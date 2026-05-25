@@ -169,8 +169,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     if (!blob) return;
 
     try {
-      // Create a File from the Blob
-      const extension = blob.type.includes('webm') ? 'webm' : blob.type.includes('mp4') ? 'm4a' : 'ogg';
+      // Create a File from the Blob — recorder outputs WAV
+      const extension = blob.type.includes('wav') ? 'wav' : blob.type.includes('webm') ? 'webm' : blob.type.includes('mp4') ? 'm4a' : 'wav';
       const fileName = `voice_${Date.now()}.${extension}`;
       const file = new File([blob], fileName, { type: blob.type });
 
