@@ -34,12 +34,12 @@ function BotToggle({ channelId }: { channelId: string }) {
 
   useEffect(() => {
     supabase
-      .from('channel_configurations')
-      .select('is_bot_active')
-      .eq('channel_id', channelId)
+      .from('channels')
+      .select('is_active')
+      .eq('id', channelId)
       .single()
       .then(({ data }) => {
-        if (data) setIsActive(data.is_bot_active);
+        if (data) setIsActive(data.is_active);
       });
   }, [channelId]);
 
@@ -50,9 +50,9 @@ function BotToggle({ channelId }: { channelId: string }) {
     setIsActive(newValue);
 
     const { error } = await supabase
-      .from('channel_configurations')
-      .update({ is_bot_active: newValue })
-      .eq('channel_id', channelId);
+      .from('channels')
+      .update({ is_active: newValue })
+      .eq('id', channelId);
 
     if (error) {
       setIsActive(!newValue); // rollback
@@ -63,7 +63,7 @@ function BotToggle({ channelId }: { channelId: string }) {
   if (isActive === null) return <CircularProgress size={20} sx={{ mr: 1 }} />;
 
   return (
-    <Tooltip title={isActive ? 'Bot is ON — click to turn off' : 'Bot is OFF — click to turn on'}>
+    <Tooltip title={isActive ? 'Channel is Active — click to turn off' : 'Channel is Inactive — click to turn on'}>
       <Switch
         checked={isActive}
         onChange={handleToggle}
