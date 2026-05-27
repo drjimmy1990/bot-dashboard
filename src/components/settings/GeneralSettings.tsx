@@ -52,9 +52,9 @@ export default function GeneralSettings({ config, channelId }: GeneralSettingsPr
   };
 
   const handleSaveChanges = () => {
-    // We only send the fields that can be changed on this form
     const payload: Partial<ChannelConfig> = {
       is_bot_active: formData.is_bot_active,
+      is_followup_active: formData.is_followup_active,
       ai_model: formData.ai_model,
       ai_temperature: formData.ai_temperature,
       fallback_model: formData.fallback_model || undefined,
@@ -86,6 +86,22 @@ export default function GeneralSettings({ config, channelId }: GeneralSettingsPr
           />
           <Typography variant="caption" display="block" color="text.secondary">
             This is the master switch. If off, the AI will not respond to any messages.
+          </Typography>
+        </Grid>
+        <Grid size={12}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData.is_followup_active}
+                onChange={handleChange}
+                name="is_followup_active"
+                color="success"
+              />
+            }
+            label={formData.is_followup_active ? "AI Follow-ups Enabled" : "AI Follow-ups Disabled"}
+          />
+          <Typography variant="caption" display="block" color="text.secondary">
+            If enabled, the AI will automatically re-engage silent customers after 5 hours.
           </Typography>
         </Grid>
         <Grid size={12}>

@@ -3,17 +3,17 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box, Typography, Paper, CircularProgress, IconButton, Tooltip, Alert, Snackbar,
-  Chip, Menu, MenuItem, alpha, Stack,
+  Chip, Menu, MenuItem, alpha, Stack, FormControlLabel, Switch,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ChatIcon from '@mui/icons-material/Chat';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
-import { Contact, Message } from '@/lib/api';
+import { Contact, Message, toggleFollowupStatus } from '@/lib/api';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useMediaUpload, getContentTypeFromMime } from '@/hooks/useMediaUpload';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
@@ -136,6 +136,17 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       return reshapedData as ContactWithClient;
     },
     enabled: !!contactId,
+  });
+
+  const { mutate: toggleFollowup, isPending: isTogglingFollowup } = useMutation({
+    mutationFn: toggleFollowupStatus,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contact-details', contactId] });
+      setSnackbar({ open: true, message: 'Follow-up status updated', severity: 'success' });
+    },
+    onError: (err: any) => {
+      setSnackbar({ open: true, message: err.message || 'Error updating status', severity: 'error' });
+    }
   });
 
   const scrollToBottom = () => { if (scrollableContainerRef.current) { scrollableContainerRef.current.scrollTop = scrollableContainerRef.current.scrollHeight; } };
@@ -307,7 +318,25 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             })()}
           </Box>
 
-          <Stack direction="row" spacing={0}>
+          <Stack direction="row" spacing={0} alignItems="center">
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  checked={contact.is_followup_active}
+                  onChange={(e) => toggleFollowup({ contactId: contact.id, newStatus: e.target.checked })}
+                  disabled={isTogglingFollowup}
+                  color="success"
+                />
+              }
+              label={
+                <Typography variant="caption" sx={{ fontWeight: 500, mr: 1 }}>
+                  Follow-ups
+                </Typography>
+              }
+              labelPlacement="start"
+              sx={{ m: 0, mr: 1 }}
+            />
             <Tooltip title="View CRM Profile">
               <span>
                 <IconButton onClick={handleViewProfile} disabled={!contact.crm_clients?.id} aria-label="view profile" size="small">

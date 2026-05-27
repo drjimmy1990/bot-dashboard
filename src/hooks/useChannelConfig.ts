@@ -24,6 +24,7 @@ export interface ChannelConfig {
   fallback_model?: string;
   fallback_temperature?: number;
   is_bot_active: boolean;
+  is_followup_active: boolean;
   agent_webhook_url?: string;
   ecommerce_config?: EcommerceConfig;
   notification_config?: NotificationConfig;

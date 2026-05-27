@@ -14,6 +14,7 @@ export interface Contact {
   name: string;
   avatar_url: string | null;
   ai_enabled: boolean;
+  is_followup_active: boolean;
   last_interaction_at: string;
   last_message_preview: string;
   unread_count: number;
@@ -262,6 +263,23 @@ export const toggleAiStatus = async ({ contactId, newStatus }: { contactId: stri
 
   if (error) {
     console.error("Error toggling AI status:", error);
+    throw new Error(error.message);
+  }
+  return { success: true };
+}
+
+/**
+ * Toggles the AI follow-up status for a contact.
+ * @param params - Object containing contactId and the newStatus.
+ */
+export const toggleFollowupStatus = async ({ contactId, newStatus }: { contactId: string, newStatus: boolean }) => {
+  const { error } = await supabase
+    .from('contacts')
+    .update({ is_followup_active: newStatus })
+    .eq('id', contactId);
+
+  if (error) {
+    console.error("Error toggling follow-up status:", error);
     throw new Error(error.message);
   }
   return { success: true };
