@@ -144,7 +144,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       queryClient.invalidateQueries({ queryKey: ['contact-details', contactId] });
       setSnackbar({ open: true, message: 'Follow-up status updated', severity: 'success' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       setSnackbar({ open: true, message: err.message || 'Error updating status', severity: 'error' });
     }
   });
