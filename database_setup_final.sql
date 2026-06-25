@@ -2556,3 +2556,345 @@ ALTER TABLE public.contacts
 ADD COLUMN IF NOT EXISTS is_followup_active BOOLEAN NOT NULL DEFAULT TRUE;
 
 -- Note: We default to TRUE so existing users don't suddenly stop receiving follow-ups.
+
+-- Fix the update_client_revenue trigger to only update columns that still exist
+CREATE OR REPLACE FUNCTION public.update_client_revenue() 
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$ 
+BEGIN 
+  UPDATE public.crm_clients 
+  SET 
+    last_contact_date = NOW(), 
+    updated_at = NOW() 
+  WHERE id = NEW.client_id; 
+  RETURN NEW; 
+END; 
+$$;
+
+-- ====================================================================
+-- RBAC MIGRATION — Role-Based Access Control
+-- ====================================================================
+-- Adds: user_permissions, user_channel_access tables
+-- Adds: get_my_role(), can_access_channel() helper functions
+-- Updates: RLS policies to be role-aware
+-- Updates: handle_new_user() to default new users to 'agent' role
+-- ====================================================================
+
+-- ====================================================================
+-- 1. NEW TABLES
+-- ====================================================================
+
+-- Per-user page permission overrides
+CREATE TABLE IF NOT EXISTS public.user_permissions (
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+    permission TEXT NOT NULL,
+    granted BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, permission)
+);
+
+ALTER TABLE public.user_permissions ENABLE ROW LEVEL SECURITY;
+
+-- Per-user channel access (junction table)
+CREATE TABLE IF NOT EXISTS public.user_channel_access (
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4 (),
+    organization_id UUID NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+    channel_id UUID NOT NULL REFERENCES public.channels (id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, channel_id)
+);
+
+ALTER TABLE public.user_channel_access ENABLE ROW LEVEL SECURITY;
+
+CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON public.user_permissions (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_channel_access_user ON public.user_channel_access (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_channel_access_channel ON public.user_channel_access (channel_id);
+
+-- ====================================================================
+-- 2. HELPER FUNCTIONS
+-- ====================================================================
+
+-- Get the current user's role
+CREATE OR REPLACE FUNCTION public.get_my_role()
+RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+    SELECT role FROM public.profiles WHERE id = auth.uid();
+$$;
+
+-- Check if the current user can access a specific channel
+CREATE OR REPLACE FUNCTION public.can_access_channel(p_channel_id UUID)
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+    SELECT CASE
+        WHEN (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin' THEN TRUE
+        ELSE EXISTS (
+            SELECT 1 FROM public.user_channel_access
+            WHERE user_id = auth.uid() AND channel_id = p_channel_id
+        )
+    END;
+$$;
+
+-- Get all profiles in the caller's org (for admin team management)
+CREATE OR REPLACE FUNCTION public.get_org_members()
+RETURNS TABLE (
+    user_id UUID,
+    full_name TEXT,
+    email TEXT,
+    role TEXT,
+    team_id UUID
+) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        p.id,
+        p.full_name,
+        u.email::TEXT,
+        p.role,
+        p.team_id
+    FROM public.profiles p
+    JOIN auth.users u ON p.id = u.id
+    WHERE p.organization_id = (
+        SELECT organization_id FROM public.profiles WHERE id = auth.uid()
+    )
+    ORDER BY p.full_name;
+END;
+$$;
+
+-- ====================================================================
+-- 3. UPDATE DEFAULT ROLE FOR NEW USERS
+-- ====================================================================
+-- Change the handle_new_user trigger to default new users to 'agent'
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE new_org_id UUID;
+BEGIN
+    -- Check if an organization already exists for the invited user
+    -- (when admin invites a user, they set the org_id in user metadata)
+    IF NEW.raw_user_meta_data ->> 'organization_id' IS NOT NULL THEN
+        -- User was invited to an existing organization
+        INSERT INTO public.profiles (id, organization_id, role, full_name)
+        VALUES (
+            NEW.id,
+            (NEW.raw_user_meta_data ->> 'organization_id')::UUID,
+            COALESCE(NEW.raw_user_meta_data ->> 'role', 'agent'),
+            COALESCE(NEW.raw_user_meta_data ->> 'full_name', '')
+        );
+    ELSE
+        -- Self-signup: create a new organization
+        INSERT INTO public.organizations (name)
+        VALUES (NEW.email || '''s Organization')
+        RETURNING id INTO new_org_id;
+
+        INSERT INTO public.profiles (id, organization_id, role)
+        VALUES (NEW.id, new_org_id, 'admin');
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+-- ====================================================================
+-- 4. RLS POLICIES — Role-Aware
+-- ====================================================================
+
+-- --- user_permissions table ---
+DROP POLICY IF EXISTS "Admins can manage permissions" ON public.user_permissions;
+
+CREATE POLICY "Admins can manage permissions" ON public.user_permissions FOR ALL USING (
+    organization_id = public.get_my_organization_id ()
+    AND public.get_my_role () = 'admin'
+)
+WITH
+    CHECK (
+        organization_id = public.get_my_organization_id ()
+        AND public.get_my_role () = 'admin'
+    );
+
+DROP POLICY IF EXISTS "Users can read own permissions" ON public.user_permissions;
+
+CREATE POLICY "Users can read own permissions" ON public.user_permissions FOR
+SELECT USING (user_id = auth.uid ());
+
+-- --- user_channel_access table ---
+DROP POLICY IF EXISTS "Admins can manage channel access" ON public.user_channel_access;
+
+CREATE POLICY "Admins can manage channel access" ON public.user_channel_access FOR ALL USING (
+    organization_id = public.get_my_organization_id ()
+    AND public.get_my_role () = 'admin'
+)
+WITH
+    CHECK (
+        organization_id = public.get_my_organization_id ()
+        AND public.get_my_role () = 'admin'
+    );
+
+DROP POLICY IF EXISTS "Users can read own channel access" ON public.user_channel_access;
+
+CREATE POLICY "Users can read own channel access" ON public.user_channel_access FOR
+SELECT USING (user_id = auth.uid ());
+
+-- --- Channels: Replace existing policy ---
+-- (Run these ONLY after dropping the old policy)
+-- DROP POLICY IF EXISTS "Users can manage channels" ON public.channels;
+
+-- Admins can do everything, others can only SELECT their assigned channels
+-- CREATE POLICY "Channel access by role" ON public.channels
+--   FOR ALL USING (
+--     organization_id = public.get_my_organization_id()
+--     AND (public.get_my_role() = 'admin' OR public.can_access_channel(id))
+--   ) WITH CHECK (
+--     organization_id = public.get_my_organization_id()
+--     AND public.get_my_role() = 'admin'
+--   );
+
+-- NOTE: The commented policies above should replace existing ones.
+-- For safety, we keep them commented. Run them manually after verifying
+-- the current policies with: SELECT * FROM pg_policies WHERE tablename = 'channels';
+
+-- --- Profiles: Allow admins to read all org profiles ---
+-- The existing policy only allows users to manage their OWN profile.
+-- We need admins to see all profiles in their org for team management.
+
+DROP POLICY IF EXISTS "Admins can read org profiles" ON public.profiles;
+
+CREATE POLICY "Admins can read org profiles" ON public.profiles FOR
+SELECT USING (
+        organization_id = public.get_my_organization_id ()
+        AND public.get_my_role () = 'admin'
+    );
+
+DROP POLICY IF EXISTS "Admins can update org profiles" ON public.profiles;
+
+CREATE POLICY "Admins can update org profiles" ON public.profiles FOR
+UPDATE USING (
+    organization_id = public.get_my_organization_id ()
+    AND public.get_my_role () = 'admin'
+);
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS team_id UUID;
+
+-- ====================================================================
+-- PAGINATION UPGRADE — Infinite Scroll + Sorting for Contacts
+-- ====================================================================
+-- Updates: get_contacts_for_channel RPC with pagination and sorting
+-- Run this AFTER all previous migrations.
+-- ====================================================================
+
+-- Drop ALL old versions to avoid PostgREST overload conflict (PGRST203)
+DROP FUNCTION IF EXISTS public.get_contacts_for_channel (UUID, TEXT);
+
+DROP FUNCTION IF EXISTS public.get_contacts_for_channel (UUID, TEXT, INT, INT);
+
+DROP FUNCTION IF EXISTS public.get_contacts_for_channel (UUID, TEXT, INT, INT, TEXT);
+
+-- Create with pagination + sorting support
+CREATE OR REPLACE FUNCTION public.get_contacts_for_channel(
+    p_channel_id UUID,
+    p_search_term TEXT DEFAULT '',
+    p_limit INT DEFAULT 30,
+    p_offset INT DEFAULT 0,
+    p_sort TEXT DEFAULT 'recent'
+)
+RETURNS TABLE (
+    id UUID,
+    organization_id UUID,
+    channel_id UUID,
+    platform TEXT,
+    platform_user_id TEXT,
+    name TEXT,
+    ai_enabled BOOLEAN,
+    unread_count INT,
+    last_message_preview TEXT,
+    last_interaction_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ,
+    crm_client_id UUID
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        c.id,
+        c.organization_id,
+        c.channel_id,
+        c.platform,
+        c.platform_user_id,
+        c.name,
+        c.ai_enabled,
+        c.unread_count,
+        c.last_message_preview,
+        c.last_interaction_at,
+        c.created_at,
+        cl.id AS crm_client_id
+    FROM public.contacts c
+    LEFT JOIN public.crm_clients cl ON cl.contact_id = c.id
+    WHERE c.channel_id = p_channel_id
+      AND (
+          p_search_term = ''
+          OR c.name ILIKE '%' || p_search_term || '%'
+          OR c.platform_user_id ILIKE '%' || p_search_term || '%'
+      )
+    ORDER BY
+        CASE WHEN p_sort = 'recent' THEN c.last_interaction_at END DESC NULLS LAST,
+        CASE WHEN p_sort = 'unread' THEN c.unread_count END DESC,
+        CASE WHEN p_sort = 'unread' THEN c.last_interaction_at END DESC NULLS LAST,
+        CASE WHEN p_sort = 'name' THEN c.name END ASC NULLS LAST,
+        CASE WHEN p_sort = 'name' THEN c.platform_user_id END ASC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$;
+
+-- Grant access
+GRANT
+EXECUTE ON FUNCTION public.get_contacts_for_channel (UUID, TEXT, INT, INT, TEXT) TO authenticated;
+
+GRANT
+EXECUTE ON FUNCTION public.get_contacts_for_channel (UUID, TEXT, INT, INT, TEXT) TO service_role;
+
+-- ====================================================================
+-- VERIFICATION
+-- ====================================================================
+DO $$
+BEGIN
+    RAISE NOTICE 'Pagination + Sorting Upgrade applied successfully.';
+    RAISE NOTICE '  ✓ get_contacts_for_channel updated with p_sort parameter';
+    RAISE NOTICE '  ✓ Sort options: recent (default), unread, name';
+    RAISE NOTICE '  ✓ Pagination: p_limit (default 30), p_offset (default 0)';
+END $$;
+
+-- ====================================================================
+-- ADD FALLBACK MODEL & TEMPERATURE TO CHANNEL CONFIGURATIONS
+-- Run this in Supabase SQL Editor
+-- ====================================================================
+
+ALTER TABLE public.channel_configurations
+ADD COLUMN IF NOT EXISTS fallback_model TEXT,
+ADD COLUMN IF NOT EXISTS fallback_temperature REAL;
+
+COMMENT ON COLUMN public.channel_configurations.fallback_model IS 'Fallback AI model used when the primary model fails or is unavailable';
+
+COMMENT ON COLUMN public.channel_configurations.fallback_temperature IS 'Temperature setting for the fallback AI model (0.0 to 1.0)';
+
+-- ====================================================================
+-- UPDATE DEFAULT KEYWORD ACTIONS: start/stop → 9/8
+-- Run this in Supabase SQL Editor
+-- ====================================================================
+
+-- Change 'stop' → '8' (DISABLE_AI)
+UPDATE public.keyword_actions
+SET
+    keyword = '8'
+WHERE
+    keyword = 'stop'
+    AND action_type = 'DISABLE_AI';
+
+-- Change 'start' → '9' (ENABLE_AI)
+UPDATE public.keyword_actions
+SET
+    keyword = '9'
+WHERE
+    keyword = 'start'
+    AND action_type = 'ENABLE_AI';

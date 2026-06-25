@@ -125,6 +125,7 @@ $$;
 -- ====================================================================
 
 -- --- user_permissions table ---
+DROP POLICY IF EXISTS "Admins can manage permissions" ON public.user_permissions;
 CREATE POLICY "Admins can manage permissions" ON public.user_permissions
     FOR ALL USING (
         organization_id = public.get_my_organization_id()
@@ -134,10 +135,12 @@ CREATE POLICY "Admins can manage permissions" ON public.user_permissions
         AND public.get_my_role() = 'admin'
     );
 
+DROP POLICY IF EXISTS "Users can read own permissions" ON public.user_permissions;
 CREATE POLICY "Users can read own permissions" ON public.user_permissions
     FOR SELECT USING (user_id = auth.uid());
 
 -- --- user_channel_access table ---
+DROP POLICY IF EXISTS "Admins can manage channel access" ON public.user_channel_access;
 CREATE POLICY "Admins can manage channel access" ON public.user_channel_access
     FOR ALL USING (
         organization_id = public.get_my_organization_id()
@@ -147,6 +150,7 @@ CREATE POLICY "Admins can manage channel access" ON public.user_channel_access
         AND public.get_my_role() = 'admin'
     );
 
+DROP POLICY IF EXISTS "Users can read own channel access" ON public.user_channel_access;
 CREATE POLICY "Users can read own channel access" ON public.user_channel_access
     FOR SELECT USING (user_id = auth.uid());
 
@@ -172,12 +176,14 @@ CREATE POLICY "Users can read own channel access" ON public.user_channel_access
 -- The existing policy only allows users to manage their OWN profile.
 -- We need admins to see all profiles in their org for team management.
 
+DROP POLICY IF EXISTS "Admins can read org profiles" ON public.profiles;
 CREATE POLICY "Admins can read org profiles" ON public.profiles
     FOR SELECT USING (
         organization_id = public.get_my_organization_id()
         AND public.get_my_role() = 'admin'
     );
 
+DROP POLICY IF EXISTS "Admins can update org profiles" ON public.profiles;
 CREATE POLICY "Admins can update org profiles" ON public.profiles
     FOR UPDATE USING (
         organization_id = public.get_my_organization_id()
