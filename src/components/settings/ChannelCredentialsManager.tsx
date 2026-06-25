@@ -19,17 +19,8 @@ import AddIcon from '@mui/icons-material/Add';
 import LockIcon from '@mui/icons-material/Lock';
 import { supabase } from '@/lib/supabaseClient';
 
-// These keys are required/locked for every channel and cannot be deleted or renamed
-const REQUIRED_KEYS = [
-  'token',
-  'page_id',
-  'telegram_orders',
-  'telegram_complaints',
-  'telegram_cancellation'
-];
-
-// Only these keys must have a non-empty value to save
-const MANDATORY_KEYS = ['token', 'page_id'];
+// These keys are required for every channel and cannot be deleted
+const REQUIRED_KEYS = ['token', 'page_id'];
 
 interface ChannelCredentialsManagerProps {
   channelId: string;
@@ -175,13 +166,12 @@ export default function ChannelCredentialsManager({ channelId }: ChannelCredenti
         Channel Credentials
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Manage the API keys and secrets for this channel. System credentials (<strong>token</strong>, <strong>page_id</strong>) and Telegram group IDs are required and cannot be removed.
+        Manage the API keys and secrets for this channel. <strong>Token</strong> and <strong>page_id</strong> are required and cannot be removed.
       </Typography>
 
       <Box sx={{ mb: 3 }}>
         {fields.map((field, index) => {
           const isRequired = REQUIRED_KEYS.includes(field.key);
-          const isMandatory = MANDATORY_KEYS.includes(field.key);
 
           return (
             <Box key={index} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'flex-start' }}>
@@ -213,9 +203,9 @@ export default function ChannelCredentialsManager({ channelId }: ChannelCredenti
                 sx={{ flex: 1 }}
                 placeholder={isRequired ? `Enter ${field.key}` : 'e.g. 12345abcde'}
                 type="text"
-                required={isMandatory}
-                error={isMandatory && !field.value.trim()}
-                helperText={isMandatory && !field.value.trim() ? `${field.key} is required` : undefined}
+                required={isRequired}
+                error={isRequired && !field.value.trim()}
+                helperText={isRequired && !field.value.trim() ? `${field.key} is required` : undefined}
               />
               {isRequired ? (
                 <Tooltip title="Required — cannot be deleted">
