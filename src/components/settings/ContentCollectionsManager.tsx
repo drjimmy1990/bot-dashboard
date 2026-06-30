@@ -1,7 +1,7 @@
 // src/components/settings/ContentCollectionsManager.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Box,
   Typography,
@@ -17,6 +17,7 @@ import {
   TextField,
   Button,
   CircularProgress,
+  LinearProgress,
   Snackbar,
   Alert,
   IconButton,
@@ -26,7 +27,10 @@ import {
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import CloseIcon from '@mui/icons-material/Close';
 import { useChannelConfig, ContentCollection } from '@/hooks/useChannelConfig';
+import { useContentImageUpload, isImageUrl } from '@/hooks/useContentImageUpload';
 
 interface ContentCollectionsManagerProps {
   collections: ContentCollection[];
@@ -109,11 +113,157 @@ function ConfirmDeleteDialog({ open, name, onClose, onConfirm, isDeleting }: { o
 }
 
 
+// Editor for the items inside a collection. Supports uploading image files
+// (stored in the public `content-images` bucket → URLs appended to items),
+// pasting text/URL lines in bulk, and removing individual items.
+function ItemsEditor({
+  items,
+  onItemsChange,
+  channelId,
+  collectionId,
+  onNotify,
+}: {
+  items: string[];
+  onItemsChange: (items: string[]) => void;
+  channelId: string;
+  collectionId: string;
+  onNotify: (message: string, severity: 'success' | 'error') => void;
+}) {
+  const { uploadImage, isUploading, uploadProgress } = useContentImageUpload();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [bulkText, setBulkText] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleFiles = async (files: FileList | File[]) => {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    const uploaded: string[] = [];
+    let lastError: string | null = null;
+    for (const file of list) {
+      try {
+        const res = await uploadImage(file, channelId, collectionId);
+        uploaded.push(res.url);
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : 'Upload failed';
+      }
+    }
+    if (uploaded.length) {
+      onItemsChange([...items, ...uploaded]);
+      onNotify(`Uploaded ${uploaded.length} image${uploaded.length > 1 ? 's' : ''}.`, 'success');
+    }
+    if (lastError) onNotify(lastError, 'error');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const addBulkLines = () => {
+    const lines = bulkText.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (lines.length) onItemsChange([...items, ...lines]);
+    setBulkText('');
+  };
+
+  const removeItem = (idx: number) => onItemsChange(items.filter((_, i) => i !== idx));
+
+  return (
+    <Box>
+      {/* Upload dropzone */}
+      <Box
+        onClick={() => !isUploading && fileInputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          if (!isUploading) handleFiles(e.dataTransfer.files);
+        }}
+        sx={{
+          border: '2px dashed',
+          borderColor: dragOver ? 'primary.main' : 'divider',
+          borderRadius: 1,
+          p: 2,
+          textAlign: 'center',
+          cursor: isUploading ? 'wait' : 'pointer',
+          bgcolor: dragOver ? 'action.hover' : 'background.default',
+          transition: 'all 0.15s ease',
+          mb: 2,
+        }}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          multiple
+          hidden
+          onChange={(e) => e.target.files && handleFiles(e.target.files)}
+        />
+        <CloudUploadIcon color={isUploading ? 'disabled' : 'primary'} sx={{ fontSize: 32, mb: 0.5 }} />
+        <Typography variant="body2" color="text.secondary">
+          {isUploading ? `Uploading… ${uploadProgress}%` : 'Drag & drop images here, or click to select'}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          JPEG, PNG, GIF, WebP — up to 10MB each
+        </Typography>
+        {isUploading && <LinearProgress value={uploadProgress} sx={{ mt: 1 }} />}
+      </Box>
+
+      {/* Current items */}
+      <Typography variant="subtitle2" sx={{ mb: 1 }}>
+        {items.length} item{items.length === 1 ? '' : 's'}
+      </Typography>
+      {items.length === 0 ? (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          No items yet. Upload images above, or paste URLs/text below.
+        </Typography>
+      ) : (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+          {items.map((item, idx) => isImageUrl(item) ? (
+            <Box
+              key={idx}
+              sx={{ position: 'relative', width: 96, height: 96, borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={item} alt={item.split('/').pop() || 'image'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <IconButton
+                size="small"
+                onClick={() => removeItem(idx)}
+                sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'rgba(0,0,0,0.55)', color: 'common.white', '&:hover': { bgcolor: 'rgba(0,0,0,0.75)' }, p: 0.25 }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          ) : (
+            <Chip
+              key={idx}
+              label={item.length > 40 ? `${item.slice(0, 37)}…` : item}
+              onDelete={() => removeItem(idx)}
+              sx={{ maxWidth: 260 }}
+            />
+          ))}
+        </Box>
+      )}
+
+      {/* Bulk paste */}
+      <TextField
+        label="Add text / URL items (one per line)"
+        value={bulkText}
+        onChange={(e) => setBulkText(e.target.value)}
+        multiline
+        rows={3}
+        fullWidth
+        size="small"
+        helperText="Paste direct image URLs or text snippets, then click Add."
+      />
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+        <Button size="small" onClick={addBulkLines} disabled={!bulkText.trim()}>Add lines</Button>
+      </Box>
+    </Box>
+  );
+}
+
 export default function ContentCollectionsManager({ collections, channelId }: ContentCollectionsManagerProps) {
   const { addCollection, isAddingCollection, updateCollection, isUpdatingCollection, deleteCollection, isDeletingCollection } = useChannelConfig(channelId);
 
   const [selectedCollection, setSelectedCollection] = useState<ContentCollection | null>(null);
-  const [editText, setEditText] = useState('');
+  const [editItems, setEditItems] = useState<string[]>([]);
   const [editName, setEditName] = useState('');
   const [editCollectionId, setEditCollectionId] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<ContentCollection | null>(null);
@@ -125,7 +275,7 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
 
   const handleOpenEditDialog = (collection: ContentCollection) => {
     setSelectedCollection(collection);
-    setEditText(collection.items.join('\n'));
+    setEditItems(collection.items ?? []);
     setEditName(collection.name);
     setEditCollectionId(collection.collection_id);
     setIsEditDialogOpen(true);
@@ -134,16 +284,15 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
   const handleCloseEditDialog = () => {
     setIsEditDialogOpen(false);
     setSelectedCollection(null);
-    setEditText('');
+    setEditItems([]);
     setEditName('');
     setEditCollectionId('');
   };
 
   const handleSaveChanges = async () => {
     if (!selectedCollection) return;
-    const updatedItems = editText.split('\n').map(line => line.trim()).filter(line => line);
 
-    updateCollection({ id: selectedCollection.id, items: updatedItems, name: editName, collection_id: editCollectionId }, {
+    updateCollection({ id: selectedCollection.id, items: editItems, name: editName, collection_id: editCollectionId }, {
       onSuccess: () => {
         setSnackbar({ open: true, message: 'Collection saved!', severity: 'success' });
         handleCloseEditDialog();
@@ -188,7 +337,7 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
           </Tooltip>
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Manage lists of content, like image URLs, used by your AI agents. The <strong>Collection ID</strong> is what n8n uses to pick the right collection.
+          Manage lists of content used by your AI agents. Upload images directly or paste URLs/text — the <strong>Collection ID</strong> is what n8n uses to pick the right collection.
         </Typography>
         <List dense>
           {collections.map(collection => (
@@ -253,7 +402,17 @@ export default function ContentCollectionsManager({ collections, channelId }: Co
               helperText="Change carefully — n8n references this ID"
             />
           </Box>
-          <TextField margin="dense" label="Content Items (one per line)" value={editText} onChange={(e) => setEditText(e.target.value)} multiline rows={12} fullWidth variant="outlined" helperText="Enter URLs or text snippets, each on a new line." />
+          <Box sx={{ mt: 1 }}>
+            {selectedCollection && (
+              <ItemsEditor
+                items={editItems}
+                onItemsChange={setEditItems}
+                channelId={channelId}
+                collectionId={selectedCollection.collection_id}
+                onNotify={(message, severity) => setSnackbar({ open: true, message, severity })}
+              />
+            )}
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseEditDialog} disabled={isUpdatingCollection}>Cancel</Button>

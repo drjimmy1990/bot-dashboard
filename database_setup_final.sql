@@ -2521,6 +2521,31 @@ WITH
         bucket_id = 'chat-attachments'
     );
 
+-- Create the content-images storage bucket (for Content Collections image uploads)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'content-images',
+  'content-images',
+  true,
+  10485760,  -- 10MB
+  ARRAY['image/jpeg','image/png','image/gif','image/webp']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Allow public read access (so n8n / Facebook / Instagram can fetch the images)
+CREATE POLICY "Public read content-images" ON storage.objects FOR
+SELECT USING (
+        bucket_id = 'content-images'
+    );
+
+-- Allow authenticated upload
+CREATE POLICY "Authenticated upload content-images" ON storage.objects FOR
+INSERT
+WITH
+    CHECK (
+        bucket_id = 'content-images'
+    );
+
 -- Message Templates — Per-user quick replies
 -- Run in Supabase SQL Editor
 
