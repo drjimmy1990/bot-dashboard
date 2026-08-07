@@ -1,7 +1,7 @@
 // src/components/team/ChannelAccessMatrix.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -62,11 +62,12 @@ export default function ChannelAccessMatrix() {
     },
   });
 
-  // Build a Set for fast lookup
-  const [accessSet, setAccessSet] = useState<Set<string>>(new Set());
-  useEffect(() => {
-    setAccessSet(new Set(accessRecords.map(r => `${r.user_id}:${r.channel_id}`)));
-  }, [accessRecords]);
+  // Build a Set for fast lookup (derived state — memoized, not effect-driven,
+  // to avoid an infinite render loop when accessRecords defaults to a new []).
+  const accessSet = useMemo(
+    () => new Set(accessRecords.map(r => `${r.user_id}:${r.channel_id}`)),
+    [accessRecords],
+  );
 
   const hasAccess = (userId: string, channelId: string) =>
     accessSet.has(`${userId}:${channelId}`);
